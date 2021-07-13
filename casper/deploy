@@ -1,0 +1,155 @@
+#!/bin/bash
+#
+#   Test spack deployment script for fresh Casper standup
+#
+#   Author:         Brian Vanderwende
+#   Last Revised:   15:53, 06 Jul 2021
+#
+#   Todo:
+#       - Add package specs
+#       - Convert to ansible?
+#
+
+set -e
+export NCAR_SPACK_DEPLOY_TIME=$(date +%y%m%d%H%M)
+export NCAR_SPACK_DEPLOY_DIR="$( cd "$(dirname "$0")" ; pwd )"
+
+#
+## ---- BASIC CONFIGURATION ----
+#
+
+NCAR_SYS=casper
+NCAR_ROOT_SPACK=/glade/work/$USER/spack
+NCAR_SPACK_ENV_MIRROR=/glade/scratch/$USER/spack/$NCAR_SYS/mirror
+NCAR_SPACK_ENV_CSG=/glade/scratch/$USER/spack/$NCAR_SYS/build
+NCAR_SPACK_ENV_PUBLIC=/glade/scratch/$USER/spack/$NCAR_SYS/pub
+
+#
+## ---- INITIALIZATION ----
+#
+
+# Perform environment check
+if [[ -n $MODULEPATH_ROOT ]]; then
+cat << EOF
+Error: detected environment contamination (MODULEPATH_ROOT)
+
+You are not running this script in a clean environment! Before
+running this script, sanitize your environment by executing:
+
+    ssh -t localhost /bin/bash
+
+EOF
+exit 1
+fi
+
+# Perform user spack settings check
+if [[ -d ~/.spack ]]; then
+cat << EOF
+Warning: detected custom user settings (~/.spack)
+
+Personal spack config would not be present in a system standup.
+Moving existing settings from ~/.spack to ~/.backup.spack.$NCAR_SPACK_DEPLOY_TIME
+
+EOF
+mv ~/.spack ~/.backup.spack.$NCAR_SPACK_DEPLOY_TIME
+fi
+
+
+#
+## ---- INSTALL SPACK ----
+#
+
+# Provide Python 3 to make Spack happy
+export PATH=/glade/u/apps/dav/opt/usr/bin/python3:$PATH
+
+if [[ ! -d $NCAR_ROOT_SPACK ]]; then
+# Use latest full release
+git clone https://github.com/spack/spack.git $NCAR_ROOT_SPACK
+cd $NCAR_ROOT_SPACK
+git checkout releases/latest
+
+# Add global settings to spack install
+cat > $NCAR_ROOT_SPACK/etc/spack/config.yaml << "EOF"
+config:
+  # Restrict spack to at most 10 build jobs
+  build_jobs: 10
+EOF
+
+# Activate spack installation
+. $NCAR_ROOT_SPACK/share/spack/setup-env.sh
+
+# Create trusted GPG key in spack install
+spack gpg create "NCAR CSG Spack" "<csg@ucar.edu>"
+else
+# Activate spack installation
+. $NCAR_ROOT_SPACK/share/spack/setup-env.sh
+fi
+
+cd $NCAR_SPACK_DEPLOY_DIR
+
+#
+## ---- CREATE AND CUSTOMIZE ENVS ----
+#
+
+for NCAR_SPACK_ENV in $NCAR_SPACK_ENV_CSG $NCAR_SPACK_ENV_PUBLIC; do
+    # All spack needs for an env is a directory with spack.yaml
+    mkdir -p $NCAR_SPACK_ENV
+    cp spack.yaml $NCAR_SPACK_ENV
+    cp -r ../util $NCAR_SPACK_ENV
+
+    # Add relevant paths to spack.yaml
+    sed -i "s|%INSTALLROOT%|${NCAR_SPACK_ENV}/opt|" $NCAR_SPACK_ENV/spack.yaml
+    sed -i "s|%MODULESROOT%|${NCAR_SPACK_ENV}/modules|" $NCAR_SPACK_ENV/spack.yaml
+
+    # Modify paths in localinit files
+    sed -i "s|%SPACKROOT%|${NCAR_ROOT_SPACK}|" $NCAR_SPACK_ENV/util/localinit.*
+    sed -i "s|%ENVROOT%|${NCAR_SPACK_ENV}|" $NCAR_SPACK_ENV/util/localinit.*
+    sed -i "s|%LMODSYS%|${NCAR_SYS}|" $NCAR_SPACK_ENV/util/localinit.*
+    sed -i "s|%DEFMODS%|${NCAR_DEFAULT_MODS}|" $NCAR_SPACK_ENV/util/localinit.*
+
+    # Activate the environment
+    spack env activate $NCAR_SPACK_ENV
+    spack env status
+
+    # Add system packages as externals
+    spack external find --not-buildable $(tr '\n' ' ' < externals.cfg) 
+    spack external find
+
+    # Create mirror and prepare workshop to generate build_cache (binaries)
+    if [[ $NCAR_SPACK_ENV == $NCAR_SPACK_ENV_CSG ]]; then
+        spack config add "config:install_tree:padded_length:128"
+        spack mirror create -d $NCAR_SPACK_ENV_MIRROR -a
+        cp $NCAR_ROOT_SPACK/opt/spack/gpg/pubring.gpg $NCAR_SPACK_ENV_MIRROR/
+    fi
+
+    # Add local filesystem mirror
+    spack mirror add glade_casper $NCAR_SPACK_ENV_MIRROR
+
+    spack env deactivate
+done
+
+#
+## ---- BUILD PACKAGES IN ENVIRONMENTS ----
+#
+
+function install_pkgs {
+    while read PKG; do
+    done < $1
+}
+
+# Build packages from source in build environment
+spack env activate $NCAR_SPACK_ENV_CSG
+spack env status
+
+$NCAR_SPACK_ENV_CSG/util/install_pkgs packages.cfg
+
+# Run script to populate the binary build_cache
+$NCAR_SPACK_ENV_CSG/util/populate_build_cache $NCAR_SPACK_ENV_MIRROR
+spack env deactivate
+
+# Install prebuilt packages into production environment
+spack env activate $NCAR_SPACK_ENV_PUBLIC
+spack env status
+
+$NCAR_SPACK_ENV_PUBLIC/install_pkgs packages.cfg
+spack env deactivate

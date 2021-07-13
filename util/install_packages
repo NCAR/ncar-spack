@@ -1,0 +1,47 @@
+#!/bin/bash
+
+set -e
+
+while read PKG; do
+    PKGTYPE=$(cut -d' ' -f1  <<< $PKG)
+    PKGSPEC=$(cut -d' ' -f2- <<< $PKG)
+
+    case $PKGTYPE in
+        singleton*)
+            echo "RUNNING:  spack install $PKGSPEC"
+            ;;
+        cdep*)
+            for CMP in $CMPLIST; do
+                DEPSPEC=$(sed "s|%CMP%|$CMP|;t;s|$| $CMP|" <<< "$PKGSPEC")
+                echo "RUNNING:  spack install $DEPSPEC"
+            done
+            ;;
+        mdep*)
+            for CMP in $CMPLIST; do
+                for MPI in $MPILIST; do
+                    DEPSPEC=$(sed "s|%CMP%|$CMP|;t;s|$| $CMP|" <<< "$PKGSPEC")
+                    DEPSPEC=$(sed "s|%MPI%|$MPI|;t;s|$| $MPI|" <<< "$DEPSPEC")
+                    echo "RUNNING:  spack install $DEPSPEC"
+                done
+            done
+            ;;
+        *)
+            echo "====="
+            echo "Error: unrecognized package type: $PKGTYPE"
+            echo "       halting installs at $PKGSPEC ..."
+            exit 1
+            ;;
+    esac
+    
+    if [[ $PKGTYPE == *-compiler ]]; then
+        echo "REGISTER: $PKGSPEC ==> COMPILER"
+        CMPLIST="$CMPLIST %$PKGSPEC"
+
+        if [[ $PKGSPEC == gcc* ]]; then
+            spack compiler add $(spack location -i $PKGSPEC)
+        fi
+    elif [[ $PKGTYPE == *-mpi ]]; then
+        echo "REGISTER: $PKGSPEC ==> MPI LIBRARY"
+        MPILIST="$MPILIST ^$PKGSPEC"
+    fi
+done < $1

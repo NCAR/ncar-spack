@@ -1,0 +1,20 @@
+#!/bin/bash
+
+if [[ $# == 0 ]]; then
+    echo "Error: must provide path to mirror"
+    echo "Usage: populate_build_cache /mirror"
+    exit 1
+fi
+
+if [[ ${SPACK_ENV}z == z ]]; then
+    echo "No spack environment active; exiting..."
+    exit 1
+fi
+
+PKGS=$(spack find -L -p | awk -v envpath=${SPACK_ENV}/opt '$3~envpath { print $1 }')
+
+for PKG in $PKGS; do
+    PKG_LABEL=$(spack find --no-groups -f --show-full-compiler -v /$PKG | tail -n1)
+    echo -e "\n==> Creating binary package for: $PKG_LABEL"
+    spack buildcache create -a -d $1 --only=package /$PKG
+done
