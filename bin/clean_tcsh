@@ -1,5 +1,3 @@
 #!/bin/tcsh
 
-if ( $?MODULEPATH_ROOT ) then
-    exec env -i /bin/tcsh -f $argv
-endif
+exec env -i /bin/tcsh -f $argv

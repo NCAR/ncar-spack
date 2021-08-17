@@ -3,7 +3,7 @@
 #   Install spack into the current system
 #
 #   Author:         Brian Vanderwende
-#   Last Revised:   09:38, 17 Aug 2021
+#   Last Revised:   14:27, 17 Aug 2021
 #
 
 set -e
@@ -15,7 +15,10 @@ export NCAR_SPACK_INSTALL_DIR="$( cd "$(dirname "$0")" ; pwd )"
 #
 
 # Make sure environment is clean
-$NCAR_SPACK_INSTALL_DIR/bin/clean_bash $0 $@
+if [[ -n $MODULEPATH_ROOT ]]; then
+    $NCAR_SPACK_INSTALL_DIR/bin/clean_bash $0 $@
+    exit $?
+fi
 
 # Perform user spack settings check
 if [[ -d ~/.spack ]]; then
@@ -35,7 +38,11 @@ fi
 # HACK! -   Python3 is too old on Cheyenne and not installed at all
 #           on Casper, so we add a compiled Python3 here. For future
 #           deployments, make sure HSG has sufficient Python3 installed
-export PATH=/glade/u/apps/dav/opt/python/3.7.9/gnu/9.1.0/bin:$PATH
+if [[ $(hostname) == cheyenne* ]]; then
+    export PATH=/glade/u/apps/ch/opt/python/3.7.9/gnu/9.1.0/bin:$PATH
+else
+    export PATH=/glade/u/apps/dav/opt/python/3.7.9/gnu/9.1.0/bin:$PATH
+fi
 
 #
 ## ---- INSTALL SPACK ----

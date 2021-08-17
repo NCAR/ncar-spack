@@ -3,7 +3,7 @@
 #   Test spack deployment script for fresh environment standup
 #
 #   Author:         Brian Vanderwende
-#   Last Revised:   09:59, 17 Aug 2021
+#   Last Revised:   14:28, 17 Aug 2021
 #
 #   Todo:
 #       - Convert to ansible?
@@ -35,7 +35,10 @@ fi
 #
 
 # Make sure environment is clean
-$NCAR_SPACK_DEPLOY_DIR/bin/clean_bash $0 $@
+if [[ -n $MODULEPATH_ROOT ]]; then
+    $NCAR_SPACK_DEPLOY_DIR/bin/clean_bash $0 $@
+    exit $?
+fi
 
 # Perform user spack settings check
 if [[ -d ~/.spack ]]; then
@@ -56,7 +59,12 @@ fi
 # HACK! -   Python3 is too old on Cheyenne and not installed at all
 #           on Casper, so we add a compiled Python3 here. For future
 #           deployments, make sure HSG has sufficient Python3 installed
-export PATH=/glade/u/apps/dav/opt/python/3.7.9/gnu/9.1.0/bin:$PATH
+if [[ $(hostname) == cheyenne* ]]; then
+    export PATH=/glade/u/apps/ch/opt/python/3.7.9/gnu/9.1.0/bin:$PATH
+else
+    export PATH=/glade/u/apps/dav/opt/python/3.7.9/gnu/9.1.0/bin:$PATH
+fi
+
 
 # Activate spack installation
 . $NCAR_ROOT_SPACK/share/spack/setup-env.sh
