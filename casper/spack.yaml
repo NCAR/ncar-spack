@@ -15,7 +15,7 @@ spack:
       lmod: %MODULESROOT%
     test_stage: $tempdir/$user/spack-test
     source_cache: cache
-  packages:
+  packages::
     all:
       compiler: [gcc@9.3.0, gcc, intel, nvhpc]
       target: [skylake]
@@ -65,7 +65,7 @@ spack:
     fftw:
       variants: [-mpi]
   view: false
-  compilers:
+  compilers::
     - compiler:
         paths:
           cc: /usr/bin/gcc
@@ -110,7 +110,7 @@ spack:
             NVLOCALRC: /glade/u/apps/opt/nvhpc/21.3/localrc/casperrc
         extra_rpaths: []
   # Module configuration
-  modules:
+  modules::
     enable::
       - lmod
     lmod:

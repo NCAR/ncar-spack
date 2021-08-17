@@ -3,7 +3,7 @@
 #   Install spack into the current system
 #
 #   Author:         Brian Vanderwende
-#   Last Revised:   16:36, 17 Aug 2021
+#   Last Revised:   16:49, 17 Aug 2021
 #
 
 set -e
@@ -21,15 +21,12 @@ if [[ -n $MODULEPATH_ROOT ]]; then
 fi
 
 # Perform user spack settings check
-if [[ -d ~/.spack ]]; then
+if find ~/.spack -name "config.yaml" | grep -q .; then
 cat << EOF
-Warning: detected custom user settings (~/.spack)
-
-Personal spack config would not be present in a system standup.
-Moving existing settings from ~/.spack to ~/.backup.spack.$NCAR_SPACK_INSTALL_TIME
+Warning:    detected custom user settings (~/.spack/*/config.yaml)
+            CONTAMINATION POSSIBLE!
 
 EOF
-mv ~/.spack ~/.backup.spack.$NCAR_SPACK_INSTALL_TIME
 fi
 
 # Source global settings
