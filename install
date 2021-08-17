@@ -3,7 +3,7 @@
 #   Install spack into the current system
 #
 #   Author:         Brian Vanderwende
-#   Last Revised:   14:27, 17 Aug 2021
+#   Last Revised:   16:36, 17 Aug 2021
 #
 
 set -e
@@ -69,11 +69,18 @@ config:
   build_jobs: $MAX_BUILD_JOBS
 EOF
 
+# Modify permissions according
+chgrp -R csgteam $NCAR_ROOT_SPACK
+chmod -R a=rX,u+w $NCAR_ROOT_SPACK
+
 # Activate spack installation
 . $NCAR_ROOT_SPACK/share/spack/setup-env.sh
 
 # Create trusted GPG key in spack install
 echo "Creating trusted GPG key for build cache creation ..."
 spack gpg create "NCAR CSG Spack" "<csg@ucar.edu>"
+
+# Allow group-read access to keys
+chmod -R g+rX $NCAR_ROOT_SPACK/opt/spack/gpg
 
 echo -e "Install complete\n"
