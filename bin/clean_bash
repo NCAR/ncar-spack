@@ -1,0 +1,5 @@
+#!/bin/bash
+
+if [[ -n $MODULEPATH_ROOT ]]; then
+    exec env -i /bin/bash --noprofile --norc $@
+fi

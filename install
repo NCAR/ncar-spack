@@ -1,0 +1,72 @@
+#!/bin/bash
+#
+#   Install spack into the current system
+#
+#   Author:         Brian Vanderwende
+#   Last Revised:   09:38, 17 Aug 2021
+#
+
+set -e
+export NCAR_SPACK_INSTALL_TIME=$(date +%y%m%d%H%M)
+export NCAR_SPACK_INSTALL_DIR="$( cd "$(dirname "$0")" ; pwd )"
+
+#
+## ---- INITIALIZATION ----
+#
+
+# Make sure environment is clean
+$NCAR_SPACK_INSTALL_DIR/bin/clean_bash $0 $@
+
+# Perform user spack settings check
+if [[ -d ~/.spack ]]; then
+cat << EOF
+Warning: detected custom user settings (~/.spack)
+
+Personal spack config would not be present in a system standup.
+Moving existing settings from ~/.spack to ~/.backup.spack.$NCAR_SPACK_INSTALL_TIME
+
+EOF
+mv ~/.spack ~/.backup.spack.$NCAR_SPACK_INSTALL_TIME
+fi
+
+# Source global settings
+. $NCAR_SPACK_INSTALL_DIR/etc/global.conf
+
+# HACK! -   Python3 is too old on Cheyenne and not installed at all
+#           on Casper, so we add a compiled Python3 here. For future
+#           deployments, make sure HSG has sufficient Python3 installed
+export PATH=/glade/u/apps/dav/opt/python/3.7.9/gnu/9.1.0/bin:$PATH
+
+#
+## ---- INSTALL SPACK ----
+#
+
+if [[ -d $NCAR_ROOT_SPACK ]]; then
+cat << EOF
+Error:  Spack install already exists at ${NCAR_ROOT_SPACK}!
+        Please manually clean up if reinstall is desired...
+        
+EOF
+exit 1
+fi
+
+# Install latest source from GitHub
+echo "Installing Spack into $NCAR_ROOT_SPACK ..."
+git clone https://github.com/spack/spack.git $NCAR_ROOT_SPACK
+cd $NCAR_ROOT_SPACK
+
+echo "Restricting maximum build jobs to $MAX_BUILD_JOBS ..."
+cat > $NCAR_ROOT_SPACK/etc/spack/config.yaml << EOF
+config:
+  # Restrict spack to at most $MAX_BUILD_JOBS build jobs
+  build_jobs: $MAX_BUILD_JOBS
+EOF
+
+# Activate spack installation
+. $NCAR_ROOT_SPACK/share/spack/setup-env.sh
+
+# Create trusted GPG key in spack install
+echo "Creating trusted GPG key for build cache creation ..."
+spack gpg create "NCAR CSG Spack" "<csg@ucar.edu>"
+
+echo -e "Install complete\n"
