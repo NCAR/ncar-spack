@@ -3,7 +3,7 @@
 #   Test spack deployment script for fresh environment standup
 #
 #   Author:         Brian Vanderwende
-#   Last Revised:   14:28, 17 Aug 2021
+#   Last Revised:   15:25, 17 Aug 2021
 #
 #   Todo:
 #       - Convert to ansible?
@@ -22,12 +22,12 @@ EOF
 exit 1
 elif [[ ! -f $NCAR_SPACK_DEPLOY_DIR/$1/deploy.conf ]]; then
 cat << EOF
-Error:  deployment $1 not recognized from available options
+Error:  deployment "$1" not recognized from available options
 
 EOF
 exit 1
 else
-export NCAR_SYS=$1
+export NCAR_SYS=${1///}
 fi
 
 #
@@ -74,6 +74,15 @@ cd $NCAR_SPACK_DEPLOY_DIR
 #
 ## ---- CREATE AND CUSTOMIZE ENVS ----
 #
+
+if [[ -d $NCAR_SPACK_ENV_CSG ]]; then
+cat << EOF
+Error:  Existing environment found at ${NCAR_SPACK_ENV_CSG}. Will not
+        overwrite. Resolve and rerun this script.
+
+EOF
+exit 1
+fi
 
 for NCAR_SPACK_ENV in $NCAR_SPACK_ENV_CSG $NCAR_SPACK_ENV_PUBLIC; do
     # All spack needs for an env is a directory with spack.yaml
