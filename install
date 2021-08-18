@@ -3,7 +3,7 @@
 #   Install spack into the current system
 #
 #   Author:         Brian Vanderwende
-#   Last Revised:   16:49, 17 Aug 2021
+#   Last Revised:   17:12, 17 Aug 2021
 #
 
 set -e
@@ -30,7 +30,7 @@ EOF
 fi
 
 # Source global settings
-. $NCAR_SPACK_INSTALL_DIR/etc/global.conf
+. $NCAR_SPACK_INSTALL_DIR/etc/global.cfg
 
 # HACK! -   Python3 is too old on Cheyenne and not installed at all
 #           on Casper, so we add a compiled Python3 here. For future

@@ -3,7 +3,7 @@
 #   Test spack deployment script for fresh environment standup
 #
 #   Author:         Brian Vanderwende
-#   Last Revised:   16:50, 17 Aug 2021
+#   Last Revised:   17:32, 17 Aug 2021
 #
 #   Todo:
 #       - Convert to ansible?
@@ -13,23 +13,6 @@ set -e
 export NCAR_SPACK_DEPLOY_TIME=$(date +%y%m%d%H%M)
 export NCAR_SPACK_DEPLOY_DIR="$( cd "$(dirname "$0")" ; pwd )"
 
-if [[ $# -ne 1 ]]; then
-cat << EOF
-Error:  known deployment configuration must be specified!
-Usage:  $0 DEPLOYMENT
-
-EOF
-exit 1
-elif [[ ! -f $NCAR_SPACK_DEPLOY_DIR/$1/deploy.conf ]]; then
-cat << EOF
-Error:  deployment "$1" not recognized from available options
-
-EOF
-exit 1
-else
-export NCAR_SYS=${1///}
-fi
-
 #
 ## ---- INITIALIZATION ----
 #
@@ -38,6 +21,37 @@ fi
 if [[ -n $MODULEPATH_ROOT ]]; then
     $NCAR_SPACK_DEPLOY_DIR/bin/clean_bash $0 $@
     exit $?
+fi
+
+# Handle arguments
+while [[ $# -gt 0 ]]; do
+    KEY="$1"
+
+    case $KEY in
+        --nopkgs)
+            SKIP_PKGS=yes
+            ;;
+        *)
+            NCAR_SYS=$1
+            ;;
+    esac
+
+    shift
+done
+
+if [[ -z $NCAR_SYS ]]; then
+cat << EOF
+Error:  deployment configuration must be specified!
+Usage:  $0 [--nopkgs] CONFIG
+
+EOF
+exit 1
+elif [[ ! -f $NCAR_SPACK_DEPLOY_DIR/$NCAR_SYS/deploy.cfg ]]; then
+cat << EOF
+Error:  deployment "$NCAR_SYS" not recognized from available options
+
+EOF
+exit 1
 fi
 
 # Perform user spack settings check
@@ -50,8 +64,8 @@ EOF
 fi
 
 # Source global and env settings
-. $NCAR_SPACK_DEPLOY_DIR/etc/global.conf
-. $NCAR_SPACK_DEPLOY_DIR/$1/deploy.conf
+. $NCAR_SPACK_DEPLOY_DIR/etc/global.cfg
+. $NCAR_SPACK_DEPLOY_DIR/$NCAR_SYS/deploy.cfg
 
 # HACK! -   Python3 is too old on Cheyenne and not installed at all
 #           on Casper, so we add a compiled Python3 here. For future
@@ -85,7 +99,8 @@ for NCAR_SPACK_ENV in $NCAR_SPACK_ENV_CSG $NCAR_SPACK_ENV_PUBLIC; do
     # All spack needs for an env is a directory with spack.yaml
     mkdir -p $NCAR_SPACK_ENV
     cp $NCAR_SYS/spack.yaml $NCAR_SPACK_ENV
-    cp -r util $NCAR_SPACK_ENV
+    cp -r $NCAR_SYS $NCAR_SPACK_ENV/setup
+    cp -r util bin $NCAR_SPACK_ENV
 
     # Add relevant paths to spack.yaml
     sed -i "s|%INSTALLROOT%|${NCAR_SPACK_ENV}/opt|" $NCAR_SPACK_ENV/spack.yaml
@@ -122,21 +137,23 @@ done
 ## ---- BUILD PACKAGES IN ENVIRONMENTS ----
 #
 
-if [[ $SKIP_PKGS:-no} != yes ]]; then
+if [[ ${SKIP_PKGS:-no} != yes ]]; then
     # Build packages from source in build environment
-    spack env activate $NCAR_SPACK_ENV_CSG
+    cd $NCAR_SPACK_ENV_CSG
+    spack env activate .
     spack env status
 
-    $NCAR_SPACK_ENV_CSG/util/install_pkgs $NCAR_SYS/packages.cfg
+    bin/install_packages setup/packages.cfg
 
     # Run script to populate the binary build_cache
-    $NCAR_SPACK_ENV_CSG/util/populate_build_cache $NCAR_SPACK_ENV_MIRROR
+    bin/populate_build_cache $NCAR_SPACK_ENV_MIRROR
     spack env deactivate
 
     # Install prebuilt packages into production environment
-    spack env activate $NCAR_SPACK_ENV_PUBLIC
+    cd $NCAR_SPACK_ENV_PUBLIC
+    spack env activate .
     spack env status
 
-    $NCAR_SPACK_ENV_PUBLIC/install_pkgs $NCAR_SYS/packages.cfg
+    bin/install_packages setup/packages.cfg
     spack env deactivate
 fi
