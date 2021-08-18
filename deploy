@@ -3,7 +3,7 @@
 #   Test spack deployment script for fresh environment standup
 #
 #   Author:         Brian Vanderwende
-#   Last Revised:   17:32, 17 Aug 2021
+#   Last Revised:   22:40, 17 Aug 2021
 #
 #   Todo:
 #       - Convert to ansible?
@@ -117,8 +117,8 @@ for NCAR_SPACK_ENV in $NCAR_SPACK_ENV_CSG $NCAR_SPACK_ENV_PUBLIC; do
     spack env status
 
     # Add system packages as externals
-    spack external find --not-buildable $(tr '\n' ' ' < $NCAR_SYS/externals.cfg) 
-    spack external find
+    spack external find --not-buildable $(grep fixed $NCAR_SYS/externals.cfg | cut -d: -f2) 
+    spack external find $(grep buildable $NCAR_SYS/externals.cfg | cut -d: -f2)
 
     # Create mirror and prepare workshop to generate build_cache (binaries)
     if [[ $NCAR_SPACK_ENV == $NCAR_SPACK_ENV_CSG ]]; then
@@ -129,6 +129,9 @@ for NCAR_SPACK_ENV in $NCAR_SPACK_ENV_CSG $NCAR_SPACK_ENV_PUBLIC; do
 
     # Add local filesystem mirror
     spack mirror add $NCAR_SPACK_ENV_MIRROR_NAME $NCAR_SPACK_ENV_MIRROR
+
+    # Add NCAR repos
+    spack repo add $NCAR_SPACK_DEPLOY_DIR/repos/common
 
     spack env deactivate
 done

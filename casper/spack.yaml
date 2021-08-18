@@ -36,9 +36,9 @@ spack:
       - spec: openssl@1.0.2k
         prefix: /usr
       buildable: false
-    openpbs:
+    pbspro:
       externals:
-      - spec: openpbs@2020.1.2
+      - spec: openpbs@2021.1.1
         prefix: /opt/pbs
       buildable: false
     intel:
