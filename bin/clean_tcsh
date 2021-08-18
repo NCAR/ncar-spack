@@ -1,3 +1,3 @@
 #!/bin/tcsh
 
-exec env -i USER=$USER HOME=$HOME TERM=$TERM PATH=/usr/local/bin:/usr/bin:/bin /bin/tcsh -f $argv
+exec env -i USER=$USER HOME=$HOME TERM=$TERM PATH=/usr/local/bin:/usr/bin:/bin TMPDIR=$TMPDIR /bin/tcsh -f $argv
