@@ -3,7 +3,7 @@
 #   Test spack deployment script for fresh environment standup
 #
 #   Author:         Brian Vanderwende
-#   Last Revised:   21:49, 18 Aug 2021
+#   Last Revised:   10:48, 19 Aug 2021
 #
 #   Todo:
 #       - Convert to ansible?
@@ -146,10 +146,10 @@ if [[ ${SKIP_PKGS:-no} != yes ]]; then
     spack env activate .
     spack env status
 
-    bin/install_packages setup/packages.cfg
+    bin/install_packages setup/packages.cfg |& tee $NCAR_SPACK_ENV_CSG/setup/installs.log
 
     # Run script to populate the binary build_cache
-    bin/populate_build_cache $NCAR_SPACK_ENV_MIRROR
+    bin/populate_build_cache $NCAR_SPACK_ENV_MIRROR |& tee $NCAR_SPACK_ENV_CSG/setup/cache.log
 
     # Create modules in build environment
     spack modules lmod refresh -y
@@ -169,5 +169,16 @@ Spack root:     $NCAR_ROOT_SPACK
 Build root:     $NCAR_SPACK_ENV_CSG
 Public root:    $NCAR_SPACK_ENV_PUBLIC
 
+Install logs:   $NCAR_SPACK_ENV_CSG/setup/installs.log
+Caching logs:   $NCAR_SPACK_ENV_CSG/setup/cache.log
+
+*** First check that builds in CSG environment are valid! ***
+
+To install into public production environment, run the following:
+
+    spacktivate -p $NCAR_SPACK_ENV_PUBLIC
+    $NCAR_SPACK_ENV_PUBLIC/bin/install_packages $NCAR_SPACK_ENV_PUBLIC/setup/packages.cfg
+    spack modules lmod refresh -y
+    despacktivate
 
 EOF

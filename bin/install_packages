@@ -2,22 +2,41 @@
 
 set -e
 
+function popmsg {
+cat << EOF
+
+=====
+$1
+=====
+
+EOF
+}
+
+function spec_install {
+    popmsg "INSTALL: $1"
+    echo -e "\nspack spec -I -N $1:\n"
+    spack spec -I -N $1
+    echo -e "\nspack install $1:\n"
+    spack install $1
+}
+
+if [[ -z $SPACK_ENV ]]; then
+    2>&1 echo "Error: no Spack environment detected!"
+    exit 1
+fi
+
 while read PKG; do
     PKGTYPE=$(cut -d' ' -f1  <<< $PKG)
     PKGSPEC=$(cut -d' ' -f2- <<< $PKG)
 
     case $PKGTYPE in
         singleton*)
-            echo -e "\n====="
-            echo "RUNNING:  spack install $PKGSPEC"
-            spack install $PKGSPEC
+            spec_install $PKGSPEC
             ;;
         cdep*)
             for CMP in $CMPLIST; do
                 DEPSPEC=$(sed "s|%CMP%|$CMP|;t;s|$| $CMP|" <<< "$PKGSPEC")
-                echo -e "\n====="
-                echo "RUNNING:  spack install $DEPSPEC"
-                spack install $DEPSPEC
+                spec_install $DEPSPEC
             done
             ;;
         mdep*)
@@ -25,9 +44,7 @@ while read PKG; do
                 for MPI in $MPILIST; do
                     DEPSPEC=$(sed "s|%CMP%|$CMP|;t;s|$| $CMP|" <<< "$PKGSPEC")
                     DEPSPEC=$(sed "s|%MPI%|$MPI|;t;s|$| $MPI|" <<< "$DEPSPEC")
-                    echo -e "\n====="
-                    echo "RUNNING:  spack install $DEPSPEC"
-                    spack install $DEPSPEC
+                    spec_install $DEPSPEC
                 done
             done
             ;;
@@ -40,14 +57,14 @@ while read PKG; do
     esac
     
     if [[ $PKGTYPE == *-compiler ]]; then
-        echo -e "\nREGISTER: $PKGSPEC ==> COMPILER"
+        popmsg "REGISTER: $PKGSPEC ==> COMPILER"
         CMPLIST="$CMPLIST %$PKGSPEC"
 
         if [[ $PKGSPEC == gcc* ]]; then
             spack compiler add $(spack location -i $PKGSPEC)
         fi
     elif [[ $PKGTYPE == *-mpi ]]; then
-        echo -e "\nREGISTER: $PKGSPEC ==> MPI LIBRARY"
+        popmsg "REGISTER: $PKGSPEC ==> MPI LIBRARY"
         MPILIST="$MPILIST ^$PKGSPEC"
     fi
 done < $1
