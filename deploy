@@ -3,7 +3,7 @@
 #   Test spack deployment script for fresh environment standup
 #
 #   Author:         Brian Vanderwende
-#   Last Revised:   10:48, 19 Aug 2021
+#   Last Revised:   15:13, 19 Aug 2021
 #
 #   Todo:
 #       - Convert to ansible?
@@ -78,6 +78,7 @@ fi
 
 
 # Activate spack installation
+echo "Activating spack install at $NCAR_ROOT_SPACK ..."
 . $NCAR_ROOT_SPACK/share/spack/setup-env.sh
 
 cd $NCAR_SPACK_DEPLOY_DIR
@@ -96,6 +97,8 @@ exit 1
 fi
 
 for NCAR_SPACK_ENV in $NCAR_SPACK_ENV_CSG $NCAR_SPACK_ENV_PUBLIC; do
+    echo "Creating env at $NCAR_SPACK_ENV ..."
+
     # All spack needs for an env is a directory with spack.yaml
     mkdir -p $NCAR_SPACK_ENV
     cp $NCAR_SYS/spack.yaml $NCAR_SPACK_ENV
@@ -117,6 +120,7 @@ for NCAR_SPACK_ENV in $NCAR_SPACK_ENV_CSG $NCAR_SPACK_ENV_PUBLIC; do
     spack env status
 
     # Add system packages as externals
+    echo -e "Finding specified externals in $NCAR_SYS/externals.cfg ...\n"
     spack external find --not-buildable $(grep fixed $NCAR_SYS/externals.cfg | cut -d: -f2) 
     spack external find $(grep buildable $NCAR_SYS/externals.cfg | cut -d: -f2)
 
@@ -141,6 +145,7 @@ done
 #
 
 if [[ ${SKIP_PKGS:-no} != yes ]]; then
+    echo -e "Building packages in CSG build environment ...\n"
     # Build packages from source in build environment
     cd $NCAR_SPACK_ENV_CSG
     spack env activate .
@@ -149,15 +154,18 @@ if [[ ${SKIP_PKGS:-no} != yes ]]; then
     bin/install_packages setup/packages.cfg |& tee $NCAR_SPACK_ENV_CSG/setup/installs.log
 
     # Run script to populate the binary build_cache
+    echo -e "Populating build cache with package binaries ...\n"
     bin/populate_build_cache $NCAR_SPACK_ENV_MIRROR |& tee $NCAR_SPACK_ENV_CSG/setup/cache.log
 
     # Create modules in build environment
+    echo "Generating modules in build environment ..."
     spack modules lmod refresh -y
     spack env deactivate
 fi
 
 # Status message
 cat << EOF
+
 ===========================
     DEPLOYMENT COMPLETE
 ===========================
