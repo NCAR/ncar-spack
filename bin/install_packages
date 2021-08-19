@@ -3,6 +3,7 @@
 set -e
 
 function popmsg {
+if [[ ${IPDEBUG:-false} == false ]]; then
 cat << EOF
 
 =====
@@ -10,17 +11,23 @@ $1
 =====
 
 EOF
+else
+echo "$1"
+fi
 }
 
 function spec_install {
-    popmsg "INSTALL: $1"
-    echo -e "\nspack spec -I -N $1:\n"
-    spack spec -I -N $1
-    echo -e "\nspack install $1:\n"
-    spack install $1
+    popmsg "INSTALL:    $1"
+
+    if [[ ${IPDEBUG:-false} == false ]]; then
+        echo -e "\nspack spec -I -N $1:\n"
+        spack spec -I -N $1
+        echo -e "\nspack install $1:\n"
+        spack install $1
+    fi
 }
 
-if [[ -z $SPACK_ENV ]]; then
+if [[ ${IPDEBUG:-false} == false ]] && [[ -z $SPACK_ENV ]]; then
     2>&1 echo "Error: no Spack environment detected!"
     exit 1
 fi
@@ -31,12 +38,12 @@ while read PKG; do
 
     case $PKGTYPE in
         singleton*)
-            spec_install $PKGSPEC
+            spec_install "$PKGSPEC"
             ;;
         cdep*)
             for CMP in $CMPLIST; do
                 DEPSPEC=$(sed "s|%CMP%|$CMP|;t;s|$| $CMP|" <<< "$PKGSPEC")
-                spec_install $DEPSPEC
+                spec_install "$DEPSPEC"
             done
             ;;
         mdep*)
@@ -44,7 +51,7 @@ while read PKG; do
                 for MPI in $MPILIST; do
                     DEPSPEC=$(sed "s|%CMP%|$CMP|;t;s|$| $CMP|" <<< "$PKGSPEC")
                     DEPSPEC=$(sed "s|%MPI%|$MPI|;t;s|$| $MPI|" <<< "$DEPSPEC")
-                    spec_install $DEPSPEC
+                    spec_install "$DEPSPEC"
                 done
             done
             ;;
@@ -57,14 +64,14 @@ while read PKG; do
     esac
     
     if [[ $PKGTYPE == *-compiler ]]; then
-        popmsg "REGISTER: $PKGSPEC ==> COMPILER"
+        popmsg "REGISTER:   $PKGSPEC ==> COMPILER"
         CMPLIST="$CMPLIST %$PKGSPEC"
 
-        if [[ $PKGSPEC == gcc* ]]; then
+        if [[ ${IPDEBUG:-false} == false ]] && [[ $PKGSPEC == gcc* ]]; then
             spack compiler add $(spack location -i $PKGSPEC)
         fi
     elif [[ $PKGTYPE == *-mpi ]]; then
-        popmsg "REGISTER: $PKGSPEC ==> MPI LIBRARY"
+        popmsg "REGISTER:   $PKGSPEC ==> MPI LIBRARY"
         MPILIST="$MPILIST ^$PKGSPEC"
     fi
 done < $1
