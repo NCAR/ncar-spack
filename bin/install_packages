@@ -8,12 +8,14 @@ while read PKG; do
 
     case $PKGTYPE in
         singleton*)
+            echo -e "\n====="
             echo "RUNNING:  spack install $PKGSPEC"
             spack install $PKGSPEC
             ;;
         cdep*)
             for CMP in $CMPLIST; do
                 DEPSPEC=$(sed "s|%CMP%|$CMP|;t;s|$| $CMP|" <<< "$PKGSPEC")
+                echo -e "\n====="
                 echo "RUNNING:  spack install $DEPSPEC"
                 spack install $DEPSPEC
             done
@@ -23,13 +25,14 @@ while read PKG; do
                 for MPI in $MPILIST; do
                     DEPSPEC=$(sed "s|%CMP%|$CMP|;t;s|$| $CMP|" <<< "$PKGSPEC")
                     DEPSPEC=$(sed "s|%MPI%|$MPI|;t;s|$| $MPI|" <<< "$DEPSPEC")
+                    echo -e "\n====="
                     echo "RUNNING:  spack install $DEPSPEC"
                     spack install $DEPSPEC
                 done
             done
             ;;
         *)
-            echo "====="
+            echo -e "\n====="
             echo "Error: unrecognized package type: $PKGTYPE"
             echo "       halting installs at $PKGSPEC ..."
             exit 1
@@ -37,14 +40,14 @@ while read PKG; do
     esac
     
     if [[ $PKGTYPE == *-compiler ]]; then
-        echo "REGISTER: $PKGSPEC ==> COMPILER"
+        echo -e "\nREGISTER: $PKGSPEC ==> COMPILER"
         CMPLIST="$CMPLIST %$PKGSPEC"
 
         if [[ $PKGSPEC == gcc* ]]; then
             spack compiler add $(spack location -i $PKGSPEC)
         fi
     elif [[ $PKGTYPE == *-mpi ]]; then
-        echo "REGISTER: $PKGSPEC ==> MPI LIBRARY"
+        echo -e "\nREGISTER: $PKGSPEC ==> MPI LIBRARY"
         MPILIST="$MPILIST ^$PKGSPEC"
     fi
 done < $1

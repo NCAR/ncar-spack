@@ -3,7 +3,7 @@
 #   Test spack deployment script for fresh environment standup
 #
 #   Author:         Brian Vanderwende
-#   Last Revised:   22:40, 17 Aug 2021
+#   Last Revised:   21:49, 18 Aug 2021
 #
 #   Todo:
 #       - Convert to ansible?
@@ -150,13 +150,24 @@ if [[ ${SKIP_PKGS:-no} != yes ]]; then
 
     # Run script to populate the binary build_cache
     bin/populate_build_cache $NCAR_SPACK_ENV_MIRROR
-    spack env deactivate
 
-    # Install prebuilt packages into production environment
-    cd $NCAR_SPACK_ENV_PUBLIC
-    spack env activate .
-    spack env status
-
-    bin/install_packages setup/packages.cfg
+    # Create modules in build environment
+    spack modules lmod refresh -y
     spack env deactivate
 fi
+
+# Status message
+cat << EOF
+===========================
+    DEPLOYMENT COMPLETE
+===========================
+
+Machine:        $NCAR_SYS
+Date:           $NCAR_SPACK_DEPLOY_TIME
+
+Spack root:     $NCAR_ROOT_SPACK
+Build root:     $NCAR_SPACK_ENV_CSG
+Public root:    $NCAR_SPACK_ENV_PUBLIC
+
+
+EOF
