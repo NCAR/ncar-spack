@@ -3,7 +3,7 @@
 #   Test spack deployment script for fresh environment standup
 #
 #   Author:         Brian Vanderwende
-#   Last Revised:   20:46, 19 Aug 2021
+#   Last Revised:   21:00, 31 Aug 2021
 #
 #   Todo:
 #       - Convert to ansible?
@@ -46,7 +46,7 @@ Usage:  $0 [--nopkgs] CONFIG
 
 EOF
 exit 1
-elif [[ ! -f $NCAR_SPACK_DEPLOY_DIR/$NCAR_SYS/deploy.cfg ]]; then
+elif [[ ! -f $NCAR_SPACK_DEPLOY_DIR/clusters/$NCAR_SYS/deploy.cfg ]]; then
 cat << EOF
 Error:  deployment "$NCAR_SYS" not recognized from available options
 
@@ -65,7 +65,7 @@ fi
 
 # Source global and env settings
 . $NCAR_SPACK_DEPLOY_DIR/etc/global.cfg
-. $NCAR_SPACK_DEPLOY_DIR/$NCAR_SYS/deploy.cfg
+. $NCAR_SPACK_DEPLOY_DIR/clusters/$NCAR_SYS/deploy.cfg
 
 # HACK! -   Python3 is too old on Cheyenne and not installed at all
 #           on Casper, so we add a compiled Python3 here. For future
@@ -101,8 +101,8 @@ for NCAR_SPACK_ENV in $NCAR_SPACK_ENV_CSG $NCAR_SPACK_ENV_PUBLIC; do
 
     # All spack needs for an env is a directory with spack.yaml
     mkdir -p $NCAR_SPACK_ENV
-    cp $NCAR_SYS/spack.yaml $NCAR_SPACK_ENV
-    cp -r $NCAR_SYS $NCAR_SPACK_ENV/setup
+    cp clusters/$NCAR_SYS/spack.yaml $NCAR_SPACK_ENV
+    cp -r clusters/$NCAR_SYS $NCAR_SPACK_ENV/setup
     cp -r util bin $NCAR_SPACK_ENV
 
     # Add relevant paths to spack.yaml
@@ -120,9 +120,9 @@ for NCAR_SPACK_ENV in $NCAR_SPACK_ENV_CSG $NCAR_SPACK_ENV_PUBLIC; do
     spack env status
 
     # Add system packages as externals
-    echo -e "Finding specified externals in $NCAR_SYS/externals.cfg ...\n"
-    spack external find --not-buildable $(grep fixed $NCAR_SYS/externals.cfg | cut -d: -f2) 
-    spack external find $(grep buildable $NCAR_SYS/externals.cfg | cut -d: -f2)
+    echo -e "Finding specified externals in clusters/$NCAR_SYS/externals.cfg ...\n"
+    spack external find --not-buildable $(grep fixed clusters/$NCAR_SYS/externals.cfg | cut -d: -f2) 
+    spack external find $(grep buildable clusters/$NCAR_SYS/externals.cfg | cut -d: -f2)
 
     # Create mirror and prepare workshop to generate build_cache (binaries)
     if [[ $NCAR_SPACK_ENV == $NCAR_SPACK_ENV_CSG ]]; then

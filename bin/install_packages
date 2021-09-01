@@ -33,6 +33,10 @@ if [[ ${IPDEBUG:-false} == false ]] && [[ -z $SPACK_ENV ]]; then
 fi
 
 while read PKG; do
+    if [[ $PKG == \#* ]]; then
+        continue
+    fi
+
     PKGTYPE=$(cut -d' ' -f1  <<< $PKG)
     PKGSPEC=$(cut -d' ' -f2- <<< $PKG)
 
