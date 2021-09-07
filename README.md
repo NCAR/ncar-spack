@@ -48,6 +48,13 @@ Spack provides source-able scripts to add itself to your shell environment. Thes
 export PATH=/glade/u/apps/<sys>/opt/python/3.7.9/gnu/9.1.0/bin:$PATH
 source $NCAR_ROOT_SPACK/share/spack/setup-env.sh
 ```
+
+Since Spack will output YAML lines with two-space indentation, the following Vim settings are recommended:
+```
+$ cat ~/.vim/after/ftplugin/yaml.vim
+setlocal shiftwidth=2
+setlocal tabstop=2
+```
 ### Deploying a New Spack Environment
 An environment in Spack is simply a directory with a `spack.yaml` file, which contains the Spack settings that define compilers, package preferences, installations, modules and more. Many of the settings can be implemented interactively via Spack commands, but many others require direct editing of the YAML file. As such, this repository includes the `deploy` script, which handles both jobs. Usage is as follows:
 ```
