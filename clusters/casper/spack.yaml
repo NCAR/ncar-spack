@@ -113,6 +113,23 @@ spack:
   modules::
     enable::
       - lmod
+    prefix_inspections:
+      bin:
+      - PATH
+      lib:
+      - NCAR_LDFLAGS_{name}
+      lib64:
+      - NCAR_LDFLAGS_{name}
+      include:
+      - NCAR_INC_{name}
+      man:
+      - MANPATH
+      share/man:
+      - MANPATH
+      lib/pkgconfig:
+      - PKG_CONFIG_PATH
+      lib64/pkgconfig:
+      - PKG_CONFIG_PATH
     lmod:
       hierarchy:
         - mpi
