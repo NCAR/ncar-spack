@@ -67,7 +67,7 @@ Clusters are defined in the `clusters` subdirectory. Once run, this script does 
 3. Create utility scripts like `localinit.*` for modules
 4. Find and register [external package](https://spack.readthedocs.io/en/latest/build_settings.html#external-packages) installs
 5. Create a [build cache/mirror](https://spack.readthedocs.io/en/latest/binary_caches.html) so that future installs are quick
-6. Add custom NCAR package definitions via the `common` [repository](https://spack.readthedocs.io/en/latest/repositories.html)
+6. Add custom NCAR package definitions via the `ncar.hpcd` [repository](https://spack.readthedocs.io/en/latest/repositories.html)
 7. Build packages in the build environment as defined in `packages.cfg`
 8. Create binary versions of installs and populate build cache
 9. Generate Lmod [modules](https://spack-tutorial.readthedocs.io/en/latest/tutorial_modules.html#hierarchical-module-files) in the build environment
