@@ -39,7 +39,7 @@ An important concept here is the *core compiler*, which is set to the OS compile
 
 Some software are also listed as *core_specs*, which simply means that they should appear in the "core" category even if they were compiled with a non-OS compiler.
 
-### The `common` repository
-Spack provides a `builtin` repository of packages that contains thousands of package install recipes. It should be used if possible. However, there are some packages that are unique to NCAR (e.g., compiler wrappers; gufiwrappers), and so a custom repository named `common` is added to our environments.
+### The `ncar.hpcd` repository
+Spack provides a `builtin` repository of packages that contains thousands of package install recipes. It should be used if possible. However, there are some packages that are unique to NCAR (e.g., compiler wrappers; gufiwrappers), and so a custom repository named `ncar.hpcd` is added to our environments.
 
-Unfortunately, some packages may also need editing to support unique features/quirks on our systems. The `common` repository should take precedence over `builtin` in these cases, but it's good to check with `spack spec -N`. Currently, Open MPI is one such example, as the `builtin` version does not link with libsec, and so it fails to configure with PBS integration. The version in `common` has been modified to find and link libsec properly.
+Unfortunately, some packages may also need editing to support unique features/quirks on our systems. The `ncar.hpcd` repository should take precedence over `builtin` in these cases, but it's good to check with `spack spec -N`. Be careful about superseding common packages like *mpi* providers and compilers, as future changes can cause whole segments of the software tree to be rebuilt.
