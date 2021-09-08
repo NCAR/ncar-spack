@@ -3,7 +3,7 @@
 #   Test spack deployment script for fresh environment standup
 #
 #   Author:         Brian Vanderwende
-#   Last Revised:   21:00, 31 Aug 2021
+#   Last Revised:   20:37, 07 Sep 2021
 #
 #   Todo:
 #       - Convert to ansible?
@@ -135,7 +135,7 @@ for NCAR_SPACK_ENV in $NCAR_SPACK_ENV_CSG $NCAR_SPACK_ENV_PUBLIC; do
     spack mirror add $NCAR_SPACK_ENV_MIRROR_NAME $NCAR_SPACK_ENV_MIRROR
 
     # Add NCAR repos
-    spack repo add $NCAR_SPACK_DEPLOY_DIR/repos/common
+    spack repo add $NCAR_SPACK_DEPLOY_DIR/repos/ncar.hpcd
 
     spack env deactivate
 done
