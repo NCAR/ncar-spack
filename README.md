@@ -1,10 +1,10 @@
 # ncar-spack
 Read the following for a quick introduction to this repository. Additional documentation is available in the `doc` subdirectory, mostly relating to interacting with existing deployments. The following topics are covered there in more detail:
 
- - Installing new packages
- - Creating a custom package
- - Site customizations
- - Debugging Spack issues
+ - [Installing new packages](doc/installing_packages.md)
+ - [Creating a custom package](doc/custom_packages.md)
+ - [Site customizations](doc/site_customizations.md)
+ - [Debugging Spack issues](doc/debugging_spack.md)
 
 ## Overview
 This repository contains scripts, configuration files, and documentation for installing, setting up, and using production Spack software trees on NCAR clusters. The basic workflow for doing a new install is as follows:
