@@ -3,7 +3,7 @@
 #   Install spack into the current system
 #
 #   Author:         Brian Vanderwende
-#   Last Revised:   10:56, 19 Aug 2021
+#   Last Revised:   13:40, 08 Sep 2021
 #
 
 set -e
@@ -59,6 +59,9 @@ echo "Installing Spack into $NCAR_ROOT_SPACK ..."
 git clone https://github.com/spack/spack.git $NCAR_ROOT_SPACK
 cd $NCAR_ROOT_SPACK
 git checkout $NCAR_SPACK_VERSION
+
+# Copy clean shell scripts to Spack bin
+cp $NCAR_SPACK_INSTALL_DIR/bin/clean* $NCAR_ROOT_SPACK/bin/
 
 echo "Restricting maximum build jobs to $MAX_BUILD_JOBS ..."
 cat > $NCAR_ROOT_SPACK/etc/spack/config.yaml << EOF
