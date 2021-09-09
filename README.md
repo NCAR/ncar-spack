@@ -49,6 +49,8 @@ export PATH=/glade/u/apps/<sys>/opt/python/3.7.9/gnu/9.1.0/bin:$PATH
 source $NCAR_ROOT_SPACK/share/spack/setup-env.sh
 ```
 
+*Note: running clean_bash will take care of both of these steps for you, in addition to providing you with an otherwise pristine bash shell environment. The [t]c-shell does not have the required functionality to source the Spack setup script, but it will still clean the environment and add a modern Python.*
+
 Since Spack will output YAML lines with two-space indentation, the following Vim settings are recommended:
 ```
 $ cat ~/.vim/after/ftplugin/yaml.vim
