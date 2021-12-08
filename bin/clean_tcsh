@@ -1,7 +1,8 @@
 #!/bin/tcsh
 
 set PYDIR = $INSTALLPATH_ROOT/python/3.7.9/gnu/9.1.0/bin
-set MYDIR = `dirname $0`
-set SPACK_STARTUP = `realpath $MYDIR/../share/spack/setup-env.csh`
+set SPACK_BIN = `which spack`
+set SPACK_DIR = `dirname $SPACK_BIN`
+set SPACK_STARTUP = `readlink -f $SPACK_DIR/../share/spack/setup-env.sh`
 
-exec env -i USER=$USER HOME=$HOME TERM=$TERM PATH=${PYDIR}:/usr/local/bin:/usr/bin:/bin TMPDIR=$TMPDIR /bin/tcsh -f
+exec env -i USER=$USER HOME=$HOME TERM=$TERM PATH=${PYDIR}:/usr/local/bin:/usr/bin:/bin TMPDIR=$TMPDIR SPACK_DISABLE_LOCAL_CONFIG=true /bin/tcsh -f

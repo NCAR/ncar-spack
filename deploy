@@ -3,7 +3,7 @@
 #   Test spack deployment script for fresh environment standup
 #
 #   Author:         Brian Vanderwende
-#   Last Revised:   20:37, 07 Sep 2021
+#   Last Revised:   09:21, 07 Dec 2021
 #
 #   Todo:
 #       - Convert to ansible?
@@ -52,15 +52,6 @@ Error:  deployment "$NCAR_SYS" not recognized from available options
 
 EOF
 exit 1
-fi
-
-# Perform user spack settings check
-if find ~/.spack -name "config.yaml" | grep -q .; then
-cat << EOF
-Warning:    detected custom user settings (~/.spack/*/config.yaml)
-            CONTAMINATION POSSIBLE!
-
-EOF
 fi
 
 # Source global and env settings
@@ -184,6 +175,7 @@ Caching logs:   $NCAR_SPACK_ENV_CSG/setup/cache.log
 
 To install into public production environment, run the following:
 
+    clean_bash (if not already in a clean shell)
     spacktivate -p $NCAR_SPACK_ENV_PUBLIC
     $NCAR_SPACK_ENV_PUBLIC/bin/install_packages $NCAR_SPACK_ENV_PUBLIC/setup/packages.cfg
     spack modules lmod refresh -y

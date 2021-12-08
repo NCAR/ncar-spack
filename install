@@ -3,7 +3,7 @@
 #   Install spack into the current system
 #
 #   Author:         Brian Vanderwende
-#   Last Revised:   13:40, 08 Sep 2021
+#   Last Revised:   14:23, 06 Dec 2021
 #
 
 set -e
@@ -18,15 +18,6 @@ export NCAR_SPACK_INSTALL_DIR="$( cd "$(dirname "$0")" ; pwd )"
 if [[ -n $MODULEPATH_ROOT ]]; then
     $NCAR_SPACK_INSTALL_DIR/bin/clean_bash $0 $@
     exit $?
-fi
-
-# Perform user spack settings check
-if find ~/.spack -name "config.yaml" | grep -q .; then
-cat << EOF
-Warning:    detected custom user settings (~/.spack/*/config.yaml)
-            CONTAMINATION POSSIBLE!
-
-EOF
 fi
 
 # Source global settings
@@ -56,7 +47,7 @@ fi
 
 # Install latest source from GitHub and checkout specified version
 echo "Installing Spack into $NCAR_ROOT_SPACK ..."
-git clone https://github.com/spack/spack.git $NCAR_ROOT_SPACK
+git clone -c feature.manyFiles=true https://github.com/spack/spack.git $NCAR_ROOT_SPACK
 cd $NCAR_ROOT_SPACK
 git checkout $NCAR_SPACK_VERSION
 
