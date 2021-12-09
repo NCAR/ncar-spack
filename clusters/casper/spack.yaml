@@ -148,6 +148,9 @@ spack:
         environment:
           set:
             NCAR_ROOT_{name}: '{prefix}'
+        template: ncar_default.lua
+      mpi:
+        template: ncar_wrapper_mpi.lua
       intel:
         environment:
           set:
@@ -156,6 +159,13 @@ spack:
         environment:
           set:
             NVLOCALRC: /glade/u/apps/opt/nvhpc/21.7/localrc/casperrc
+      ncarcompilers:
+        environment:
+          set:
+            NCAR_EXCLUDE_ASNEEDED: '1'
+            NCAR_WRAPPER_MPI: '{prefix.bin}/mpi'
+          prepend_path:
+            PATH: '{prefix.bin}/mpi'
       projections:
         all: '{name}/{version}'
         r: 'R/{version}'

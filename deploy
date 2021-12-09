@@ -3,7 +3,7 @@
 #   Test spack deployment script for fresh environment standup
 #
 #   Author:         Brian Vanderwende
-#   Last Revised:   09:21, 07 Dec 2021
+#   Last Revised:   23:31, 08 Dec 2021
 #
 #   Todo:
 #       - Convert to ansible?
@@ -127,6 +127,9 @@ for NCAR_SPACK_ENV in $NCAR_SPACK_ENV_CSG $NCAR_SPACK_ENV_PUBLIC; do
 
     # Add NCAR repos
     spack repo add $NCAR_SPACK_DEPLOY_DIR/repos/ncar.hpcd
+
+    # Add NCAR templates
+    spack config add "config:template_dirs:$NCAR_SPACK_DEPLOY_DIR/templates"
 
     spack env deactivate
 done
