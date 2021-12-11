@@ -12,7 +12,7 @@ class Ncarcompilers(MakefilePackage):
     modules."""
 
     homepage = "https://github.com/NCAR/ncarcompilers"
-    url      = "https://github.com/vanderwb/ncarcompilers/archive/refs/tags/v0.5.1.tar.gz"
+    url      = "/glade/work/csgteam/spack/tarballs/ncarcompilers-0.5.2.tar.gz"
 
     maintainers = ['vanderwb']
     

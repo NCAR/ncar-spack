@@ -57,7 +57,7 @@ spack:
       variants: [+piclibs, 'languages=c,c++,fortran,go']
     openmpi:
       variants: [+cuda, fabrics=auto, schedulers=tm]
-    netcdf-c:
+    netcdf:
       variants: [+dap, -mpi]
     hdf5:
       variants: [+hl, +szip, +fortran, +cxx, -mpi]
@@ -140,6 +140,9 @@ spack:
       blacklist_implicits: true
       blacklist:
         - lmod
+        - netcdf-c
+        - netcdf-fortran
+        - netcdf-cxx4
       whitelist:
         - cmake
         - git
@@ -166,14 +169,19 @@ spack:
             NCAR_WRAPPER_MPI: '{prefix.bin}/mpi'
           prepend_path:
             PATH: '{prefix.bin}/mpi'
+      netcdf:
+        environment:
+          set:
+            NETCDF: '{prefix}'
+        autoload: all
       projections:
         all: '{name}/{version}'
         r: 'R/{version}'
         parallel-netcdf: pnetcdf/{version}
         fftw+mpi: fftw-mpi/{version}
-        netcdf-c+mpi: netcdf-mpi/{version}
+        netcdf+mpi: netcdf-mpi/{version}
         hdf5+mpi: hdf5-mpi/{version}
-        netcdf-c: netcdf/{version}
+        netcdf: netcdf/{version}
       core_compilers:
         - gcc@4.8.5
       core_specs:
