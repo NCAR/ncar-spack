@@ -22,6 +22,9 @@ spack:
       providers:
         mpi: [openmpi]
         szip: [libszip]
+      permissions:
+        read: world
+        write: user
     cuda:
       externals:
         - spec: cuda@11.4.48
