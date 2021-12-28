@@ -17,7 +17,7 @@ spack:
     source_cache: cache
   packages::
     all:
-      compiler: [gcc@10.3.0, gcc, intel, nvhpc]
+      compiler: [gcc@4.8.5, gcc, intel, nvhpc]
       target: [skylake]
       providers:
         mpi: [openmpi]
@@ -55,12 +55,19 @@ spack:
       - spec: nvhpc@21.7%gcc@4.8.5
         prefix: /glade/u/apps/opt/nvhpc/21.7/Linux_x86_64/21.7/compilers
       buildable: false
+    ncarenv:
+      externals:
+      - spec: ncarenv@1.3
+        prefix: /glade/u/apps/dav/opt/usr
+      buildable: false
     gcc:
       compiler: [gcc@4.8.5]
       variants: [+piclibs, 'languages=c,c++,fortran,go']
     openmpi:
       variants: [+cuda, fabrics=auto, schedulers=tm]
     netcdf:
+      variants: [+dap, -mpi]
+    netcdf-c:
       variants: [+dap, -mpi]
     hdf5:
       variants: [+hl, +szip, +fortran, +cxx, -mpi]
@@ -125,7 +132,7 @@ spack:
       lib:
       - NCAR_LDFLAGS_{name}
       lib64:
-      - NCAR_LDFLAGS_{name}
+      - NCAR_LDFLAGS_{name}64
       include:
       - NCAR_INC_{name}
       man:
@@ -177,6 +184,8 @@ spack:
           set:
             NETCDF: '{prefix}'
         autoload: all
+      ncarenv:
+        template: ncar_env.lua
       projections:
         all: '{name}/{version}'
         r: 'R/{version}'
@@ -193,3 +202,4 @@ spack:
         - cmake
         - git
         - nco
+        - ncarenv

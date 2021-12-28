@@ -5,4 +5,4 @@ set SPACK_BIN = `which spack`
 set SPACK_DIR = `dirname $SPACK_BIN`
 set SPACK_STARTUP = `readlink -f $SPACK_DIR/../share/spack/setup-env.sh`
 
-exec env -i USER=$USER HOME=$HOME TERM=$TERM PATH=${PYDIR}:/usr/local/bin:/usr/bin:/bin TMPDIR=$TMPDIR SPACK_DISABLE_LOCAL_CONFIG=true /bin/tcsh -f
+exec env -i USER=$USER HOME=$HOME TERM=$TERM PATH=${PYDIR}:/usr/local/bin:/usr/bin:/bin TMPDIR=$TMPDIR SPACK_DISABLE_LOCAL_CONFIG=true NCAR_SPACK_CLEAN=$NCAR_SPACK_CLEAN /bin/tcsh -f

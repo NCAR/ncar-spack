@@ -12,9 +12,12 @@ if [[ ${SPACK_ENV}z == z ]]; then
 fi
 
 PKGS=$(spack find -L -p | awk -v envpath=${SPACK_ENV}/opt '$3~envpath { print $1 }')
+CACHELIST=$(ls $1/build_cache/ 2> /dev/null)
 
 for PKG in $PKGS; do
-    PKG_LABEL=$(spack find --no-groups -f --show-full-compiler -v /$PKG | tail -n1)
-    echo -e "\n==> Creating binary package for: $PKG_LABEL"
-    spack buildcache create -a -d $1 --only=package /$PKG
+    if [[ $CACHELIST != *$PKG* ]]; then
+        PKG_LABEL=$(spack find --no-groups -f --show-full-compiler -v /$PKG | tail -n1)
+        echo -e "\n==> Creating binary package for: $PKG_LABEL"
+        spack buildcache create -a -d $1 --only=package /$PKG
+    fi
 done

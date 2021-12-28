@@ -1,12 +1,10 @@
 #!/bin/bash
 #
-#   Test spack deployment script for fresh environment standup
+#   This script is used to deploy a new "build" environment based on
+#   a specified cluster definition. 
 #
 #   Author:         Brian Vanderwende
-#   Last Revised:   21:41, 10 Dec 2021
-#
-#   Todo:
-#       - Convert to ansible?
+#   Last Revised:   20:19, 26 Dec 2021
 #
 
 set -e
@@ -19,7 +17,7 @@ export NCAR_SPACK_DEPLOY_DIR="$( cd "$(dirname "$0")" ; pwd )"
 
 # Make sure environment is clean
 if [[ -n $MODULEPATH_ROOT ]]; then
-    $NCAR_SPACK_DEPLOY_DIR/bin/clean_bash $0 $@
+    $NCAR_SPACK_DEPLOY_DIR/bin/clean_bash $0 "$@"
     exit $?
 fi
 
@@ -32,7 +30,7 @@ while [[ $# -gt 0 ]]; do
             SKIP_PKGS=yes
             ;;
         *)
-            NCAR_SYS=$1
+            export NCAR_SYS=$1
             ;;
     esac
 
@@ -46,7 +44,7 @@ Usage:  $0 [--nopkgs] CONFIG
 
 EOF
 exit 1
-elif [[ ! -f $NCAR_SPACK_DEPLOY_DIR/clusters/$NCAR_SYS/deploy.cfg ]]; then
+elif [[ ! -f $NCAR_SPACK_DEPLOY_DIR/clusters/$NCAR_SYS/main.cfg ]]; then
 cat << EOF
 Error:  deployment "$NCAR_SYS" not recognized from available options
 
@@ -56,17 +54,7 @@ fi
 
 # Source global and env settings
 . $NCAR_SPACK_DEPLOY_DIR/etc/global.cfg
-. $NCAR_SPACK_DEPLOY_DIR/clusters/$NCAR_SYS/deploy.cfg
-
-# HACK! -   Python3 is too old on Cheyenne and not installed at all
-#           on Casper, so we add a compiled Python3 here. For future
-#           deployments, make sure HSG has sufficient Python3 installed
-if [[ $(hostname) == cheyenne* ]]; then
-    export PATH=/glade/u/apps/ch/opt/python/3.7.9/gnu/9.1.0/bin:$PATH
-else
-    export PATH=/glade/u/apps/dav/opt/python/3.7.9/gnu/9.1.0/bin:$PATH
-fi
-
+. $NCAR_SPACK_DEPLOY_DIR/clusters/$NCAR_SYS/main.cfg
 
 # Activate spack installation
 echo "Activating spack install at $NCAR_ROOT_SPACK ..."
@@ -75,7 +63,7 @@ echo "Activating spack install at $NCAR_ROOT_SPACK ..."
 cd $NCAR_SPACK_DEPLOY_DIR
 
 #
-## ---- CREATE AND CUSTOMIZE ENVS ----
+## ---- CREATE AND CUSTOMIZE ENV ----
 #
 
 if [[ -d $NCAR_SPACK_ENV_CSG ]]; then
@@ -87,52 +75,49 @@ EOF
 exit 1
 fi
 
-for NCAR_SPACK_ENV in $NCAR_SPACK_ENV_CSG $NCAR_SPACK_ENV_PUBLIC; do
-    echo "Creating env at $NCAR_SPACK_ENV ..."
+echo "Creating env at $NCAR_SPACK_ENV_CSG ..."
 
-    # All spack needs for an env is a directory with spack.yaml
-    mkdir -p $NCAR_SPACK_ENV
-    cp clusters/$NCAR_SYS/spack.yaml $NCAR_SPACK_ENV
-    cp -r clusters/$NCAR_SYS $NCAR_SPACK_ENV/setup
-    cp -r util bin $NCAR_SPACK_ENV
+# All spack needs for an env is a directory with spack.yaml
+mkdir -p $NCAR_SPACK_ENV_CSG/setup
+cp clusters/$NCAR_SYS/spack.yaml $NCAR_SPACK_ENV_CSG
+cp -r util bin $NCAR_SPACK_ENV_CSG
+cp clusters/$NCAR_SYS/externals.cfg clusters/$NCAR_SYS/packages.cfg $NCAR_SPACK_ENV_CSG/setup
+envsubst < clusters/$NCAR_SYS/main.cfg > $NCAR_SPACK_ENV_CSG/setup/main.cfg
 
-    # Add relevant paths to spack.yaml
-    sed -i "s|%INSTALLROOT%|${NCAR_SPACK_ENV}/opt|" $NCAR_SPACK_ENV/spack.yaml
-    sed -i "s|%MODULESROOT%|${NCAR_SPACK_ENV}/modules|" $NCAR_SPACK_ENV/spack.yaml
+# Add relevant paths to spack.yaml
+sed -i "s|%INSTALLROOT%|${NCAR_SPACK_ENV_CSG}/opt/|" $NCAR_SPACK_ENV_CSG/spack.yaml
+sed -i "s|%MODULESROOT%|${NCAR_SPACK_ENV_CSG}/modules/|" $NCAR_SPACK_ENV_CSG/spack.yaml
 
-    # Modify paths in localinit files
-    sed -i "s|%SPACKROOT%|${NCAR_ROOT_SPACK}|" $NCAR_SPACK_ENV/util/localinit.*
-    sed -i "s|%ENVROOT%|${NCAR_SPACK_ENV}|" $NCAR_SPACK_ENV/util/localinit.*
-    sed -i "s|%LMODSYS%|${NCAR_SYS}|" $NCAR_SPACK_ENV/util/localinit.*
-    sed -i "s|%DEFMODS%|${NCAR_DEFAULT_MODS}|" $NCAR_SPACK_ENV/util/localinit.*
+# Modify paths in localinit files
+sed -i "s|%SPACKROOT%|${NCAR_ROOT_SPACK}|" $NCAR_SPACK_ENV_CSG/util/localinit.*
+sed -i "s|%ENVROOT%|${NCAR_SPACK_ENV_CSG}|" $NCAR_SPACK_ENV_CSG/util/localinit.*
+sed -i "s|%LMODSYS%|${NCAR_SYS}|" $NCAR_SPACK_ENV_CSG/util/localinit.*
+sed -i "s|%DEFMODS%|${NCAR_DEFAULT_MODULES}|" $NCAR_SPACK_ENV_CSG/util/localinit.*
 
-    # Activate the environment
-    spack env activate $NCAR_SPACK_ENV
-    spack env status
+# Activate the environment
+spack env activate $NCAR_SPACK_ENV_CSG
+spack env status
 
-    # Add system packages as externals
-    echo -e "Finding specified externals in clusters/$NCAR_SYS/externals.cfg ...\n"
-    spack external find --not-buildable $(grep fixed clusters/$NCAR_SYS/externals.cfg | cut -d: -f2) 
-    spack external find $(grep buildable clusters/$NCAR_SYS/externals.cfg | cut -d: -f2)
+# Add system packages as externals
+echo -e "Finding specified externals in clusters/$NCAR_SYS/externals.cfg ...\n"
+spack external find --not-buildable $(grep fixed clusters/$NCAR_SYS/externals.cfg | cut -d: -f2) 
+spack external find $(grep buildable clusters/$NCAR_SYS/externals.cfg | cut -d: -f2)
 
-    # Create mirror and prepare workshop to generate build_cache (binaries)
-    if [[ $NCAR_SPACK_ENV == $NCAR_SPACK_ENV_CSG ]]; then
-        spack config add "config:install_tree:padded_length:128"
-        spack mirror create -d $NCAR_SPACK_ENV_MIRROR -a
-        cp $NCAR_ROOT_SPACK/opt/spack/gpg/pubring.gpg $NCAR_SPACK_ENV_MIRROR/
-    fi
+# Create mirror and prepare workshop to generate build_cache (binaries)
+spack config add "config:install_tree:padded_length:128"
+spack mirror create -d $NCAR_SPACK_ENV_MIRROR -a
+cp $NCAR_ROOT_SPACK/opt/spack/gpg/pubring.gpg $NCAR_SPACK_ENV_MIRROR/
 
-    # Add local filesystem mirror
-    spack mirror add $NCAR_SPACK_ENV_MIRROR_NAME $NCAR_SPACK_ENV_MIRROR
+# Add local filesystem mirror
+spack mirror add $NCAR_SPACK_ENV_MIRROR_NAME $NCAR_SPACK_ENV_MIRROR
 
-    # Add NCAR repos
-    spack repo add $NCAR_SPACK_DEPLOY_DIR/repos/ncar.hpcd
+# Add NCAR repos
+spack repo add $NCAR_SPACK_DEPLOY_DIR/repos/ncar.hpcd
 
-    # Add NCAR templates
-    spack config add "config:template_dirs:$NCAR_SPACK_DEPLOY_DIR/templates/modules"
+# Add NCAR templates
+spack config add "config:template_dirs:$NCAR_SPACK_DEPLOY_DIR/templates/modules"
 
-    spack env deactivate
-done
+cp $NCAR_SPACK_ENV_CSG/spack.yaml $NCAR_SPACK_ENV_CSG/setup
 
 #
 ## ---- BUILD PACKAGES IN ENVIRONMENTS ----
@@ -142,8 +127,6 @@ if [[ ${SKIP_PKGS:-no} != yes ]]; then
     echo -e "Building packages in CSG build environment ...\n"
     # Build packages from source in build environment
     cd $NCAR_SPACK_ENV_CSG
-    spack env activate .
-    spack env status
 
     bin/install_packages setup/packages.cfg |& tee $NCAR_SPACK_ENV_CSG/setup/installs.log
 
@@ -154,8 +137,9 @@ if [[ ${SKIP_PKGS:-no} != yes ]]; then
     # Create modules in build environment
     echo "Generating modules in build environment ..."
     spack module lmod refresh -y
-    spack env deactivate
 fi
+
+spack env deactivate
 
 # Status message
 cat << EOF
@@ -171,6 +155,8 @@ Spack root:     $NCAR_ROOT_SPACK
 Build root:     $NCAR_SPACK_ENV_CSG
 Public root:    $NCAR_SPACK_ENV_PUBLIC
 
+Github repo:    $NCAR_SPACK_ENV_GITHUB
+
 Install logs:   $NCAR_SPACK_ENV_CSG/setup/installs.log
 Caching logs:   $NCAR_SPACK_ENV_CSG/setup/cache.log
 
@@ -178,10 +164,6 @@ Caching logs:   $NCAR_SPACK_ENV_CSG/setup/cache.log
 
 To install into public production environment, run the following:
 
-    clean_bash (if not already in a clean shell)
-    spacktivate -p $NCAR_SPACK_ENV_PUBLIC
-    $NCAR_SPACK_ENV_PUBLIC/bin/install_packages $NCAR_SPACK_ENV_PUBLIC/setup/packages.cfg
-    spack modules lmod refresh -y
-    despacktivate
+$SPACK_ENV/bin/publish "Initial deployment of environment on $NCAR_SYS"
 
 EOF

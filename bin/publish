@@ -1,0 +1,185 @@
+#!/bin/bash
+#
+#   This script is designed to publish changes made in the build
+#   environment to the production environment in a reproducible
+#   and traceable way. The script does a number of things:
+#
+#   1. Sanity checks of current environment
+#   2. Check to see that build spack.yaml and spack.lock are in sync
+#   3. Check whether any changes need to be made to the public env
+#   4. Sync build and public environment package installs
+#   5. (Re)build the public module tree
+#   6. Commit and push changes to Github repo
+#
+#   Note:   as of Spack v0.17, the activate scripts will break if
+#           used with an environent already activated outside of a
+#           shell script. So we must activate in the script!
+#
+#   Author:         Brian Vanderwende
+#   Last Revised:   22:26, 27 Dec 2021
+#
+
+set -e
+export MYDIR="$( cd "$(dirname "$0")" ; pwd )"
+
+#
+## ---- INITIALIZATION ----
+#
+
+if [[ $# -eq 1 ]]; then
+COMMIT_MSG="$1"
+else
+cat << EOF
+Error:  You must provide a commit message as the only argument to this
+        script. Make sure to put the message in quotes.
+
+Usage:  publish "new install of very cool modules"
+
+EOF
+exit 1
+fi
+
+if [[ $NCAR_SPACK_CLEAN != true ]]; then
+    echo "Sanitizing user environment ..."
+    NCAR_SPACK_CLEAN=true $MYDIR/clean_bash $0 "$@"
+    exit $?
+else
+    # Even though clean_bash uses the spack activation script
+    # as an RC file, this doesn't work when calling scripts
+    echo "Activating Spack installation environment ..."
+    . $SPACK_STARTUP
+fi
+
+echo "Activating Spack build environment ..."
+if [[ -f $MYDIR/../spack.yaml ]]; then
+    spack env activate $MYDIR/..
+else
+cat << EOF
+Error:  This publish script does not appear to be part of a cluster
+        build environment. Use \$SPACK_ENV/bin/publish to publish changes
+        to the production environment.
+
+EOF
+exit 1
+fi
+
+echo "Testing whether user is owner of build env ..."
+BUILD_ENV_USER=$(stat -c "%U" $SPACK_ENV)
+if [[ $USER != $BUILD_ENV_USER ]]; then
+cat << EOF
+Error:  This script must be run by the owner of the active build environment.
+        $SPACK_ENV -> owned by $BUILD_ENV_USER
+
+EOF
+exit 1
+fi
+
+echo "Testing build environment for unconcretized changes ..."
+CONC_TEST=$(2>&1 spack concretize)
+
+if [[ -n $CONC_TEST ]]; then
+cat << EOF
+$CONC_TEST
+
+Error:  Modifications to $SPACK_ENV/spack.yaml are not properly installed!
+        Resolve spack.yaml <-> spack.lock inconsistency before attempting
+        to push to the public environment.
+
+EOF
+exit 1
+fi
+
+# Source deployment settings
+. $SPACK_ENV/setup/main.cfg
+
+# Make sure build cache is up to date
+echo "Making sure the mirror build cache is up to date ..."
+$SPACK_ENV/bin/populate_build_cache $NCAR_SPACK_ENV_MIRROR
+
+#
+## ---- INSPECT THE PUBLIC ENVIRONMENT ----
+#
+
+PAD_LENGTH=$(awk '/padded_length: / {print $2}' $SPACK_ENV/spack.yaml)
+
+echo "Converting build spack.yaml for use in public environment ..."
+cp $SPACK_ENV/spack.yaml public.yaml
+sed -i -r "s|^([^/]*).{$PAD_LENGTH}|\1$NCAR_SPACK_ENV_PUBLIC/opt/|" public.yaml
+sed -i "s|$NCAR_SPACK_ENV_CSG|$NCAR_SPACK_ENV_PUBLIC|g" public.yaml
+# Bug in spack necessitates this for now?
+sed -i "s/\(.*padded_length: \).*/\1$(wc -c <<< $NCAR_SPACK_ENV_PUBLIC/opt)/g" public.yaml
+# sed -i '/padded_length: /d' public.yaml
+
+if [[ -d $NCAR_SPACK_ENV_PUBLIC ]]; then
+    echo "Testing public environment for untracked changes ..."
+    cd $NCAR_SPACK_ENV_PUBLIC
+    if ! git diff --quiet || ! git diff --cached --quiet; then
+        echo -e "Error:  Uncommitted changes in public repo. Resolve and then retry.\n"
+        exit 1
+    fi
+
+    # TODO: Add git pull here 
+    
+    if cmp public.yaml $NCAR_SPACK_ENV_PUBLIC/spack.yaml >& /dev/null; then
+        echo "No changes detected from public environment"
+        exit 0
+    fi
+else
+    echo "Initializing public environment and tracking repo ..."
+    # TODO: Add code here to use github later
+    git init $NCAR_SPACK_ENV_PUBLIC
+    cd $NCAR_SPACK_ENV_PUBLIC
+    git checkout -b main
+    mkdir util
+    sed "s|$NCAR_SPACK_ENV_CSG|$NCAR_SPACK_ENV_PUBLIC|g" $SPACK_ENV/util/localinit.sh > util/localinit.sh
+    sed "s|$NCAR_SPACK_ENV_CSG|$NCAR_SPACK_ENV_PUBLIC|g" $SPACK_ENV/util/localinit.csh > util/localinit.csh
+fi
+
+# Finally, let's move the YAML file
+mv $SPACK_ENV/public.yaml spack.yaml
+
+# Switch to the production environment
+spack env deactivate
+spack env activate .
+
+# Store concretization results
+mkdir -p logs
+echo "Concretizing changes in production environment ..."
+cat << EOF |& tee -a logs/concretize
+
+=================================================
+   New packages concretized at $(date)
+=================================================
+
+$(2>&1 spack concretize)
+
+EOF
+
+# Now install new packages
+cat << EOF |& tee -a logs/install
+=================================================
+   New packages installed at $(date)
+=================================================
+
+EOF
+
+spack install |& tee -a logs/install
+
+# Check that installs completed successfully
+if [[ ${PIPESTATUS[0]} == 1 ]]; then
+cat << EOF
+Error:  Spack installations did not complete successfully.
+        Check results in \$SPACK_ENV/logs/install and resolve
+        errors before commmitting changes to GitHub manually.
+
+EOF
+exit 1
+fi
+
+echo "Pushing YAML, lock, util changes to GitHub ..."
+git add spack.yaml spack.lock util/localinit.sh util/localinit.csh
+git commit -m "$COMMIT_MSG"
+
+# Create modules in build environment
+echo "Generating modules in public environment ..."
+spack module lmod refresh -y
