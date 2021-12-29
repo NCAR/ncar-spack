@@ -16,7 +16,7 @@
 #           shell script. So we must activate in the script!
 #
 #   Author:         Brian Vanderwende
-#   Last Revised:   22:26, 27 Dec 2021
+#   Last Revised:   23:38, 28 Dec 2021
 #
 
 set -e
@@ -103,12 +103,10 @@ $SPACK_ENV/bin/populate_build_cache $NCAR_SPACK_ENV_MIRROR
 PAD_LENGTH=$(awk '/padded_length: / {print $2}' $SPACK_ENV/spack.yaml)
 
 echo "Converting build spack.yaml for use in public environment ..."
-cp $SPACK_ENV/spack.yaml public.yaml
-sed -i -r "s|^([^/]*).{$PAD_LENGTH}|\1$NCAR_SPACK_ENV_PUBLIC/opt/|" public.yaml
-sed -i "s|$NCAR_SPACK_ENV_CSG|$NCAR_SPACK_ENV_PUBLIC|g" public.yaml
-# Bug in spack necessitates this for now?
-sed -i "s/\(.*padded_length: \).*/\1$(wc -c <<< $NCAR_SPACK_ENV_PUBLIC/opt)/g" public.yaml
-# sed -i '/padded_length: /d' public.yaml
+cp $SPACK_ENV/spack.yaml $SPACK_ENV/public.yaml
+sed -i -r "s|^([^/]*).{$PAD_LENGTH}|\1$NCAR_SPACK_ENV_PUBLIC/opt/|" $SPACK_ENV/public.yaml
+sed -i "s|$NCAR_SPACK_ENV_CSG|$NCAR_SPACK_ENV_PUBLIC|g" $SPACK_ENV/public.yaml
+sed -i '/padded_length: /d' $SPACK_ENV/public.yaml
 
 if [[ -d $NCAR_SPACK_ENV_PUBLIC ]]; then
     echo "Testing public environment for untracked changes ..."
@@ -170,7 +168,7 @@ if [[ ${PIPESTATUS[0]} == 1 ]]; then
 cat << EOF
 Error:  Spack installations did not complete successfully.
         Check results in \$SPACK_ENV/logs/install and resolve
-        errors before commmitting changes to GitHub manually.
+        errors before committing changes to GitHub manually.
 
 EOF
 exit 1

@@ -4,7 +4,7 @@
 #   a specified cluster definition. 
 #
 #   Author:         Brian Vanderwende
-#   Last Revised:   20:19, 26 Dec 2021
+#   Last Revised:   00:03, 29 Dec 2021
 #
 
 set -e
@@ -81,12 +81,11 @@ echo "Creating env at $NCAR_SPACK_ENV_CSG ..."
 mkdir -p $NCAR_SPACK_ENV_CSG/setup
 cp clusters/$NCAR_SYS/spack.yaml $NCAR_SPACK_ENV_CSG
 cp -r util bin $NCAR_SPACK_ENV_CSG
-cp clusters/$NCAR_SYS/externals.cfg clusters/$NCAR_SYS/packages.cfg $NCAR_SPACK_ENV_CSG/setup
 envsubst < clusters/$NCAR_SYS/main.cfg > $NCAR_SPACK_ENV_CSG/setup/main.cfg
 
 # Add relevant paths to spack.yaml
-sed -i "s|%INSTALLROOT%|${NCAR_SPACK_ENV_CSG}/opt/|" $NCAR_SPACK_ENV_CSG/spack.yaml
-sed -i "s|%MODULESROOT%|${NCAR_SPACK_ENV_CSG}/modules/|" $NCAR_SPACK_ENV_CSG/spack.yaml
+sed -i "s|%INSTALLROOT%|${NCAR_SPACK_ENV_CSG}/opt|" $NCAR_SPACK_ENV_CSG/spack.yaml
+sed -i "s|%MODULESROOT%|${NCAR_SPACK_ENV_CSG}/modules|" $NCAR_SPACK_ENV_CSG/spack.yaml
 
 # Modify paths in localinit files
 sed -i "s|%SPACKROOT%|${NCAR_ROOT_SPACK}|" $NCAR_SPACK_ENV_CSG/util/localinit.*
@@ -99,9 +98,12 @@ spack env activate $NCAR_SPACK_ENV_CSG
 spack env status
 
 # Add system packages as externals
-echo -e "Finding specified externals in clusters/$NCAR_SYS/externals.cfg ...\n"
-spack external find --not-buildable $(grep fixed clusters/$NCAR_SYS/externals.cfg | cut -d: -f2) 
-spack external find $(grep buildable clusters/$NCAR_SYS/externals.cfg | cut -d: -f2)
+if [[ -f clusters/$NCAR_SYS/externals.cfg ]]; then
+    echo -e "Finding specified externals in clusters/$NCAR_SYS/externals.cfg ...\n"
+    spack external find --not-buildable $(grep fixed clusters/$NCAR_SYS/externals.cfg | cut -d: -f2) 
+    spack external find $(grep buildable clusters/$NCAR_SYS/externals.cfg | cut -d: -f2)
+    cp clusters/$NCAR_SYS/externals.cfg $NCAR_SPACK_ENV_CSG/setup
+fi
 
 # Create mirror and prepare workshop to generate build_cache (binaries)
 spack config add "config:install_tree:padded_length:128"
@@ -126,6 +128,7 @@ cp $NCAR_SPACK_ENV_CSG/spack.yaml $NCAR_SPACK_ENV_CSG/setup
 if [[ ${SKIP_PKGS:-no} != yes ]]; then
     echo -e "Building packages in CSG build environment ...\n"
     # Build packages from source in build environment
+    cp clusters/$NCAR_SYS/packages.cfg $NCAR_SPACK_ENV_CSG/setup
     cd $NCAR_SPACK_ENV_CSG
 
     bin/install_packages setup/packages.cfg |& tee $NCAR_SPACK_ENV_CSG/setup/installs.log
@@ -164,6 +167,6 @@ Caching logs:   $NCAR_SPACK_ENV_CSG/setup/cache.log
 
 To install into public production environment, run the following:
 
-$SPACK_ENV/bin/publish "Initial deployment of environment on $NCAR_SYS"
+$NCAR_SPACK_ENV_CSG/bin/publish "Initial deployment of environment on $NCAR_SYS"
 
 EOF

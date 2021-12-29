@@ -5,4 +5,8 @@ if [[ -z $SPACK_PYDIR ]]; then
     SPACK_STARTUP=$(readlink -f $(dirname $(which spack))/../share/spack/setup-env.sh)
 fi
 
+if [[ -f $CUSTOM_SPACK_ROOT/bin/spack ]]; then
+    SPACK_STARTUP=$CUSTOM_SPACK_ROOT/share/spack/setup-env.sh
+fi
+
 exec env -i USER=$USER HOME=$HOME TERM=$TERM PATH=$SPACK_PYDIR:/usr/local/bin:/usr/bin:/bin TMPDIR=$TMPDIR SPACK_DISABLE_LOCAL_CONFIG=true NCAR_SPACK_CLEAN=$NCAR_SPACK_CLEAN SPACK_PYDIR=$SPACK_PYDIR SPACK_STARTUP=$SPACK_STARTUP /bin/bash --noprofile --rcfile $SPACK_STARTUP "$@"
