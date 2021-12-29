@@ -11,13 +11,13 @@ This repository contains scripts, configuration files, and documentation for ins
 
  1. Clone this repository
  2. Change settings in global config as desired
- 3. Run `install` 
+ 3. Run `./install` 
  4. Change settings in cluster config as desired
- 5. Run `deploy <cluster>`
+ 5. Run `./deploy <cluster>`
 
-We are using Spack "[environments](https://spack.readthedocs.io/en/latest/environments.html)" for each cluster deployment, as they offer configuration isolation and collect all settings into a single YAML file for easy tracking. All systems share a single Spack installation at a global file mount.
+We are using Spack "[environments](https://spack.readthedocs.io/en/latest/environments.html)" for each cluster deployment, as they offer configuration isolation and collect all settings into a single YAML file for easy tracking. All systems share a single Spack installation at a global path.
 
-*This specific repository should only be used for tracking system-wide configuration of Spack and initialization/deployment scripts. Actual deployments (Spack environments) should be version tracked by their `spack.yaml` files in separate repositories.*
+*This specific repository should only be used for tracking system-wide configuration of Spack and initialization/deployment scripts. Actual deployments (Spack environments) should be version tracked by their `spack.yaml` files in separate repositories. **However, the initialization scripts could be updated if a full redeployment is necessary.***
 
 ## Spack Usage Rules
 
@@ -57,6 +57,11 @@ $ cat ~/.vim/after/ftplugin/yaml.vim
 setlocal shiftwidth=2
 setlocal tabstop=2
 ```
+#### Using a Custom Spack Install
+When testing Spack updates and/or debugging, it can be useful to use a non-default Spack installation. The clean_bash script can initialize a custom version instead of the one set in your startup files using the following environment setting:
+```
+CUSTOM_SPACK_ROOT=/glade/work/$USER/custom-spack clean_bash
+```
 ### Deploying a New Spack Environment
 An environment in Spack is simply a directory with a `spack.yaml` file, which contains the Spack settings that define compilers, package preferences, installations, modules and more. Many of the settings can be implemented interactively via Spack commands, but many others require direct editing of the YAML file. As such, this repository includes the `deploy` script, which handles both jobs. Usage is as follows:
 ```
@@ -70,8 +75,9 @@ Clusters are defined in the `clusters` subdirectory. Once run, this script does 
 4. Find and register [external package](https://spack.readthedocs.io/en/latest/build_settings.html#external-packages) installs
 5. Create a [build cache/mirror](https://spack.readthedocs.io/en/latest/binary_caches.html) so that future installs are quick
 6. Add custom NCAR package definitions via the `ncar.hpcd` [repository](https://spack.readthedocs.io/en/latest/repositories.html)
-7. Build packages in the build environment as defined in `packages.cfg`
-8. Create binary versions of installs and populate build cache
-9. Generate Lmod [modules](https://spack-tutorial.readthedocs.io/en/latest/tutorial_modules.html#hierarchical-module-files) in the build environment
+7. Find and register custom [module templates](https://spack-tutorial.readthedocs.io/en/latest/tutorial_modules.html#working-with-templates)
+9. Build packages in the build environment as defined in `packages.cfg`
+10. Create binary versions of installs and populate build cache
+11. Generate Lmod [modules](https://spack-tutorial.readthedocs.io/en/latest/tutorial_modules.html#hierarchical-module-files) in the build environment
 
-Notably, this script *does not* install packages into the production environment, though it does create it. It is assumed that the operator will sanity check the build environment before populating the public-facing stack. 
+Notably, this script *does not* install packages into the production environment. It is assumed that the operator will sanity check the build environment before populating the public-facing stack. This script will copy a `publish` script into $SPACK_ENV/bin, which can be used to push changes from the build environment to the public environment. See [Installing new packages](doc/installing_packages.md) for more details on this script.
