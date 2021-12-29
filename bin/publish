@@ -16,7 +16,7 @@
 #           shell script. So we must activate in the script!
 #
 #   Author:         Brian Vanderwende
-#   Last Revised:   11:26, 29 Dec 2021
+#   Last Revised:   15:35, 29 Dec 2021
 #
 
 set -e
@@ -27,7 +27,7 @@ function tsecho {
 }
 
 function create_gitignore {
-cat > $SPACK_ENV/.gitignore << EOF
+cat > $NCAR_SPACK_ENV_PUBLIC/.gitignore << EOF
 .spack-env
 cache
 logs
