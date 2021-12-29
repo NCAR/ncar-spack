@@ -16,11 +16,27 @@
 #           shell script. So we must activate in the script!
 #
 #   Author:         Brian Vanderwende
-#   Last Revised:   23:38, 28 Dec 2021
+#   Last Revised:   11:26, 29 Dec 2021
 #
 
 set -e
 export MYDIR="$( cd "$(dirname "$0")" ; pwd )"
+
+function tsecho {
+    echo "$(date +%FT%X) - $1 ..."
+}
+
+function create_gitignore {
+cat > $SPACK_ENV/.gitignore << EOF
+.spack-env
+cache
+logs
+modules
+opt
+EOF
+
+git add .gitignore
+}
 
 #
 ## ---- INITIALIZATION ----
@@ -40,17 +56,17 @@ exit 1
 fi
 
 if [[ $NCAR_SPACK_CLEAN != true ]]; then
-    echo "Sanitizing user environment ..."
+    tsecho "Sanitizing user environment"
     NCAR_SPACK_CLEAN=true $MYDIR/clean_bash $0 "$@"
     exit $?
 else
     # Even though clean_bash uses the spack activation script
     # as an RC file, this doesn't work when calling scripts
-    echo "Activating Spack installation environment ..."
+    tsecho "Activating Spack installation environment"
     . $SPACK_STARTUP
 fi
 
-echo "Activating Spack build environment ..."
+tsecho "Activating Spack build environment"
 if [[ -f $MYDIR/../spack.yaml ]]; then
     spack env activate $MYDIR/..
 else
@@ -63,7 +79,7 @@ EOF
 exit 1
 fi
 
-echo "Testing whether user is owner of build env ..."
+tsecho "Testing whether user is owner of build env"
 BUILD_ENV_USER=$(stat -c "%U" $SPACK_ENV)
 if [[ $USER != $BUILD_ENV_USER ]]; then
 cat << EOF
@@ -74,7 +90,7 @@ EOF
 exit 1
 fi
 
-echo "Testing build environment for unconcretized changes ..."
+tsecho "Testing build environment for unconcretized changes"
 CONC_TEST=$(2>&1 spack concretize)
 
 if [[ -n $CONC_TEST ]]; then
@@ -93,8 +109,9 @@ fi
 . $SPACK_ENV/setup/main.cfg
 
 # Make sure build cache is up to date
-echo "Making sure the mirror build cache is up to date ..."
+tsecho "Updating the spack build cache with latest binaries"
 $SPACK_ENV/bin/populate_build_cache $NCAR_SPACK_ENV_MIRROR
+echo
 
 #
 ## ---- INSPECT THE PUBLIC ENVIRONMENT ----
@@ -102,14 +119,14 @@ $SPACK_ENV/bin/populate_build_cache $NCAR_SPACK_ENV_MIRROR
 
 PAD_LENGTH=$(awk '/padded_length: / {print $2}' $SPACK_ENV/spack.yaml)
 
-echo "Converting build spack.yaml for use in public environment ..."
+tsecho "Converting build spack.yaml for use in public environment"
 cp $SPACK_ENV/spack.yaml $SPACK_ENV/public.yaml
 sed -i -r "s|^([^/]*).{$PAD_LENGTH}|\1$NCAR_SPACK_ENV_PUBLIC/opt/|" $SPACK_ENV/public.yaml
 sed -i "s|$NCAR_SPACK_ENV_CSG|$NCAR_SPACK_ENV_PUBLIC|g" $SPACK_ENV/public.yaml
 sed -i '/padded_length: /d' $SPACK_ENV/public.yaml
 
 if [[ -d $NCAR_SPACK_ENV_PUBLIC ]]; then
-    echo "Testing public environment for untracked changes ..."
+    tsecho "Testing public environment for untracked changes"
     cd $NCAR_SPACK_ENV_PUBLIC
     if ! git diff --quiet || ! git diff --cached --quiet; then
         echo -e "Error:  Uncommitted changes in public repo. Resolve and then retry.\n"
@@ -123,14 +140,17 @@ if [[ -d $NCAR_SPACK_ENV_PUBLIC ]]; then
         exit 0
     fi
 else
-    echo "Initializing public environment and tracking repo ..."
+    tsecho "Initializing public environment and tracking repo"
     # TODO: Add code here to use github later
+    echo
     git init $NCAR_SPACK_ENV_PUBLIC
     cd $NCAR_SPACK_ENV_PUBLIC
     git checkout -b main
+    echo
     mkdir util
     sed "s|$NCAR_SPACK_ENV_CSG|$NCAR_SPACK_ENV_PUBLIC|g" $SPACK_ENV/util/localinit.sh > util/localinit.sh
     sed "s|$NCAR_SPACK_ENV_CSG|$NCAR_SPACK_ENV_PUBLIC|g" $SPACK_ENV/util/localinit.csh > util/localinit.csh
+    create_gitignore
 fi
 
 # Finally, let's move the YAML file
@@ -142,8 +162,10 @@ spack env activate .
 
 # Store concretization results
 mkdir -p logs
-echo "Concretizing changes in production environment ..."
-cat << EOF |& tee -a logs/concretize
+tsecho "Concretizing changes in production environment"
+echo "  -> logging to $SPACK_ENV/logs/concretize"
+
+cat >> logs/concretize << EOF
 
 =================================================
    New packages concretized at $(date)
@@ -154,14 +176,18 @@ $(2>&1 spack concretize)
 EOF
 
 # Now install new packages
-cat << EOF |& tee -a logs/install
+tsecho "Installing new packages into public environment"
+echo "  -> logging to $SPACK_ENV/logs/install"
+
+cat >> logs/install << EOF
+
 =================================================
    New packages installed at $(date)
 =================================================
 
 EOF
 
-spack install |& tee -a logs/install
+spack install >> logs/install 2>&1
 
 # Check that installs completed successfully
 if [[ ${PIPESTATUS[0]} == 1 ]]; then
@@ -174,10 +200,12 @@ EOF
 exit 1
 fi
 
-echo "Pushing YAML, lock, util changes to GitHub ..."
+tsecho "Pushing YAML, lock, util changes to GitHub"
+echo
 git add spack.yaml spack.lock util/localinit.sh util/localinit.csh
 git commit -m "$COMMIT_MSG"
+echo
 
 # Create modules in build environment
-echo "Generating modules in public environment ..."
+tsecho "Generating modules in public environment"
 spack module lmod refresh -y
