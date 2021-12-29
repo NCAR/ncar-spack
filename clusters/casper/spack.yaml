@@ -75,6 +75,8 @@ spack:
       variants: [-doxygen]
     fftw:
       variants: [-mpi]
+    eccodes:
+      variants: [+fortran, +netcdf, +png, jp2k=jasper]
   view: false
   compilers::
     - compiler:
@@ -203,3 +205,4 @@ spack:
         - git
         - nco
         - ncarenv
+        - wgrib2
