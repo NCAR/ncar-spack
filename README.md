@@ -7,7 +7,7 @@ Read the following for a quick introduction to this repository. Additional docum
  - [Debugging Spack issues](doc/debugging_spack.md)
 
 ## Overview
-This repository contains scripts, configuration files, and documentation for installing, setting up, and using production Spack software trees on NCAR clusters. The basic workflow for doing a new install is as follows:
+This repository contains scripts, configuration files, and documentation for installing, setting up, and using production Spack software trees on NCAR clusters. The basic workflow for doing a brand new install of **both Spack and an cluster deployment** is as follows:
 
  1. Clone this repository
  2. Change settings in global config as desired
@@ -15,7 +15,9 @@ This repository contains scripts, configuration files, and documentation for ins
  4. Change settings in cluster config as desired
  5. Run `./deploy <cluster>`
 
-We are using Spack "[environments](https://spack.readthedocs.io/en/latest/environments.html)" for each cluster deployment, as they offer configuration isolation and collect all settings into a single YAML file for easy tracking. All systems share a single Spack installation at a global path.
+*If Spack is already installed on the system of interest, steps 2 and 3 above may be skipped.*
+
+We are using Spack "[environments](https://spack.readthedocs.io/en/latest/environments.html)" for each cluster deployment, as they offer configuration isolation and collect all settings into a single YAML file for easy tracking. All systems share a single Spack installation at a global path. In this document and in these scripts, a *deployment* consists of a build environment, a public (production) environment, and a Spack mirror with a binary build cache.
 
 *This specific repository should only be used for tracking system-wide configuration of Spack and initialization/deployment scripts. Actual deployments (Spack environments) should be version tracked by their `spack.yaml` files in separate repositories. **However, the initialization scripts could be updated if a full redeployment is necessary.***
 
@@ -46,10 +48,10 @@ As we are using Spack environments for each cluster, we can install a single ins
 Spack provides source-able scripts to add itself to your shell environment. These scripts will modify your `PATH` and add shell aliases. Note that Spack has Python version requirements for functionality - it is best to use a recent Python 3.x. On future systems this should not be an issue, but on Cheyenne and Casper, you should add a modern Python to your PATH first. For BASH:
 ```
 export PATH=/glade/u/apps/<sys>/opt/python/3.7.9/gnu/9.1.0/bin:$PATH
-source $NCAR_ROOT_SPACK/share/spack/setup-env.sh
+source <NCAR_ROOT_SPACK>/share/spack/setup-env.sh
 ```
 
-*Note: running clean_bash will take care of both of these steps for you, in addition to providing you with an otherwise pristine bash shell environment. The [t]c-shell does not have the required functionality to source the Spack setup script, but it will still clean the environment and add a modern Python.*
+*Note: running `clean_bash` will take care of both of these steps for you, in addition to providing you with an otherwise pristine bash shell environment. The [t]c-shell does not have the required functionality to source the Spack setup script, but it will still clean the environment and add a modern Python.*
 
 Since Spack will output YAML lines with two-space indentation, the following Vim settings are recommended:
 ```
@@ -57,6 +59,9 @@ $ cat ~/.vim/after/ftplugin/yaml.vim
 setlocal shiftwidth=2
 setlocal tabstop=2
 ```
+
+The `clean_bash` script modifies your shell prompt to indicate that you are in a clean shell session. You can further customize the prompt by exporting `$NCAR_SPACK_PROMPT` in your environment before invoking `clean_bash`.
+
 #### Using a Custom Spack Install
 When testing Spack updates and/or debugging, it can be useful to use a non-default Spack installation. The clean_bash script can initialize a custom version instead of the one set in your startup files using the following environment setting:
 ```

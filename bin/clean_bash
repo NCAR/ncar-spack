@@ -1,5 +1,7 @@
 #!/bin/bash
 
+env_args=( SPACK_DISABLE_LOCAL_CONFIG=true )
+
 if [[ -z $SPACK_PYDIR ]]; then
     SPACK_PYDIR=$INSTALLPATH_ROOT/python/3.7.9/gnu/9.1.0/bin
     SPACK_STARTUP=$(readlink -f $(dirname $(which spack))/../share/spack/setup-env.sh)
@@ -18,6 +20,15 @@ if [[ $0 == *tcsh ]]; then
     echo
 else
     SHELL_INIT="/bin/bash --noprofile --rcfile $SPACK_STARTUP"
+    env_args+=( PS1="\e[1;34m[clean]\e[0m ${NCAR_SPACK_PROMPT:-\W$ }" )
 fi
 
-exec env -i USER=$USER SUDO_USER=$SUDO_USER HOME=$HOME TERM=$TERM PATH=$SPACK_PYDIR:/usr/local/bin:/usr/bin:/bin TMPDIR=$TMPDIR SPACK_DISABLE_LOCAL_CONFIG=true NCAR_SPACK_CLEAN=$NCAR_SPACK_CLEAN SPACK_PYDIR=$SPACK_PYDIR SPACK_STARTUP=$SPACK_STARTUP $SHELL_INIT "$@"
+env_args+=( PATH=$SPACK_PYDIR:/usr/local/bin:/usr/bin:/bin )
+
+for pass_vars in USER SUDO_USER HOME TERM NCAR_SPACK_CLEAN SPACK_PYDIR SPACK_STARTUP LS_COLORS; do
+    if [[ -n ${!pass_vars} ]]; then
+        env_args+=( $pass_vars=${!pass_vars} )
+    fi
+done
+
+exec env -i "${env_args[@]}" $SHELL_INIT "$@"
