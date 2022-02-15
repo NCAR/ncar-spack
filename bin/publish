@@ -16,7 +16,7 @@
 #           shell script. So we must activate in the script!
 #
 #   Author:         Brian Vanderwende
-#   Last Revised:   15:35, 29 Dec 2021
+#   Last Revised:   21:43, 14 Feb 2022
 #
 
 set -e
@@ -63,7 +63,7 @@ else
     # Even though clean_bash uses the spack activation script
     # as an RC file, this doesn't work when calling scripts
     tsecho "Activating Spack installation environment"
-    . $SPACK_STARTUP
+    . ${SPACK_STARTUP/.csh/.sh}
 fi
 
 tsecho "Activating Spack build environment"
