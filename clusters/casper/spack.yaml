@@ -13,9 +13,7 @@ spack:
         ^mpi: '{name}/{version}/{compiler.name}/{compiler.version}/{^mpi.name}/{^mpi.version}/{hash:7}'
     module_roots:
       lmod: %MODULESROOT%
-    test_stage: $tempdir/$user/spack-test
-    source_cache: cache
-  packages::
+  packages:
     all:
       compiler: [gcc@4.8.5, gcc, intel, nvhpc]
       target: [skylake]
@@ -78,7 +76,7 @@ spack:
     eccodes:
       variants: [+fortran, +netcdf, +png, jp2k=jasper]
   view: false
-  compilers::
+  compilers:
     - compiler:
         paths:
           cc: /usr/bin/gcc
