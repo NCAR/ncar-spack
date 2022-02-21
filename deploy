@@ -4,7 +4,7 @@
 #   a specified cluster definition. 
 #
 #   Author:         Brian Vanderwende
-#   Last Revised:   00:03, 29 Dec 2021
+#   Last Revised:   20:26, 18 Feb 2022
 #
 
 set -e
@@ -78,10 +78,11 @@ fi
 echo "Creating env at $NCAR_SPACK_ENV_CSG ..."
 
 # All spack needs for an env is a directory with spack.yaml
-mkdir -p $NCAR_SPACK_ENV_CSG/setup
+mkdir -p $NCAR_SPACK_ENV_CSG/setup $NCAR_SPACK_ENV_CSG/logs
 cp clusters/$NCAR_SYS/spack.yaml $NCAR_SPACK_ENV_CSG
-cp -r util bin $NCAR_SPACK_ENV_CSG
-envsubst < clusters/$NCAR_SYS/main.cfg > $NCAR_SPACK_ENV_CSG/setup/main.cfg
+cp -r src/* $NCAR_SPACK_ENV_CSG
+envsubst < clusters/$NCAR_SYS/main.cfg > $NCAR_SPACK_ENV_CSG/main.cfg
+cp clusters/$NCAR_SYS/packages.cfg $NCAR_SPACK_ENV_CSG
 
 # Add relevant paths to spack.yaml
 sed -i "s|%INSTALLROOT%|${NCAR_SPACK_ENV_CSG}/opt|" $NCAR_SPACK_ENV_CSG/spack.yaml
@@ -120,6 +121,8 @@ spack repo add $NCAR_SPACK_DEPLOY_DIR/repos/ncar.hpcd
 spack config add "config:template_dirs:$NCAR_SPACK_DEPLOY_DIR/templates/modules"
 
 cp $NCAR_SPACK_ENV_CSG/spack.yaml $NCAR_SPACK_ENV_CSG/setup
+cp $NCAR_SPACK_ENV_CSG/main.cfg $NCAR_SPACK_ENV_CSG/setup
+cp $NCAR_SPACK_ENV_CSG/packages.cfg $NCAR_SPACK_ENV_CSG/setup
 
 #
 ## ---- BUILD PACKAGES IN ENVIRONMENTS ----
@@ -128,14 +131,13 @@ cp $NCAR_SPACK_ENV_CSG/spack.yaml $NCAR_SPACK_ENV_CSG/setup
 if [[ ${SKIP_PKGS:-no} != yes ]]; then
     echo -e "Building packages in CSG build environment ...\n"
     # Build packages from source in build environment
-    cp clusters/$NCAR_SYS/packages.cfg $NCAR_SPACK_ENV_CSG/setup
     cd $NCAR_SPACK_ENV_CSG
 
-    bin/install_packages setup/packages.cfg |& tee $NCAR_SPACK_ENV_CSG/setup/installs.log
+    bin/install_packages -H $NCAR_SPACK_DEPLOY_DIR/clusters/$NCAR_SYS/build_hosts
 
     # Run script to populate the binary build_cache
     echo -e "Populating build cache with package binaries ...\n"
-    bin/populate_build_cache $NCAR_SPACK_ENV_MIRROR |& tee $NCAR_SPACK_ENV_CSG/setup/cache.log
+    bin/populate_build_cache $NCAR_SPACK_ENV_MIRROR |& tee $NCAR_SPACK_ENV_CSG/logs/cache.$NCAR_SPACK_DEPLOY_TIME
 
     # Create modules in build environment
     echo "Generating modules in build environment ..."
@@ -160,9 +162,17 @@ Public root:    $NCAR_SPACK_ENV_PUBLIC
 
 Github repo:    $NCAR_SPACK_ENV_GITHUB
 
-Install logs:   $NCAR_SPACK_ENV_CSG/setup/installs.log
-Caching logs:   $NCAR_SPACK_ENV_CSG/setup/cache.log
+EOF
 
+if [[ ${SKIP_PKGS:-no} != yes ]]; then
+cat << EOF
+Install logs:   $NCAR_SPACK_ENV_CSG/logs/installs.$NCAR_SPACK_DEPLOY_TIME
+Caching logs:   $NCAR_SPACK_ENV_CSG/logs/cache.$NCAR_SPACK_DEPLOY_TIME
+
+EOF
+fi
+
+cat << EOF
 *** First check that builds in CSG environment are valid! ***
 
 To install into public production environment, run the following:

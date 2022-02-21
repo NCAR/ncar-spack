@@ -3,7 +3,7 @@
 #   Install spack into the current system
 #
 #   Author:         Brian Vanderwende
-#   Last Revised:   14:23, 06 Dec 2021
+#   Last Revised:   20:32, 18 Feb 2022
 #
 
 set -e
@@ -55,10 +55,14 @@ git checkout $NCAR_SPACK_VERSION
 cp $NCAR_SPACK_INSTALL_DIR/bin/clean* $NCAR_ROOT_SPACK/bin/
 
 echo "Restricting maximum build jobs to $MAX_BUILD_JOBS ..."
+echo "Setting cache paths to /glade/scratch/\$user/temp ..."
 cat > $NCAR_ROOT_SPACK/etc/spack/config.yaml << EOF
 config:
-  # Restrict spack to at most $MAX_BUILD_JOBS build jobs
   build_jobs: $MAX_BUILD_JOBS
+  test_stage: /glade/scratch/\$user/temp/spack-test
+  source_cache: /glade/scratch/\$user/temp/spack-cache
+  build_stage:
+    - /glade/scratch/\$user/temp/spack-stage
 EOF
 
 # Modify permissions according
