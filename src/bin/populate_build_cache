@@ -1,0 +1,23 @@
+#!/bin/bash
+
+if [[ $# == 0 ]]; then
+    echo "Error: must provide path to mirror"
+    echo "Usage: populate_build_cache /mirror"
+    exit 1
+fi
+
+if [[ ${SPACK_ENV}z == z ]]; then
+    echo "No spack environment active; exiting..."
+    exit 1
+fi
+
+pkglist=$(spack find -L -p | awk -v envpath=${SPACK_ENV}/opt '$3~envpath { print $1 }')
+cachelist=$(ls $1/build_cache/ 2> /dev/null)
+
+for pkg in $pkglist; do
+    if [[ $cachelist != *$pkg* ]]; then
+        pkg_label=$(spack find --no-groups -f --show-full-compiler -v /$pkg | tail -n1)
+        echo -e "\n==> Creating binary package for: $pkg_label"
+        spack buildcache create -a -d $1 --only=package /$pkg
+    fi
+done

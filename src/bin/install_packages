@@ -1,0 +1,249 @@
+#!/bin/bash
+
+function usage {
+cat << EOF
+Usage: $0 [-H HOSTFILE] [-j JOBS] [-p JOBS] [MANIFEST]
+
+Options
+    -H, --hostfile          a line-by-line file containing hosts to use
+    -j, --jobs-per-host     number of build jobs to run on each host
+    -p, --jobs-per-proc     number of build jobs to run per Spack process/instance
+                            (must be less or equal to jobs per host)
+
+EOF
+exit
+}
+
+if [[ " $@ " == *" -h "* ]]; then
+    usage
+fi
+
+set -e
+export my_name=$(basename "$0")
+export my_dir="$( cd "$(dirname "$0")" ; pwd )"
+my_host=$(hostname)
+
+# Perform common script setup including envirnment checks
+. $my_dir/tools/config_script.sh
+. $SPACK_ENV/main.cfg
+
+# Defaults
+pkg_manifest=$SPACK_ENV/packages.cfg
+jobs_per_host=$(spack config get config | sed -n 's/^[ ]*build_jobs: \(.*\)/\1/p')
+jobs_per_proc=8
+remote_env="NCAR_SPACK_ENV=$SPACK_ENV SPACK_STARTUP=$SPACK_STARTUP SPACK_PYDIR=$SPACK_PYDIR"
+
+# See if it's a PBS job and use values
+if [[ -n $PBS_NODEFILE ]]; then
+    jobs_per_host=$NCPUS
+    build_hosts=$(uniq $PBS_NODEFILE | xargs)
+    batch_job=true
+fi
+
+while [[ $# -gt 0 ]]; do
+    case $1 in
+        -j|--jobs-per-host)
+            jobs_per_host=$2
+            shift
+            ;;
+        -p|--jobs-per-proc)
+            jobs_per_proc=$2
+            shift
+            ;;
+        -H|--hostfile)
+            build_hosts=$(uniq $2 | xargs)
+            shift
+            ;;
+        *)
+            pkg_manifest=$1
+            ;;
+    esac
+
+    shift
+done
+
+if [[ $jobs_per_proc -gt $jobs_per_host ]]; then
+    jobs_per_proc=$jobs_per_host
+    2>&1 echo "Error: jobs per Spack process ($jobs_per_proc) must be <= jobs per host ($jobs_per_host)"
+    exit
+fi
+
+num_hosts=$(wc -w <<< $build_hosts)
+start_time=${NCAR_SPACK_DEPLOY_TIME:-$(date +%y%m%dT%H%M)}
+
+if [[ -n $build_jobs ]]; then
+    install_cmd="spack install -j $build_jobs"
+else
+    install_cmd="spack install"
+fi
+
+cat << EOF
+
+Start time          = $start_time
+Spack environment   = $SPACK_ENV
+Package manifest    = $pkg_manifest
+Jobs per host       = $jobs_per_host
+Jobs per process    = $jobs_per_proc
+Hosts               = $build_hosts
+
+Processing install manifest ...
+
+EOF
+
+function add_spec {
+    if spack find $spec &> /dev/null; then
+        tsecho "Skipping spec $PCOL$spec$BCOL$type_msg$DCOL (reason = already installed)"
+    else
+        # Ensure log directories are present
+        if [[ -z $log_dir ]]; then
+            log_dir=$SPACK_ENV/logs/installs.$start_time
+            mkdir -p $log_dir
+        fi
+
+        tsecho "Adding spec   $GCOL$spec$BCOL$type_msg$DCOL to spack.yaml"
+        spack spec -I -N $spec &>> $log_dir/specs
+        spack add $spec &>> $log_dir/specs
+        new_installs=true
+    fi
+
+    unset type_msg
+}
+
+function start_installs {
+    if [[ $new_installs == true ]]; then
+        tsecho "Concretizing new specs"
+        
+        # Spack might use too many CPUs on logins and get us killed
+        if [[ $batch_job == true ]]; then
+            spack concretize &> /dev/null
+        else
+            taskset -c 0-7 spack concretize &> /dev/null
+        fi
+
+        tsecho "Installing $1 using $num_hosts hosts"
+        install_jobs=$(sed "s/max/$jobs_per_host/" <<< ${install_jobs:-$jobs_per_proc})
+        SECONDS=0
+
+        for build_host in $build_hosts; do
+            host_slots=$jobs_per_host hnum=1
+
+            while [[ $host_slots -ge $jobs_per_proc ]]; do
+                tsecho "Starting Spack with $install_jobs build jobs on $build_host"
+                
+                if [[ $build_host == $my_host* ]]; then
+                    $install_cmd &>> $log_dir/${build_host}.p$hnum &
+                else
+                    ssh $build_host $remote_env $my_dir/tools/remote_bash $install_cmd &>> $log_dir/${build_host}.p$hnum &
+                fi
+
+                pids="$pids $!"
+                host_slots=$((host_slots - install_jobs)); ((hnum++))
+                sleep 1
+            done
+        done
+
+        echo
+        tail -f $log_dir/*.p* | grep -e "Executing phase" -e "Successfully installed" &
+        tpid=$!; wait $pids; kill $tpid
+        echo
+        tsecho "Installs finished after $SECONDS seconds"
+        unset new_installs
+    fi
+}
+
+# Pretty colors
+GCOL="\033[1;32m" BCOL="\033[1;34m" PCOL="\033[1;35m" DCOL="\033[0m"
+
+while read pkg; do
+    if [[ $pkg == \#* ]]; then
+        continue
+    elif [[ $pkg == *:* ]]; then
+        # If compilers were added, we need to add GCCs to compiler list
+        if [[ $install_type == compiler ]]; then
+            current_comps=$(spack config get compilers | grep spec | cut -d: -f2)
+            start_installs compilers
+
+            for comp in $compilers; do
+                if [[ $current_comps != *${comp}* ]] && [[ $comp == gcc* ]]; then
+                    tsecho "Registering $comp as a compiler in spack.yaml"
+                    spack compiler add $(spack location -i $comp) > /dev/null
+                fi
+            done
+        # If custom number of jobs set, run installs now
+        elif [[ -n $install_jobs ]]; then
+            start_installs packages
+        fi
+
+        install_type= install_compiler= install_mpi= install_jobs=
+
+        for mflag in $pkg; do
+            case $mflag in
+                *:)
+                    install_mode=${mflag%:}
+                    ;;
+                *=*)
+                    declare install_${mflag%=*}=${mflag#*=}
+                    ;;
+            esac
+        done
+    else
+        pkg=${pkg//[[:blank:]]/}
+
+        case $install_mode in
+            mdep)
+                for comp in ${install_compiler:-$compilers}; do
+                    for mpi in $mpis; do
+                        spec=$(sed "s|%CMP%|%$comp|;t;s|$| %$comp|" <<< "$pkg")
+                        spec=$(sed "s|%MPI%|^$mpi|;t;s|$| ^$mpi|" <<< "$spec")
+                        add_spec
+                    done
+                done
+                ;;
+            cdep)
+                if [[ $install_type == mpi ]]; then
+                    mpis="$mpis $pkg"
+                fi
+
+                for comp in $compilers; do
+                    spec=$(sed "s|%CMP%|%$comp|;t;s|$| %$comp|" <<< "$pkg")
+
+                    if [[ -n $install_mpi ]]; then
+                        spec=$(sed "s|%MPI%|^$install_mpi|;t;s|$| ^$install_mpi|" <<< "$spec")
+                    fi
+
+                    if [[ $install_type == mpi ]]; then
+                        type_msg=" (MPI)"
+                    fi
+
+                    add_spec
+                done
+                ;;
+            singleton)
+                spec="$pkg"
+
+                if [[ -n $install_compiler ]]; then
+                    spec=$(sed "s|%CMP%|%$install_compiler|;t;s|$| %$install_compiler|" <<< "$spec")
+                fi
+                
+                if [[ -n $install_mpi ]]; then
+                    spec=$(sed "s|%MPI%|^$install_mpi|;t;s|$| ^$install_mpi|" <<< "$spec")
+                fi
+
+                if [[ $install_type == compiler ]]; then
+                    compilers="$compilers $pkg"
+                    type_msg=" (compiler)"
+                fi
+
+                add_spec
+                ;;
+            *)
+                echo -e "\n====="
+                echo "Error: unrecognized install mode: $install_mode"
+                echo -e "       halting installs at $pkg\n"
+                exit 1
+                ;;
+        esac
+    fi
+done < <(awk 'NF' $pkg_manifest)
+
+start_installs packages

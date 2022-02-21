@@ -16,15 +16,12 @@
 #           shell script. So we must activate in the script!
 #
 #   Author:         Brian Vanderwende
-#   Last Revised:   21:43, 14 Feb 2022
+#   Last Revised:   10:40, 17 Feb 2022
 #
 
 set -e
-export MYDIR="$( cd "$(dirname "$0")" ; pwd )"
-
-function tsecho {
-    echo "$(date +%FT%X) - $1 ..."
-}
+export my_name=$(basename "$0")
+export my_dir="$( cd "$(dirname "$0")" ; pwd )"
 
 function create_gitignore {
 cat > $NCAR_SPACK_ENV_PUBLIC/.gitignore << EOF
@@ -43,7 +40,7 @@ git add .gitignore
 #
 
 if [[ $# -eq 1 ]]; then
-COMMIT_MSG="$1"
+commit_msg="$1"
 else
 cat << EOF
 Error:  You must provide a commit message as the only argument to this
@@ -55,47 +52,15 @@ EOF
 exit 1
 fi
 
-if [[ $NCAR_SPACK_CLEAN != true ]]; then
-    tsecho "Sanitizing user environment"
-    NCAR_SPACK_CLEAN=true $MYDIR/clean_bash $0 "$@"
-    exit $?
-else
-    # Even though clean_bash uses the spack activation script
-    # as an RC file, this doesn't work when calling scripts
-    tsecho "Activating Spack installation environment"
-    . ${SPACK_STARTUP/.csh/.sh}
-fi
-
-tsecho "Activating Spack build environment"
-if [[ -f $MYDIR/../spack.yaml ]]; then
-    spack env activate $MYDIR/..
-else
-cat << EOF
-Error:  This publish script does not appear to be part of a cluster
-        build environment. Use \$SPACK_ENV/bin/publish to publish changes
-        to the production environment.
-
-EOF
-exit 1
-fi
-
-tsecho "Testing whether user is owner of build env"
-BUILD_ENV_USER=$(stat -c "%U" $SPACK_ENV)
-if [[ $USER != $BUILD_ENV_USER ]]; then
-cat << EOF
-Error:  This script must be run by the owner of the active build environment.
-        $SPACK_ENV -> owned by $BUILD_ENV_USER
-
-EOF
-exit 1
-fi
+# Perform common script setup including envirnment checks
+. $my_dir/tools/config_script.sh
 
 tsecho "Testing build environment for unconcretized changes"
-CONC_TEST=$(2>&1 spack concretize)
+conc_test=$(2>&1 spack concretize)
 
-if [[ -n $CONC_TEST ]]; then
+if [[ -n $conc_test ]]; then
 cat << EOF
-$CONC_TEST
+$conc_test
 
 Error:  Modifications to $SPACK_ENV/spack.yaml are not properly installed!
         Resolve spack.yaml <-> spack.lock inconsistency before attempting
@@ -117,11 +82,11 @@ echo
 ## ---- INSPECT THE PUBLIC ENVIRONMENT ----
 #
 
-PAD_LENGTH=$(awk '/padded_length: / {print $2}' $SPACK_ENV/spack.yaml)
+pad_length=$(awk '/padded_length: / {print $2}' $SPACK_ENV/spack.yaml)
 
 tsecho "Converting build spack.yaml for use in public environment"
 cp $SPACK_ENV/spack.yaml $SPACK_ENV/public.yaml
-sed -i -r "s|^([^/]*).{$PAD_LENGTH}|\1$NCAR_SPACK_ENV_PUBLIC/opt/|" $SPACK_ENV/public.yaml
+sed -i -r "s|^([^/]*).{$pad_length}|\1$NCAR_SPACK_ENV_PUBLIC/opt/|" $SPACK_ENV/public.yaml
 sed -i "s|$NCAR_SPACK_ENV_CSG|$NCAR_SPACK_ENV_PUBLIC|g" $SPACK_ENV/public.yaml
 sed -i '/padded_length: /d' $SPACK_ENV/public.yaml
 
@@ -203,7 +168,7 @@ fi
 tsecho "Pushing YAML, lock, util changes to GitHub"
 echo
 git add spack.yaml spack.lock util/localinit.sh util/localinit.csh
-git commit -m "$COMMIT_MSG"
+git commit -m "$commit_msg"
 echo
 
 # Create modules in build environment
