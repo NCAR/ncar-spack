@@ -14,20 +14,26 @@ fi
 if [[ $0 == *tcsh ]]; then
     SPACK_STARTUP=${SPACK_STARTUP/%.sh/.csh}
     SHELL_INIT="/bin/tcsh -f"
-
-    echo "To init Spack, run:"
-    echo "    source \$SPACK_STARTUP"
-    echo
+    
+    if [[ $# -eq 0 ]]; then
+        echo "To init Spack, run:"
+        echo "    source \$SPACK_STARTUP"
+        echo
+    fi
 else
-    SHELL_INIT="/bin/bash --noprofile --rcfile $SPACK_STARTUP"
-    env_args+=( PS1="\e[1;34m[clean]\e[0m ${NCAR_SPACK_PROMPT:-\W$ }" )
+    if [[ $# -eq 0 ]]; then
+        SHELL_INIT="/bin/bash --noprofile --rcfile $SPACK_STARTUP"
+        env_args+=( PS1="\e[1;34m[clean]\e[0m ${NCAR_SPACK_PROMPT:-\W$ }" )
+    else
+        SHELL_INIT="/bin/bash --noprofile --norc"
+    fi
 fi
 
 env_args+=( PATH=$SPACK_PYDIR:/usr/local/bin:/usr/bin:/bin )
 
-for pass_vars in USER SUDO_USER HOME TERM NCAR_SPACK_CLEAN SPACK_PYDIR SPACK_STARTUP LS_COLORS; do
+for pass_vars in USER SUDO_USER HOME TERM SPACK_SYSTEM_CONFIG_PATH ${!NCAR_SPACK_*} SPACK_PYDIR SPACK_STARTUP LS_COLORS; do
     if [[ -n ${!pass_vars} ]]; then
-        env_args+=( $pass_vars=${!pass_vars} )
+        env_args+=( $pass_vars="${!pass_vars}" )
     fi
 done
 

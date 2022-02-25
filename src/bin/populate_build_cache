@@ -1,23 +1,47 @@
 #!/bin/bash
 
-if [[ $# == 0 ]]; then
-    echo "Error: must provide path to mirror"
-    echo "Usage: populate_build_cache /mirror"
-    exit 1
-fi
+function usage {
+cat << EOF
+Usage: $0 [-m MIRRORPATH]
 
-if [[ ${SPACK_ENV}z == z ]]; then
-    echo "No spack environment active; exiting..."
-    exit 1
-fi
+Options
+    -m, --mirror    specify a custom path to a mirror
+
+EOF
+exit
+}
+
+while [[ $# -gt 0 ]]; do
+    case $1 in
+        -m|--mirror)
+            mirror_path=$2
+            shift
+            ;;
+        -h|--help)
+            usage
+            exit
+            ;;
+        *)
+            echo "Error: unrecognized option $1"
+            usage
+            exit 1
+            ;;
+    esac
+
+    shift
+done
+
+# Perform common script setup including environment checks
+export my_dir="$( cd "$(dirname "$0")" ; pwd )"
+. $my_dir/tools/init.sh
 
 pkglist=$(spack find -L -p | awk -v envpath=${SPACK_ENV}/opt '$3~envpath { print $1 }')
-cachelist=$(ls $1/build_cache/ 2> /dev/null)
+cachelist=$(ls ${mirror_path:-$NCAR_SPACK_MIRROR}/build_cache/ 2> /dev/null)
 
 for pkg in $pkglist; do
     if [[ $cachelist != *$pkg* ]]; then
         pkg_label=$(spack find --no-groups -f --show-full-compiler -v /$pkg | tail -n1)
         echo -e "\n==> Creating binary package for: $pkg_label"
-        spack buildcache create -a -d $1 --only=package /$pkg
+        spack buildcache create -a -d ${mirror_path:-$NCAR_SPACK_MIRROR} --only=package /$pkg
     fi
 done

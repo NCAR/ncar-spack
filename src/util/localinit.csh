@@ -1,35 +1,28 @@
-#!/bin/tcsh
-
 # Root variables
-setenv NCAR_SPACK_ROOT=%SPACKROOT%
-setenv NCAR_SPACK_ENV_ROOT=%ENVROOT%
+setenv LMOD_SPACK_ROOT %SPACKROOT%
+setenv LMOD_SPACK_ENV_ROOT %ENVROOT%
 
 # Legacy variables
-setenv INSTALLPATH_ROOT ${NCAR_SPACK_ENV_ROOT}/opt
-setenv MODULEPATH_ROOT ${NCAR_SPACK_ENV_ROOT}/modules
+setenv INSTALLPATH_ROOT ${LMOD_SPACK_ENV_ROOT}/opt
+setenv MODULEPATH_ROOT ${LMOD_SPACK_ENV_ROOT}/modules
 
 # Lmod configuration
 setenv LMOD_SYSTEM_NAME %LMODSYS%
 setenv LMOD_SYSTEM_DEFAULT_MODULES "%DEFMODS%"
-setenv MODULEPATH `echo $MODULEPATH_ROOT/linux*/Core`
+setenv MODULEPATH `echo $MODULEPATH_ROOT/Core`
 
-# Add spack to the user environment
-source ${NCAR_SPACK_ROOT}/share/spack/setup-env.csh
-
-# Load the spack environment to find Lmod scripts
-spacktivate $NCAR_SPACK_ENV_ROOT
-set NCAR_SPACK_LMOD_ROOT = `spack location -i lmod`
-despacktivate
+# Get location of Lmod initialization scripts
+setenv LMOD_ROOT `/bin/bash -c ". $LMOD_SPACK_ROOT/share/spack/setup-env.sh; spack env activate $LMOD_SPACK_ENV_ROOT; spack location -i lmod"`
 
 # Add shell settings so Lmod can be used in bash scripts
 setenv PROFILEREAD true
-setenv BASH_ENV ${NCAR_SPACK_LMOD_ROOT}/lmod/lmod/init/bash 
+setenv BASH_ENV ${LMOD_ROOT}/lmod/lmod/init/bash 
 
 # Use shell-specific init
 set comm = `/bin/ps -p $$ -o cmd= |awk '{print $1}'|sed -e 's/-sh/csh/' -e 's/-csh/tcsh/' -e 's/-//g'`
 set shell = `/bin/basename $comm`
 
-source /glade/u/apps/dav/opt/lmod/8.1.7/lmod/lmod/init/$shell
+source $LMOD_ROOT/lmod/lmod/init/$shell
 unset comm shell
 
 # Load default modules

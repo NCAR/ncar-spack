@@ -16,12 +16,8 @@
 #           shell script. So we must activate in the script!
 #
 #   Author:         Brian Vanderwende
-#   Last Revised:   10:40, 17 Feb 2022
+#   Last Revised:   17:25, 24 Feb 2022
 #
-
-set -e
-export my_name=$(basename "$0")
-export my_dir="$( cd "$(dirname "$0")" ; pwd )"
 
 function create_gitignore {
 cat > $NCAR_SPACK_ENV_PUBLIC/.gitignore << EOF
@@ -52,8 +48,9 @@ EOF
 exit 1
 fi
 
-# Perform common script setup including envirnment checks
-. $my_dir/tools/config_script.sh
+# Perform common script setup including environment checks
+export my_dir="$( cd "$(dirname "$0")" ; pwd )"
+. $my_dir/tools/init.sh
 
 tsecho "Testing build environment for unconcretized changes"
 conc_test=$(2>&1 spack concretize)
@@ -70,13 +67,9 @@ EOF
 exit 1
 fi
 
-# Source deployment settings
-. $SPACK_ENV/setup/main.cfg
-
 # Make sure build cache is up to date
 tsecho "Updating the spack build cache with latest binaries"
-$SPACK_ENV/bin/populate_build_cache $NCAR_SPACK_ENV_MIRROR
-echo
+$SPACK_ENV/bin/populate_build_cache
 
 #
 ## ---- INSPECT THE PUBLIC ENVIRONMENT ----
@@ -85,10 +78,13 @@ echo
 pad_length=$(awk '/padded_length: / {print $2}' $SPACK_ENV/spack.yaml)
 
 tsecho "Converting build spack.yaml for use in public environment"
-cp $SPACK_ENV/spack.yaml $SPACK_ENV/public.yaml
-sed -i -r "s|^([^/]*).{$pad_length}|\1$NCAR_SPACK_ENV_PUBLIC/opt/|" $SPACK_ENV/public.yaml
-sed -i "s|$NCAR_SPACK_ENV_CSG|$NCAR_SPACK_ENV_PUBLIC|g" $SPACK_ENV/public.yaml
-sed -i '/padded_length: /d' $SPACK_ENV/public.yaml
+cd $SPACK_ENV; mkdir -p .prototype; spack env deactivate
+sed -r "s|^([^/]*).{$pad_length}|\1$SPACK_ROOT/opt/spack/|" spack.yaml > .prototype/spack.yaml
+spack env activate .prototype
+spack config remove 'config:install_tree:padded_length' 
+spack config remove 'config:install_tree:root' 
+sed -i "s|\( *lmod: \)/.*|\1$NCAR_SPACK_MODULEROOT|" .prototype/spack.yaml
+spack env deactivate
 
 if [[ -d $NCAR_SPACK_ENV_PUBLIC ]]; then
     tsecho "Testing public environment for untracked changes"
@@ -100,7 +96,7 @@ if [[ -d $NCAR_SPACK_ENV_PUBLIC ]]; then
 
     # TODO: Add git pull here 
     
-    if cmp public.yaml $NCAR_SPACK_ENV_PUBLIC/spack.yaml >& /dev/null; then
+    if cmp $NCAR_SPACK_ENV_BUILD/.prototype/spack.yaml spack.yaml >& /dev/null; then
         echo "No changes detected from public environment"
         exit 0
     fi
@@ -113,17 +109,14 @@ else
     git checkout -b main
     echo
     mkdir util
-    sed "s|$NCAR_SPACK_ENV_CSG|$NCAR_SPACK_ENV_PUBLIC|g" $SPACK_ENV/util/localinit.sh > util/localinit.sh
-    sed "s|$NCAR_SPACK_ENV_CSG|$NCAR_SPACK_ENV_PUBLIC|g" $SPACK_ENV/util/localinit.csh > util/localinit.csh
     create_gitignore
 fi
 
 # Finally, let's move the YAML file
-mv $SPACK_ENV/public.yaml spack.yaml
+mv $NCAR_SPACK_ENV_BUILD/.prototype/spack.yaml $NCAR_SPACK_ENV_PUBLIC/spack.yaml
 
 # Switch to the production environment
-spack env deactivate
-spack env activate .
+spack env activate $NCAR_SPACK_ENV_PUBLIC
 
 # Store concretization results
 mkdir -p logs
@@ -152,7 +145,7 @@ cat >> logs/install << EOF
 
 EOF
 
-spack install >> logs/install 2>&1
+spack install --cache-only >> logs/install 2>&1
 
 # Check that installs completed successfully
 if [[ ${PIPESTATUS[0]} == 1 ]]; then
@@ -163,6 +156,13 @@ Error:  Spack installations did not complete successfully.
 
 EOF
 exit 1
+fi
+
+. $my_dir/tools/make_localinit.sh public
+
+tsecho "Linking util scripts into public cluster root"
+if [[ ! -e $NCAR_SPACK_PUBLIC_ROOT/util ]]; then
+    ln -s $SPACK_ENV/util $NCAR_SPACK_PUBLIC_ROOT/util
 fi
 
 tsecho "Pushing YAML, lock, util changes to GitHub"

@@ -1,34 +1,27 @@
-#!/bin/bash
-
 # Root variables
-export NCAR_SPACK_ROOT=%SPACKROOT%
-export NCAR_SPACK_ENV_ROOT=%ENVROOT%
+export LMOD_SPACK_ROOT=%SPACKROOT%
+export LMOD_SPACK_ENV_ROOT=%ENVROOT%
 
 # Legacy variables
-export INSTALLPATH_ROOT=$NCAR_SPACK_ENV_ROOT/opt
-export MODULEPATH_ROOT=$NCAR_SPACK_ENV_ROOT/modules
+export INSTALLPATH_ROOT=$LMOD_SPACK_ENV_ROOT/opt
+export MODULEPATH_ROOT=$LMOD_SPACK_ENV_ROOT/modules
 
 # Lmod configuration
 export LMOD_SYSTEM_NAME=%LMODSYS%
 export LMOD_SYSTEM_DEFAULT_MODULES="%DEFMODS%"
-export MODULEPATH=`echo $MODULEPATH_ROOT/linux*/Core`
+export MODULEPATH=`echo $MODULEPATH_ROOT/Core`
 
-# Add Spack to the user environment
-. $NCAR_SPACK_ROOT/share/spack/setup-env.sh
-
-# Load the spack environment to find Lmod scripts
-spacktivate $NCAR_SPACK_ENV_ROOT
-NCAR_SPACK_LMOD_ROOT=`spack location -i lmod`
-despacktivate
+# Get location of Lmod initialization scripts
+LMOD_ROOT=$(. $LMOD_SPACK_ROOT/share/spack/setup-env.sh; spack env activate $LMOD_SPACK_ENV_ROOT; spack location -i lmod)
 
 # Use shell-specific init
 comm=`/bin/ps -p $$ -o cmd= |awk '{print $1}'|sed -e 's/-sh/csh/' -e 's/-csh/tcsh/' -e 's/-//g'`
 shell=`/bin/basename $comm`
 
-if [ -f $NCAR_SPACK_LMOD_ROOT/lmod/lmod/init/$shell ]; then
-    . $NCAR_SPACK_LMOD_ROOT/lmod/lmod/init/$shell
+if [ -f $LMOD_ROOT/lmod/lmod/init/$shell ]; then
+    . $LMOD_ROOT/lmod/lmod/init/$shell
 else
-    . $NCAR_SPACK_LMOD_ROOT/lmod/lmod/init/sh
+    . $LMOD_ROOT/lmod/lmod/init/sh
 fi
 
 unset comm shell
