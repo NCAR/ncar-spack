@@ -4,26 +4,31 @@ env_args=( SPACK_DISABLE_LOCAL_CONFIG=true )
 
 if [[ -z $SPACK_PYDIR ]]; then
     SPACK_PYDIR=$INSTALLPATH_ROOT/python/3.7.9/gnu/9.1.0/bin
-    SPACK_STARTUP=$(readlink -f $(dirname $(which spack))/../share/spack/setup-env.sh)
 fi
 
 if [[ -f $CUSTOM_SPACK_ROOT/bin/spack ]]; then
     SPACK_STARTUP=$CUSTOM_SPACK_ROOT/share/spack/setup-env.sh
+elif which spack &> /dev/null; then
+    SPACK_STARTUP=$(readlink -f $(dirname $(which spack))/../share/spack/setup-env.sh)
 fi
 
 if [[ $0 == *tcsh ]]; then
     SPACK_STARTUP=${SPACK_STARTUP/%.sh/.csh}
     SHELL_INIT="/bin/tcsh -f"
     
-    if [[ $# -eq 0 ]]; then
+    if [[ $# -eq 0 ]] && [[ -n $SPACK_STARTUP ]]; then
         echo "To init Spack, run:"
         echo "    source \$SPACK_STARTUP"
         echo
     fi
 else
     if [[ $# -eq 0 ]]; then
-        SHELL_INIT="/bin/bash --noprofile --rcfile $SPACK_STARTUP"
+        SHELL_INIT="/bin/bash --noprofile"
         env_args+=( PS1="\e[1;34m[clean]\e[0m ${NCAR_SPACK_PROMPT:-\W$ }" )
+
+        if [[ -n $SPACK_STARTUP ]]; then
+            SHELL_INIT="$SHELL_INIT --rcfile $SPACK_STARTUP"
+        fi
     else
         SHELL_INIT="/bin/bash --noprofile --norc"
     fi

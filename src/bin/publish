@@ -16,7 +16,7 @@
 #           shell script. So we must activate in the script!
 #
 #   Author:         Brian Vanderwende
-#   Last Revised:   17:25, 24 Feb 2022
+#   Last Revised:   22:19, 24 Feb 2022
 #
 
 function create_gitignore {
@@ -164,6 +164,13 @@ tsecho "Linking util scripts into public cluster root"
 if [[ ! -e $NCAR_SPACK_PUBLIC_ROOT/util ]]; then
     ln -s $SPACK_ENV/util $NCAR_SPACK_PUBLIC_ROOT/util
 fi
+
+tsecho "Creating split configuration files for community use"
+mkdir -p $NCAR_SPACK_USER_CONFIG
+
+for cfg_file in config packages compilers modules mirrors repos; do
+    sed -n "/^  ${cfg_file}:/,/^  [a-z]*:/p" spack.yaml | sed '$d; s/^  //' > $NCAR_SPACK_USER_CONFIG/${cfg_file}.yaml
+done
 
 tsecho "Pushing YAML, lock, util changes to GitHub"
 echo
