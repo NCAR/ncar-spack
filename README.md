@@ -10,16 +10,28 @@ Read the following for a quick introduction to this repository. Additional docum
 This repository contains scripts, configuration files, and documentation for installing, setting up, and using production Spack software trees on NCAR clusters. The basic workflow for doing a brand new install of **both Spack and an cluster deployment** is as follows:
 
  1. Clone this repository
- 2. Change settings in global config as desired
- 3. Run `./install` 
- 4. Change settings in cluster config as desired
- 5. Run `./deploy <cluster>`
+ 2. Change settings in cluster config as desired
+ 3. Run `./deploy <cluster>`
 
-*If Spack is already installed on the system of interest, steps 2 and 3 above may be skipped.*
+A `ncar-spack` cluster deployment generally consists of the following components:
 
-We are using Spack "[environments](https://spack.readthedocs.io/en/latest/environments.html)" for each cluster deployment, as they offer configuration isolation and collect all settings into a single YAML file for easy tracking. All systems share a single Spack installation at a global path. In this document and in these scripts, a *deployment* consists of a build environment, a public (production) environment, and a Spack mirror with a binary build cache.
+```
+deployment
+├── config - directory of configuration files that users can leverage when using our stack as an upstream
+├── envs
+│   ├── build - a Spack environment for CSG to build & test packages and then generate binaries for the build cache
+│   └── public - a Spack environment for production installs which are visible to and used by the users
+├── mirror - source mirror and build cache, containing binary bundles for built packages for quick deployment and disaster recovery
+├── modules - the user-visble tree of Lmod modules
+│   ├── ...
+├── spack - the clone of Spack for the deployment; Spack binaries, package recipes, and production package installs
+│   ├── ...
+└── util - contains scripts for user-facing setup (e.g., localinit scripts for module tree startup)
+```
 
-*This specific repository should only be used for tracking system-wide configuration of Spack and initialization/deployment scripts. Actual deployments (Spack environments) should be version tracked by their `spack.yaml` files in separate repositories. **However, the initialization scripts could be updated if a full redeployment is necessary.***
+We are using Spack "[environments](https://spack.readthedocs.io/en/latest/environments.html)" for each cluster deployment, as they offer configuration isolation and collect all settings into a single YAML file for easy tracking via Git repositories. All deployments share a single Spack installation at a global path.
+
+*This specific repository should only be used for tracking system-wide configuration of Spack and initialization/deployment scripts. Actual deployments (Spack installs and environments) should be version tracked by their `spack.yaml` files in their public repositories. **However, the initial spack.yaml and configuration settings files could be updated if a full redeployment is necessary.***
 
 ## Spack Usage Rules
 
