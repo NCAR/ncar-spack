@@ -56,6 +56,23 @@ As we are using Spack environments for each cluster, we can install a single ins
 
 *While Spack could be deployed using the HEAD commit, this is not recommended because package definitions and default versions often change with new Spack tags/versions. Locking to a version ensures reproducibility.*
 
+
+### Using Spack to Deploy a Software Stack
+To simplify the process of deploying Spack and building and installing a software tree, a number of scripts are included in this repository. Once cloned, you should initiate the process by running the `deploy` script, which will perform the following actions:
+
+1. Sanitize the shell environment and make sure Spack is initialized
+2. Copy the template `spack.yaml` for a particular cluster and modify paths for `opt` and `modules`
+3. Create utility scripts like `localinit.*` for modules
+4. Find and register [external package](https://spack.readthedocs.io/en/latest/build_settings.html#external-packages) installs
+5. Create a [build cache/mirror](https://spack.readthedocs.io/en/latest/binary_caches.html) so that future installs are quick
+6. Add custom NCAR package definitions via the `ncar.hpcd` [repository](https://spack.readthedocs.io/en/latest/repositories.html)
+7. Find and register custom [module templates](https://spack-tutorial.readthedocs.io/en/latest/tutorial_modules.html#working-with-templates)
+9. Build packages in the build environment as defined in `packages.cfg`
+10. Create binary versions of installs and populate build cache
+11. Generate Lmod [modules](https://spack-tutorial.readthedocs.io/en/latest/tutorial_modules.html#hierarchical-module-files) in the build environment
+
+Notably, this script *does not* install packages into the production environment. It is assumed that the operator will sanity check the build environment before populating the public-facing stack. This script will copy a `publish` script into $SPACK_ENV/bin, which can be used to push changes from the build environment to the public environment. See [Installing new packages](doc/installing_packages.md) for more details on this script.
+
 ### Adding Spack to Your Shell Environment
 Spack provides source-able scripts to add itself to your shell environment. These scripts will modify your `PATH` and add shell aliases. Note that Spack has Python version requirements for functionality - it is best to use a recent Python 3.x. On future systems this should not be an issue, but on Cheyenne and Casper, you should add a modern Python to your PATH first. For BASH:
 ```
@@ -79,22 +96,3 @@ When testing Spack updates and/or debugging, it can be useful to use a non-defau
 ```
 CUSTOM_SPACK_ROOT=/glade/work/$USER/custom-spack clean_bash
 ```
-### Deploying a New Spack Environment
-An environment in Spack is simply a directory with a `spack.yaml` file, which contains the Spack settings that define compilers, package preferences, installations, modules and more. Many of the settings can be implemented interactively via Spack commands, but many others require direct editing of the YAML file. As such, this repository includes the `deploy` script, which handles both jobs. Usage is as follows:
-```
-./deploy [--nopkgs] <clustername>
-```
-Clusters are defined in the `clusters` subdirectory. Once run, this script does the following:
-
-1. Sanitize the shell environment and make sure Spack is initialized
-2. Copy the template `spack.yaml` for a particular cluster and modify paths for `opt` and `modules`
-3. Create utility scripts like `localinit.*` for modules
-4. Find and register [external package](https://spack.readthedocs.io/en/latest/build_settings.html#external-packages) installs
-5. Create a [build cache/mirror](https://spack.readthedocs.io/en/latest/binary_caches.html) so that future installs are quick
-6. Add custom NCAR package definitions via the `ncar.hpcd` [repository](https://spack.readthedocs.io/en/latest/repositories.html)
-7. Find and register custom [module templates](https://spack-tutorial.readthedocs.io/en/latest/tutorial_modules.html#working-with-templates)
-9. Build packages in the build environment as defined in `packages.cfg`
-10. Create binary versions of installs and populate build cache
-11. Generate Lmod [modules](https://spack-tutorial.readthedocs.io/en/latest/tutorial_modules.html#hierarchical-module-files) in the build environment
-
-Notably, this script *does not* install packages into the production environment. It is assumed that the operator will sanity check the build environment before populating the public-facing stack. This script will copy a `publish` script into $SPACK_ENV/bin, which can be used to push changes from the build environment to the public environment. See [Installing new packages](doc/installing_packages.md) for more details on this script.
