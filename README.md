@@ -47,31 +47,36 @@ The following recommendations are not necessarily required, but are strongly adv
 2. **Always confirm dependencies .** Unless you are 100% sure Spack will do what you intend, don't simply run `spack install <spec>` blindly! First, confirm the DAG using `spack spec -I -N <spec>`.
 
 ## Getting Started
-### Installing Spack
-As we are using Spack environments for each cluster, we can install a single instance of Spack itself to service all globally-accessible systems. The `install` script will do this for you, based on the settings configured in `etc/global.cfg`. Currently, the following settings are available:
+As we are installing/cloning an instance of Spack for each cluster deployment, it is not necessary to manually install Spack before running the `deploy` script. The exact version of Spack, along with certain runtime settings, can be configured in the file `clusters/<cluster>/main.cfg`. The following configurables are currently used by `./deploy`.
 
- - **NCAR_ROOT_SPACK** - the directory in which Spack will be installed
- - **NCAR_SPACK_VERSION** - the commit or tag of Spack which will be used in the install
- - **MAX_BUILD_JOBS** - a global Spack [configuration setting](https://spack.readthedocs.io/en/latest/config_yaml.html#build-jobs) which will limit the number of threads Spack may use for installs. This will apply to all environments. Limiting to 10 or less is recommended.
+* **NCAR_HOST** - the name of the system set for users in `ncarenv` 
+* **NCAR_SPACK_PUBLIC_ROOT** - the path at which user-facing elements of the deployment will reside (e.g., /glade/u/apps)
+* **NCAR_SPACK_ENV_ROOT** - the path at which the build and production environments will reside (e.g., csgteam work)
+* **NCAR_SPACK_VERSION** - the version/tag of Spack to be used in the deployment
+* **NCAR_SPACK_MIRROR_NAME** - the name used by Spack for the source and [build cache](https://spack.readthedocs.io/en/latest/binary_caches.html) mirror
+* **NCAR_SPACK_GITHUB** - a URL to the GitHub repository that will track modifications to this deployment
+* **NCAR_SPACK_DEFAULT_MODULES** - initial default Lmod modules assigned to the users by localinit scripts
 
-*While Spack could be deployed using the HEAD commit, this is not recommended because package definitions and default versions often change with new Spack tags/versions. Locking to a version ensures reproducibility.*
+The `deploy` script will also assign some configuration settings of note for you. For instance, `build_jobs` is a global Spack [configuration setting](https://spack.readthedocs.io/en/latest/config_yaml.html#build-jobs) which will limit the number of threads Spack may use for installs. Limiting to 10 or less is recommended on our current systems.
 
+*While Spack could be deployed using the HEAD commit, this is not recommended because default versions of packages used when concretizing dependencies often change with new Spack tags/versions. Locking to a version ensures reproducibility.*
 
-### Using Spack to Deploy a Software Stack
-To simplify the process of deploying Spack and building and installing a software tree, a number of scripts are included in this repository. Once cloned, you should initiate the process by running the `deploy` script, which will perform the following actions:
+### Using `deploy` to Install a Software Stack
+The primary tool included in this repository is the `deploy` script, which should be run any time you wish to freshly deploy a cluster software stack with Spack. The script will perform the following actions:
 
-1. Sanitize the shell environment and make sure Spack is initialized
-2. Copy the template `spack.yaml` for a particular cluster and modify paths for `opt` and `modules`
-3. Create utility scripts like `localinit.*` for modules
-4. Find and register [external package](https://spack.readthedocs.io/en/latest/build_settings.html#external-packages) installs
-5. Create a [build cache/mirror](https://spack.readthedocs.io/en/latest/binary_caches.html) so that future installs are quick
-6. Add custom NCAR package definitions via the `ncar.hpcd` [repository](https://spack.readthedocs.io/en/latest/repositories.html)
-7. Find and register custom [module templates](https://spack-tutorial.readthedocs.io/en/latest/tutorial_modules.html#working-with-templates)
+1. Sanitize the shell environment
+2. Clone the specified version of Spack from GitHub
+3. Copy the template `spack.yaml` for a particular cluster and modify paths for `opt` and `modules`
+4. Create utility scripts like `localinit.*` for modules
+5. Find and register [external package](https://spack.readthedocs.io/en/latest/build_settings.html#external-packages) installs
+6. Create a [build cache/mirror](https://spack.readthedocs.io/en/latest/binary_caches.html) so that future installs are quick
+7. Add custom NCAR package definitions via the `ncar.hpcd` [repository](https://spack.readthedocs.io/en/latest/repositories.html)
+8. Find and register custom [module templates](https://spack-tutorial.readthedocs.io/en/latest/tutorial_modules.html#working-with-templates)
 9. Build packages in the build environment as defined in `packages.cfg`
 10. Create binary versions of installs and populate build cache
 11. Generate Lmod [modules](https://spack-tutorial.readthedocs.io/en/latest/tutorial_modules.html#hierarchical-module-files) in the build environment
 
-Notably, this script *does not* install packages into the production environment. It is assumed that the operator will sanity check the build environment before populating the public-facing stack. This script will copy a `publish` script into $SPACK_ENV/bin, which can be used to push changes from the build environment to the public environment. See [Installing new packages](doc/installing_packages.md) for more details on this script.
+Notably, this script *does not* install packages into the production environment nor produce production Lmod modules. It is assumed that the operator will sanity check the build environment before populating the public-facing stack. This script will copy a `publish` script into $SPACK_ENV/bin, which can be used to push changes from the build environment to the public environment. See [Installing new packages](doc/installing_packages.md) for more details on this script.
 
 ### Adding Spack to Your Shell Environment
 Spack provides source-able scripts to add itself to your shell environment. These scripts will modify your `PATH` and add shell aliases. Note that Spack has Python version requirements for functionality - it is best to use a recent Python 3.x. On future systems this should not be an issue, but on Cheyenne and Casper, you should add a modern Python to your PATH first. For BASH:
@@ -80,7 +85,7 @@ export PATH=/glade/u/apps/<sys>/opt/python/3.7.9/gnu/9.1.0/bin:$PATH
 source <NCAR_ROOT_SPACK>/share/spack/setup-env.sh
 ```
 
-*Note: running `clean_bash` will take care of both of these steps for you, in addition to providing you with an otherwise pristine bash shell environment. The [t]c-shell does not have the required functionality to source the Spack setup script, but it will still clean the environment and add a modern Python.*
+*Note: running `clean_bash` will take care of both of these steps for you assuming Spack is available in your existing environment (or you specify directly as documented below), in addition to providing you with an otherwise pristine bash shell environment. The [t]c-shell does not have the required functionality to source the Spack setup script, but it will still clean the environment and add a modern Python.*
 
 Since Spack will output YAML lines with two-space indentation, the following Vim settings are recommended:
 ```
