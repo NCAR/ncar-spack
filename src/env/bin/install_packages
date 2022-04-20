@@ -21,12 +21,13 @@ fi
 # Perform common script setup including environment checks
 export my_dir="$( cd "$(dirname "$0")" ; pwd )"
 . $my_dir/tools/init.sh
+my_host=$(hostname)
 
 # Defaults
 pkg_manifest=$SPACK_ENV/packages.cfg
 jobs_per_host=$(spack config get config | sed -n 's/^[ ]*build_jobs: \(.*\)/\1/p')
 jobs_per_proc=8
-remote_env="NCAR_SPACK_ENV=$SPACK_ENV SPACK_STARTUP=$SPACK_STARTUP SPACK_PYDIR=$SPACK_PYDIR"
+remote_env="NCAR_SPACK_ENV=$SPACK_ENV NCAR_SPACK_STARTUP=$NCAR_SPACK_STARTUP NCAR_SPACK_PYDIR=$NCAR_SPACK_PYDIR"
 
 # See if it's a PBS job and use values
 if [[ -n $PBS_NODEFILE ]]; then
@@ -74,6 +75,10 @@ else
     install_cmd="spack install"
 fi
 
+if [[ $NCAR_SPACK_REUSE == true ]]; then
+    spec_opts="--reuse"
+fi
+
 cat << EOF
 
 Start time          = $start_time
@@ -82,14 +87,17 @@ Package manifest    = $pkg_manifest
 Jobs per host       = $jobs_per_host
 Jobs per process    = $jobs_per_proc
 Hosts               = $build_hosts
+Reuse mode          = ${NCAR_SPACK_REUSE:-false}
 
 Processing install manifest ...
 
 EOF
 
 function add_spec {
-    if spack find $spec &> /dev/null; then
-        tsecho "Skipping spec $PCOL$spec$BCOL$type_msg$DCOL (reason = already installed)"
+    if [[ $install_build == false ]]; then
+        tsecho "Skipping spec $PCOL$spec$BCOL$type_msg$DCOL (reason: build=false specified)"
+    elif spack find $spec &> /dev/null; then
+        tsecho "Skipping spec $PCOL$spec$BCOL$type_msg$DCOL (reason: already installed)"
     else
         # Ensure log directories are present
         if [[ -z $log_dir ]]; then
@@ -98,7 +106,7 @@ function add_spec {
         fi
 
         tsecho "Adding spec   $GCOL$spec$BCOL$type_msg$DCOL to spack.yaml"
-        spack spec -I -N $spec &>> $log_dir/specs
+        spack spec -I -N $spec_opts $spec &>> $log_dir/specs
         spack add $spec &>> $log_dir/specs
         new_installs=true
 
@@ -116,9 +124,9 @@ function start_installs {
         
         # Spack might use too many CPUs on logins and get us killed
         if [[ $batch_job == true ]]; then
-            spack concretize &> /dev/null
+            spack concretize $spec_opts &> /dev/null
         else
-            taskset -c 0-7 spack concretize &> /dev/null
+            taskset -c 0-7 spack concretize $spec_opts &> /dev/null
         fi
 
         tsecho "Installing $1 using $num_hosts hosts"
@@ -131,10 +139,10 @@ function start_installs {
             while [[ $host_slots -ge $jobs_per_proc ]]; do
                 tsecho "Starting Spack with $install_jobs build jobs on $build_host"
                 
-                if [[ $build_host == $my_host* ]]; then
-                    $install_cmd &>> $log_dir/${build_host}.p$hnum &
+                if [[ $build_host == localhost ]] || [[ $build_host == $my_host* ]]; then
+                    $install_cmd $spec_opts &>> $log_dir/${build_host}.p$hnum &
                 else
-                    ssh -n $build_host $remote_env $my_dir/tools/remote_bash $install_cmd &>> $log_dir/${build_host}.p$hnum &
+                    ssh -n $build_host $remote_env $my_dir/tools/remote_bash $install_cmd $spec_opts &>> $log_dir/${build_host}.p$hnum &
                 fi
 
                 pids="$pids $!"
@@ -165,17 +173,24 @@ while read pkg; do
             start_installs compilers
 
             for comp in $compilers; do
-                if [[ $current_comps != *${comp}* ]] && [[ $comp == gcc* ]]; then
+                if [[ $current_comps != *${comp}* ]]; then
                     tsecho "Registering $comp as a compiler in spack.yaml"
-                    spack compiler add $(spack location -i $comp) > /dev/null
+
+                    if [[ $install_external == module ]]; then
+                        module_name=$(cut -d' ' -f1 <<< "${comp/@//}")
+                        (module purge; module load $module_name; spack compiler find > /dev/null)
+                    else
+                        spack compiler add $(spack location -i $comp) > /dev/null
+                    fi
                 fi
             done
-        # If custom number of jobs set, run installs now
-        elif [[ -n $install_jobs ]]; then
+        # If previous category had custom number of jobs or post-sync, start installs
+        elif [[ -n $install_jobs ]] || [[ $install_sync == after ]]; then
             start_installs packages
         fi
 
         install_type= install_compiler= install_mpi= install_jobs=
+        install_build=true install_external= install_sync=
 
         for mflag in $pkg; do
             case $mflag in

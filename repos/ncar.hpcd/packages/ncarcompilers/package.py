@@ -16,7 +16,7 @@ class Ncarcompilers(MakefilePackage):
 
     maintainers = ['vanderwb']
     
-    version('0.5.2', sha256='28bb6fdff9e9e23ed3ad50a2ddb146971fbe4712422805fac714bfa7be36509f')
+    version('0.5.2', sha256='f822d4593ca33c5a547ba721aca1ba2a92d064489d32f77c1a2fa288d93af344')
 
     def install(self, spec, prefix):
         make('install', 'PREFIX=%s' % prefix)

@@ -1,0 +1,230 @@
+# This is a Spack Environment file.
+#
+# It describes a set of packages to be installed, along with
+# configuration settings.
+spack:
+  config:
+    install_tree:
+      root: %INSTALLROOT%
+      projections:
+        gcc: '{name}/{version}/{hash:7}'
+        all: '{name}/{version}/{compiler.name}/{compiler.version}/{hash:7}'
+        ^mpi: '{name}/{version}/{compiler.name}/{compiler.version}/{^mpi.name}/{^mpi.version}/{hash:7}'
+    build_jobs: 8
+    test_stage: /glade/scratch/$user/temp/spack-test
+    source_cache: /glade/scratch/$user/temp/spack-cache
+    build_stage:
+      - /glade/scratch/$user/temp/spack-stage
+  packages:
+    all:
+      compiler: [gcc@7.5.0, gcc, cce, nvhpc, intel]
+      providers:
+        mpi: [cray-mpich, openmpi]
+        szip: [libszip]
+      permissions:
+        read: world
+        write: user
+    cuda:
+      externals:
+        - spec: cuda@11.4.48
+          prefix: /glade/u/apps/dav/opt/cuda/11.4.0
+      buildable: false
+    pbspro:
+      externals:
+      - spec: pbspro@2021.1.1
+        prefix: /opt/pbs
+      buildable: false
+    intel:
+      externals:
+      - spec: intel@19.1.1.217%gcc@7.5.0
+        prefix: /glade/u/apps/opt/intel/2020u1/compilers_and_libraries/linux
+      buildable: false
+    nvhpc:
+      externals:
+      - spec: nvhpc@21.7%gcc@7.5.0
+        prefix: /glade/u/apps/opt/nvhpc/21.7/Linux_x86_64/21.7/compilers
+      buildable: false
+    cray-mpich:
+      externals:
+      - spec: cray-mpich@8.1.13 %gcc
+        prefix: /opt/cray/pe/mpich/8.1.13/ofi/gnu/9.1
+        modules:
+        - cray-mpich/8.1.13
+        - craype-network-ofi
+      - spec: cray-mpich@8.1.13 %cce
+        prefix: /opt/cray/pe/mpich/8.1.13/ofi/cray/10.0
+        modules:
+        - cray-mpich/8.1.13
+        - craype-network-ofi
+      - spec: cray-mpich@8.1.13 %nvhpc
+        prefix: /opt/cray/pe/mpich/8.1.13/ofi/nvidia/20.7
+        modules:
+        - cray-mpich/8.1.13
+        - craype-network-ofi
+      buildable: false
+    cray-fftw:
+      externals:
+      - spec: cray-fftw@3.3.8.12
+        modules:
+        - cray-fftw/3.3.8.12
+      buildable: false
+    cray-libsci:
+      externals:
+      - spec: cray-libsci@21.08.1.2
+        modules:
+        - cray-libsci/21.08.1.2
+      buildable: false
+    gcc:
+      compiler: [gcc@7.5.0]
+      variants: [+piclibs, 'languages=c,c++,fortran,go']
+    openmpi:
+      variants: [+cuda, fabrics=auto, schedulers=tm]
+    netcdf:
+      variants: [+dap, -mpi]
+    netcdf-c:
+      variants: [+dap, -mpi]
+    hdf5:
+      variants: [+hl, +szip, +fortran, +cxx, -mpi]
+    netcdf-cxx4:
+      variants: [-doxygen]
+    fftw:
+      variants: [-mpi]
+    eccodes:
+      variants: [+fortran, +netcdf, +png, jp2k=jasper]
+    curl:
+      variants: [tls=gnutls]
+  view: false
+  compilers:
+    - compiler:
+        paths:
+          cc: /usr/bin/gcc
+          cxx: /usr/bin/g++
+          f77: null
+          fc: null
+        operating_system: sles15
+        target: x86_64
+        modules: []
+        environment: {}
+        extra_rpaths: []
+        flags: {}
+        spec: gcc@7.5.0
+    - compiler:
+        spec: intel@19.1.1.217
+        paths:
+          cc: /glade/u/apps/opt/intel/2020u1/compilers_and_libraries/linux/bin/intel64/icc
+          cxx: /glade/u/apps/opt/intel/2020u1/compilers_and_libraries/linux/bin/intel64/icpc
+          f77: /glade/u/apps/opt/intel/2020u1/compilers_and_libraries/linux/bin/intel64/ifort
+          fc: /glade/u/apps/opt/intel/2020u1/compilers_and_libraries/linux/bin/intel64/ifort
+        flags: {}
+        operating_system: sles15
+        target: x86_64
+        modules: []
+        environment:
+          set:
+            INTEL_LICENSE_FILE: 28518@128.117.177.41
+          prepend_path:
+            LD_LIBRARY_PATH: /glade/u/apps/opt/intel/2020u1/compilers_and_libraries/linux/lib/intel64
+        extra_rpaths: []
+    - compiler:
+        spec: nvhpc@21.7
+        paths:
+          cc: /glade/u/apps/opt/nvhpc/21.7/Linux_x86_64/21.7/compilers/bin/nvc
+          cxx: /glade/u/apps/opt/nvhpc/21.7/Linux_x86_64/21.7/compilers/bin/nvc++
+          f77: /glade/u/apps/opt/nvhpc/21.7/Linux_x86_64/21.7/compilers/bin/nvfortran
+          fc: /glade/u/apps/opt/nvhpc/21.7/Linux_x86_64/21.7/compilers/bin/nvfortran
+        flags: {}
+        operating_system: sles15
+        target: x86_64
+        modules: []
+        environment:
+          set:
+            NVLOCALRC: /glade/u/apps/opt/nvhpc/21.7/localrc/casper
+        extra_rpaths: []
+  modules:
+    default::
+      roots:
+        lmod: %MODULESROOT%
+      arch_folder: false
+    enable::
+      - lmod
+    prefix_inspections:
+      bin:
+      - PATH
+      lib:
+      - NCAR_LDFLAGS_{name}
+      lib64:
+      - NCAR_LDFLAGS_{name}64
+      include:
+      - NCAR_INC_{name}
+      man:
+      - MANPATH
+      share/man:
+      - MANPATH
+      lib/pkgconfig:
+      - PKG_CONFIG_PATH
+      lib64/pkgconfig:
+      - PKG_CONFIG_PATH
+    lmod:
+      hierarchy:
+        - mpi
+      hash_length: 0
+      blacklist_implicits: true
+      blacklist:
+        - lmod
+        - netcdf-c
+        - netcdf-fortran
+        - netcdf-cxx4
+        - cray-mpich
+        - cray-libsci
+        - cray-fftw
+      whitelist:
+        - cmake
+        - git
+        - hdf5
+      all:
+        environment:
+          set:
+            NCAR_ROOT_{name}: '{prefix}'
+        template: ncar_default.lua
+      mpi:
+        template: ncar_wrapper_mpi.lua
+      intel:
+        environment:
+          set:
+            INTEL_LICENSE_FILE: 28518@128.117.177.41
+      nvhpc:
+        environment:
+          set:
+            NVLOCALRC: /glade/u/apps/opt/nvhpc/21.7/localrc/casperrc
+      ncarcompilers:
+        environment:
+          set:
+            NCAR_EXCLUDE_ASNEEDED: '1'
+            NCAR_WRAPPER_MPI: '{prefix.bin}/mpi'
+          prepend_path:
+            PATH: '{prefix.bin}/mpi'
+      netcdf:
+        environment:
+          set:
+            NETCDF: '{prefix}'
+        autoload: all
+      ncarenv:
+        template: ncar_env.lua
+      projections:
+        all: '{name}/{version}'
+        r: 'R/{version}'
+        parallel-netcdf: pnetcdf/{version}
+        fftw+mpi: fftw-mpi/{version}
+        netcdf+mpi: netcdf-mpi/{version}
+        hdf5+mpi: hdf5-mpi/{version}
+        netcdf: netcdf/{version}
+      core_compilers:
+        - gcc@7.5.0
+      core_specs:
+        - cuda
+        - r
+        - cmake %gcc@7.5.0
+        - git
+        - nco
+        - ncarenv
+        - wgrib2

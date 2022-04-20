@@ -1,0 +1,6 @@
+#!/bin/bash --noprofile
+
+export PATH=${NCAR_SPACK_PYDIR:+${NCAR_SPACK_PYDIR}:}/usr/local/bin:/usr/bin:/bin
+. $NCAR_SPACK_STARTUP
+spack env activate $NCAR_SPACK_ENV
+$*

@@ -1,0 +1,15 @@
+diff --git a/lib/spack/spack/util/gpg.py b/lib/spack/spack/util/gpg.py
+index b0a4b4e..3ad37df 100644
+--- a/lib/spack/spack/util/gpg.py
++++ b/lib/spack/spack/util/gpg.py
+@@ -371,8 +371,8 @@ def _socket_dir(gpgconf):
+ 
+     # If there is no suitable gpgconf, don't even bother trying to
+     # pre-create a user run dir.
+-    if not gpgconf:
+-        return None
++    #if not gpgconf:
++    return None
+ 
+     result = None
+     for var_run in ('/run', '/var/run'):

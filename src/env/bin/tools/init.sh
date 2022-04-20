@@ -9,17 +9,13 @@ function tsecho {
 if [[ $NCAR_SPACK_CLEAN != true ]]; then
     tsecho "Sanitizing user environment"
     export CUSTOM_SPACK_ROOT=$NCAR_SPACK_PUBLIC_ROOT/spack NCAR_SPACK_CLEAN=true
+
     $CUSTOM_SPACK_ROOT/bin/clean_bash $0 "$@"
     exit $?
-elif [[ -z $SPACK_ROOT ]]; then
+elif [[ -z $SPACK_ENV ]]; then
     set -e
     my_name=$(basename "$0")
     my_host=$(hostname)
-    
-    # Even though clean_bash uses the spack activation script
-    # as an RC file, this doesn't work when calling scripts
-    tsecho "Activating Spack installation environment"
-    . ${SPACK_STARTUP/.csh/.sh}
 
     tsecho "Activating Spack build environment"
     

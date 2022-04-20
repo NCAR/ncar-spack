@@ -1,0 +1,160 @@
+#!/bin/bash
+#
+#   This script copies relevant modules from the crayenv
+#   container environment into a curated tree
+#
+
+# CONFIGURABLES
+compilers="cce gcc"
+mpis="cray-mpich"
+skip_list="gcc/8.1.0"
+cray_network=ofi
+
+if [[ -z $SPACK_ENV ]]; then
+    2>&1 echo "Error: this script should be executed while build environment active"
+    exit 1
+fi
+
+log_active=0
+
+while [[ $# -gt 0 ]]; do
+    case $1 in
+        -v|--verbose)
+            log_active=1
+            ;;
+    esac
+
+    shift
+done
+
+function modify_comp {
+cat >> $1 << EOF
+
+# Ensure only one is loaded at time
+family compiler
+
+# Add compiler modules to MODULEPATH
+append-path MODULEPATH ${mod_root}/$mod_file
+
+# Set the PE, since this is the only setting from the PrgEnv module that matters
+setenv PE_ENV ${comp_pe[$mod]}
+EOF
+}
+
+function modify_mpi {
+cat >> $1 << EOF
+
+# Ensure only one is loaded at time
+family mpi
+
+# Add MPI modules to MODULEPATH
+set mpi_mod_path [ glob -- ${mod_root}/${mod_file}*/$comp ]
+append-path MODULEPATH [ lindex \$mpi_mod_path 0 ]
+
+# Use openfabrics
+setenv CRAYPE_NETWORK_TARGET $cray_network
+
+# Libfabric settings
+prepend-path PATH /opt/cray/libfabric/1.11.0.4.117/bin
+prepend-path LD_LIBRARY_PATH /opt/cray/libfabric/1.11.0.4.117/lib64
+prepend-path MANPATH /opt/cray/libfabric/1.11.0.4.117/share/man
+prepend-path PKG_CONFIG_PATH /opt/cray/libfabric/1.11.0.4.117/lib64/pkgconfig
+EOF
+
+# NOT CURRENTLY ACTIVE AS CRAY MPIS DO NOT PROVIDE WRAPPERS!
+# Make sure NCAR wrapper stays forward in the path
+#if { [ is-loaded ncarcompilers ] } {
+#    prepend-path PATH $env(NCAR_WRAPPER_MPI)
+#}
+#EOF
+}
+
+function modify_craype {
+cat >> $1 << EOF
+
+# CPU architecture specification 
+prepend-path     PE_PRODUCT_LIST CRAYPE_X86_SKYLAKE
+setenv           CRAY_CPU_TARGET x86-skylake
+
+# Cray XPMEM configuration
+prepend-path     PE_PKGCONFIG_PRODUCTS PE_XPMEM
+setenv           PE_XPMEM_PKGCONFIG_LIBS cray-xpmem
+setenv           CRAY_XPMEM_INCLUDE_OPTS -I/opt/cray/xpmem/2.2.40-2.1_6.3__g3cf3325.shasta/include
+setenv           CRAY_XPMEM_POST_LINK_OPTS -L/opt/cray/xpmem/2.2.40-2.1_6.3__g3cf3325.shasta/lib64
+
+# Make module "sticky" (need to --force to remove/purge)
+add-property lmod sticky
+EOF
+}
+
+function copy_mods {
+    for mod in ${mod_list[@]}; do
+        [[ $log_active == 1 ]] && echo "Cray module: $mod"
+        cd $1
+        
+        if [[ " $mpis " == *" $mod "* ]]; then
+            for comp in $comp_list; do
+                mod_path=$mod_root/$comp
+                mkdir -p $mod_path/$mod
+
+                for mod_file in $(ls -1 --color=never $mod/*); do
+                    if [[ " $skip_list " != *" $mod_file "* ]]; then
+                        cp $mod_file $mod_path/$mod
+                        [[ $log_active == 1 ]] && echo "  - modifying $mod_file for use as MPI library"
+                        modify_mpi $mod_path/$mod_file
+                    fi
+                done
+            done
+        else
+            mod_path=$mod_root/Core
+            mkdir -p $mod_path/$mod
+
+            for mod_file in $(ls -1 --color=never $mod/*); do
+                if [[ " $skip_list " != *" $mod_file "* ]]; then
+                    cp $mod_file $mod_path/$mod
+
+                    if [[ " $compilers " == *" $mod "* ]]; then
+                        [[ $log_active == 1 ]] && echo "  - modifying $mod_file for use as compiler"
+                        modify_comp $mod_path/$mod_file
+                        comp_list="$comp_list $mod_file"
+                    else
+                        case $mod in
+                            craype)
+                                modify_craype $mod_path/$mod_file
+                                ;;
+                        esac
+                    fi
+                fi
+            done
+        fi
+        
+        cd - > /dev/null
+    done
+}
+
+set -e
+
+# First, let's regenerate the Spack module tree cleanly
+if [[ $log_active == 1 ]]; then
+    spack module lmod refresh -y --delete-tree
+else
+    spack module lmod refresh -y --delete-tree > /dev/null
+fi
+
+mod_root=$SPACK_ENV/modules
+declare -A comp_pe
+comp_pe[cce]=CRAY
+comp_pe[gcc]=GNU
+
+mod_list=(  cce
+            gcc
+            craype
+            perftools-base
+            cray-mpich  )
+
+copy_mods /opt/cray/pe/modulefiles
+
+#mod_list=(  xpmem
+#            libfabric   )
+
+#copy_mods /opt/cray/modulefiles

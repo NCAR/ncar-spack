@@ -4,7 +4,7 @@
 #   a specified cluster definition. 
 #
 #   Author:         Brian Vanderwende
-#   Last Revised:   14:03, 24 Feb 2022
+#   Last Revised:   10:57, 18 Apr 2022
 #
 
 set -e
@@ -55,7 +55,7 @@ fi
 ## ---- INSTALL/CLONE SPACK FOR CLUSTER ----
 #
 
-if [[ -z $SPACK_STARTUP ]]; then 
+if [[ -z $NCAR_SPACK_STARTUP ]]; then 
     export CUSTOM_SPACK_ROOT=$NCAR_SPACK_PUBLIC_ROOT/spack
 
     if [[ -d $CUSTOM_SPACK_ROOT ]]; then
@@ -63,7 +63,7 @@ if [[ -z $SPACK_STARTUP ]]; then
         echo "    Please manually clean up if reinstall is desired"
     else
         # Install latest source from GitHub and checkout specified version
-        echo -e "Installing Spack into $CUSTOM_SPACK_ROOT ...\n"
+        echo "Installing Spack into $CUSTOM_SPACK_ROOT ..."
         git clone -c feature.manyFiles=true https://github.com/spack/spack.git $CUSTOM_SPACK_ROOT
         cd $CUSTOM_SPACK_ROOT
         git checkout $NCAR_SPACK_VERSION
@@ -74,7 +74,11 @@ if [[ -z $SPACK_STARTUP ]]; then
         done
 
         # Copy clean shell scripts to Spack bin
-        cp $NCAR_SPACK_DEPLOY_DIR/bin/clean* $CUSTOM_SPACK_ROOT/bin/
+        cp -r $NCAR_SPACK_DEPLOY_DIR/src/spack/* $CUSTOM_SPACK_ROOT/
+
+        if [[ -n $NCAR_SPACK_PYDIR ]]; then
+            sed -i "/^env_args=/a NCAR_SPACK_PYDIR=$NCAR_SPACK_PYDIR" $CUSTOM_SPACK_ROOT/bin/clean_bash
+        fi
 
         # Modify permissions according
         chgrp -R csgteam $CUSTOM_SPACK_ROOT
@@ -93,11 +97,11 @@ if [[ -z $SPACK_STARTUP ]]; then
     
     # Make sure environment is clean
     cd $NCAR_SPACK_DEPLOY_DIR
-    $NCAR_SPACK_DEPLOY_DIR/bin/clean_bash $0 "${user_args[@]}"
+    $CUSTOM_SPACK_ROOT/bin/clean_bash $0 "${user_args[@]}"
     exit $?
 else
     # Activate spack installation
-    . $SPACK_STARTUP
+    . $NCAR_SPACK_STARTUP
 fi
 
 #
@@ -118,10 +122,14 @@ echo "Creating env at $NCAR_SPACK_ENV_BUILD ..."
 # All spack needs for an env is a directory with spack.yaml
 mkdir -p $NCAR_SPACK_ENV_BUILD/logs
 cp clusters/$NCAR_SYS/spack.yaml $NCAR_SPACK_ENV_BUILD
-cp -r src/* $NCAR_SPACK_ENV_BUILD
+cp -r src/env/* $NCAR_SPACK_ENV_BUILD
 envsubst '$USER,$NCAR_SYS' < clusters/$NCAR_SYS/main.cfg > $NCAR_SPACK_ENV_BUILD/main.cfg
 cp clusters/$NCAR_SYS/packages.cfg $NCAR_SPACK_ENV_BUILD
 cp clusters/$NCAR_SYS/buildhosts.cfg $NCAR_SPACK_ENV_BUILD
+
+if [[ -f clusters/$NCAR_SYS/postprocess ]]; then
+    cp clusters/$NCAR_SYS/postprocess $NCAR_SPACK_ENV_BUILD/bin
+fi
 
 # Add relevant paths to spack.yaml
 sed -i "s|%INSTALLROOT%|${NCAR_SPACK_ENV_BUILD}/opt|" $NCAR_SPACK_ENV_BUILD/spack.yaml
@@ -143,6 +151,9 @@ if [[ -f clusters/$NCAR_SYS/externals.cfg ]]; then
     spack external find --not-buildable $(grep fixed clusters/$NCAR_SYS/externals.cfg | cut -d: -f2) 
     spack external find $(grep buildable clusters/$NCAR_SYS/externals.cfg | cut -d: -f2)
 fi
+
+# Detect available external compilers (e.g., Cray compilers)
+spack compiler find
 
 # Create mirror and prepare workshop to generate build_cache (binaries)
 spack config add "config:install_tree:padded_length:128"
@@ -175,6 +186,12 @@ if [[ ${skip_pkgs:-no} != yes ]]; then
     # Create modules in build environment
     echo "Generating modules in build environment ..."
     spack module lmod refresh -y
+
+    # Some clusters (e.g., Cray) need to run extra commands to prep environment
+    if [[ -f $NCAR_SPACK_ENV_BUILD/bin/postprocess ]]; then
+        echo "Running postprocessing on the build environment ..."
+        $NCAR_SPACK_ENV_BUILD/bin/postprocess
+    fi
 fi
 
 spack env deactivate
