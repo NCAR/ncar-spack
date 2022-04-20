@@ -29,7 +29,7 @@ else
     SHELL_INIT="/bin/bash --noprofile"
 
     if [[ $# -eq 0 ]]; then
-        env_args+=( PS1="\e[1;34m[clean]\e[0m ${NCAR_SPACK_PROMPT:-\W$ }" )
+        env_args+=( PS1="\[\e[1;34m\][clean]\[\e[0m\] ${NCAR_SPACK_PROMPT:-\W$ }" )
         SHELL_INIT="$SHELL_INIT --rcfile $NCAR_SPACK_ROOT/share/ncar/init.sh"
     else
         SHELL_INIT="BASH_ENV=$NCAR_SPACK_ROOT/share/ncar/init.sh $SHELL_INIT --norc"
