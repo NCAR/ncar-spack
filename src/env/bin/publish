@@ -16,7 +16,7 @@
 #           shell script. So we must activate in the script!
 #
 #   Author:         Brian Vanderwende
-#   Last Revised:   22:19, 24 Feb 2022
+#   Last Revised:   14:49, 21 Apr 2022
 #
 
 function create_gitignore {
@@ -53,7 +53,7 @@ export my_dir="$( cd "$(dirname "$0")" ; pwd )"
 . $my_dir/tools/init.sh
 
 tsecho "Testing build environment for unconcretized changes"
-conc_test=$(2>&1 spack concretize)
+conc_test=$(2>&1 taskset -c 0-7 spack concretize)
 
 if [[ -n $conc_test ]]; then
 cat << EOF
@@ -129,7 +129,7 @@ cat >> logs/concretize << EOF
    New packages concretized at $(date)
 =================================================
 
-$(2>&1 spack concretize)
+$(2>&1 taskset -c 0-7 spack concretize)
 
 EOF
 
@@ -181,3 +181,9 @@ echo
 # Create modules in build environment
 tsecho "Generating modules in public environment"
 spack module lmod refresh -y
+
+if [[ -f $NCAR_SPACK_ENV_BUILD/bin/postprocess ]]; then
+    tsecho "Running postprocessing script on environment"
+    export NCAR_SPACK_MODULEROOT
+    $NCAR_SPACK_ENV_BUILD/bin/postprocess
+fi

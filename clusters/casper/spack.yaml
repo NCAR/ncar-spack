@@ -176,7 +176,7 @@ spack:
       nvhpc:
         environment:
           set:
-            NVLOCALRC: /glade/u/apps/opt/nvhpc/21.7/localrc/casperrc
+            NVLOCALRC: /glade/u/apps/opt/nvhpc/21.7/localrc/casper
       ncarcompilers:
         environment:
           set:

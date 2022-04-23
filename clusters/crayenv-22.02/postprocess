@@ -16,11 +16,15 @@ if [[ -z $SPACK_ENV ]]; then
 fi
 
 log_active=0
+mod_root=${NCAR_SPACK_MODULEROOT:-$SPACK_ENV/modules}
 
 while [[ $# -gt 0 ]]; do
     case $1 in
         -v|--verbose)
             log_active=1
+            ;;
+        -c|--clean)
+            spack_flags=--delete-tree
             ;;
     esac
 
@@ -134,14 +138,15 @@ function copy_mods {
 
 set -e
 
-# First, let's regenerate the Spack module tree cleanly
-if [[ $log_active == 1 ]]; then
-    spack module lmod refresh -y --delete-tree
-else
-    spack module lmod refresh -y --delete-tree > /dev/null
+# First, let's make sure module tree exists
+if [[ ! -d $mod_root ]] || [[ -n $spack_flags ]]; then
+    if [[ $log_active == 1 ]]; then
+        spack module lmod refresh -y $spack_flags
+    else
+        spack module lmod refresh -y $spack_flags > /dev/null
+    fi
 fi
 
-mod_root=$SPACK_ENV/modules
 declare -A comp_pe
 comp_pe[cce]=CRAY
 comp_pe[gcc]=GNU

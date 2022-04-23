@@ -70,13 +70,9 @@ num_hosts=$(wc -w <<< $build_hosts)
 start_time=${NCAR_SPACK_DEPLOY_TIME:-$(date +%y%m%dT%H%M)}
 
 if [[ -n $build_jobs ]]; then
-    install_cmd="spack install -j $build_jobs"
+    build_cmd="spack install -j $build_jobs"
 else
-    install_cmd="spack install"
-fi
-
-if [[ $NCAR_SPACK_REUSE == true ]]; then
-    spec_opts="--reuse"
+    build_cmd="spack install"
 fi
 
 cat << EOF
@@ -87,11 +83,27 @@ Package manifest    = $pkg_manifest
 Jobs per host       = $jobs_per_host
 Jobs per process    = $jobs_per_proc
 Hosts               = $build_hosts
-Reuse mode          = ${NCAR_SPACK_REUSE:-false}
 
 Processing install manifest ...
 
 EOF
+
+function prepare_spec {
+    declare -g spec="$pkg" comp=${comp:-$install_compiler} mpi=${mpi:-$install_mpi}
+    [[ -n $comp ]] && spec="$(sed "s|%CMP%|%$comp|;t;s|$| %$comp|" <<< "$spec")"
+    [[ -n $mpi ]]  && spec="$(sed "s|%MPI%|^$mpi|;t;s|$| ^$mpi|" <<< "$spec")"
+    
+    while [[ $spec == *:* ]]; do
+        spec_opt="$(sed 's|.*<\([^>]*\)>.*|\1|' <<< "$spec")"
+        IFS=: read opt_type opt_body <<< "$spec_opt"
+
+        if [[ $comp == ${opt_type}* ]] || [[ $mpi == ${opt_type}* ]]; then
+            spec="${spec/<$spec_opt>/$opt_body}"
+        else
+            spec="${spec/<$spec_opt>}"
+        fi
+    done
+}
 
 function add_spec {
     if [[ $install_build == false ]]; then
@@ -106,7 +118,7 @@ function add_spec {
         fi
 
         tsecho "Adding spec   $GCOL$spec$BCOL$type_msg$DCOL to spack.yaml"
-        spack spec -I -N $spec_opts $spec &>> $log_dir/specs
+        spack spec -I -N $spec &>> $log_dir/specs
         spack add $spec &>> $log_dir/specs
         new_installs=true
 
@@ -115,6 +127,19 @@ function add_spec {
         fi
     fi
 
+    if [[ $install_type == mpi ]]; then
+        if [[ -n $comp ]]; then
+            type_msg=" (MPI)"
+            mpis[$comp]="${mpis[$comp]} ${pkg//[[:blank:]]/}"
+        else
+            2>&1 echo "Error: cannot install an MPI without setting a compiler!"
+            exit 1
+        fi
+    elif [[ $install_type == compiler ]]; then
+        compilers="$compilers ${pkg//[[:blank:]]/}"
+        type_msg=" (compiler)"
+    fi
+    
     unset type_msg
 }
 
@@ -124,9 +149,9 @@ function start_installs {
         
         # Spack might use too many CPUs on logins and get us killed
         if [[ $batch_job == true ]]; then
-            spack concretize $spec_opts &> /dev/null
+            spack concretize &> /dev/null
         else
-            taskset -c 0-7 spack concretize $spec_opts &> /dev/null
+            taskset -c 0-7 spack concretize &> /dev/null
         fi
 
         tsecho "Installing $1 using $num_hosts hosts"
@@ -140,9 +165,9 @@ function start_installs {
                 tsecho "Starting Spack with $install_jobs build jobs on $build_host"
                 
                 if [[ $build_host == localhost ]] || [[ $build_host == $my_host* ]]; then
-                    $install_cmd $spec_opts &>> $log_dir/${build_host}.p$hnum &
+                    $build_cmd &>> $log_dir/${build_host}.p$hnum &
                 else
-                    ssh -n $build_host $remote_env $my_dir/tools/remote_bash $install_cmd $spec_opts &>> $log_dir/${build_host}.p$hnum &
+                    ssh -n $build_host $remote_env $my_dir/tools/remote_bash $build_cmd &>> $log_dir/${build_host}.p$hnum &
                 fi
 
                 pids="$pids $!"
@@ -160,13 +185,43 @@ function start_installs {
     fi
 }
 
+function check_exclusions {
+    for espec in ${install_exclude/,/ }; do
+        if [[ $1 == ${espec}* ]]; then
+            return 1
+        fi
+    done
+}
+
+function define_items {
+    list_var=my_$1; unset $list_var
+    restrict_var=install_$1
+
+    if [[ -n ${!restrict_var} ]]; then
+        for item in $2; do
+            if [[ $item == ${!restrict_var}* ]]; then
+                if [[ -n $list_var ]]; then
+                    declare -g $list_var="${!list_var} $item"
+                else
+                    declare -g $list_var="$item"
+                fi
+            fi
+        done
+    else
+        declare -g $list_var="${2# }"
+    fi
+}
+
 # Pretty colors
 GCOL="\033[1;32m" BCOL="\033[1;34m" PCOL="\033[1;35m" DCOL="\033[0m"
+
+# MPI libraries for each compiler
+declare -A mpis
 
 while read pkg; do
     if [[ $pkg == \#* ]]; then
         continue
-    elif [[ $pkg == *:* ]]; then
+    elif [[ $pkg != *'<'* ]] && [[ $pkg == *:* ]]; then
         # If compilers were added, we need to add GCCs to compiler list
         if [[ $install_type == compiler ]]; then
             current_comps=$(spack config get compilers | grep spec | cut -d: -f2)
@@ -189,8 +244,11 @@ while read pkg; do
             start_installs packages
         fi
 
-        install_type= install_compiler= install_mpi= install_jobs=
-        install_build=true install_external= install_sync=
+        for ivar in ${!install_*}; do
+            unset $ivar
+        done
+        
+        install_build=true
 
         for mflag in $pkg; do
             case $mflag in
@@ -203,53 +261,30 @@ while read pkg; do
             esac
         done
     else
-        pkg=${pkg//[[:blank:]]/}
-
+        unset comp mpi
         case $install_mode in
             mdep)
-                for comp in ${install_compiler:-$compilers}; do
-                    for mpi in $mpis; do
-                        spec=$(sed "s|%CMP%|%$comp|;t;s|$| %$comp|" <<< "$pkg")
-                        spec=$(sed "s|%MPI%|^$mpi|;t;s|$| ^$mpi|" <<< "$spec")
+                define_items compilers "${install_compiler:-$compilers}"
+                for comp in $my_compilers; do
+                    check_exclusions $comp || continue
+                    define_items mpis "${mpis[$comp]}"
+                    for mpi in $my_mpis; do
+                        check_exclusions $mpi || continue
+                        prepare_spec
                         add_spec
                     done
                 done
                 ;;
             cdep)
-                if [[ $install_type == mpi ]]; then
-                    mpis="$mpis $pkg"
-                fi
-
-                for comp in $compilers; do
-                    spec=$(sed "s|%CMP%|%$comp|;t;s|$| %$comp|" <<< "$pkg")
-
-                    if [[ -n $install_mpi ]]; then
-                        spec=$(sed "s|%MPI%|^$install_mpi|;t;s|$| ^$install_mpi|" <<< "$spec")
-                    fi
-
-                    if [[ $install_type == mpi ]]; then
-                        type_msg=" (MPI)"
-                    fi
-
+                define_items compilers "$compilers"
+                for comp in $my_compilers; do
+                    check_exclusions $comp || continue
+                    prepare_spec
                     add_spec
                 done
                 ;;
             singleton)
-                spec="$pkg"
-
-                if [[ -n $install_compiler ]]; then
-                    spec=$(sed "s|%CMP%|%$install_compiler|;t;s|$| %$install_compiler|" <<< "$spec")
-                fi
-                
-                if [[ -n $install_mpi ]]; then
-                    spec=$(sed "s|%MPI%|^$install_mpi|;t;s|$| ^$install_mpi|" <<< "$spec")
-                fi
-
-                if [[ $install_type == compiler ]]; then
-                    compilers="$compilers $pkg"
-                    type_msg=" (compiler)"
-                fi
-
+                prepare_spec
                 add_spec
                 ;;
             *)

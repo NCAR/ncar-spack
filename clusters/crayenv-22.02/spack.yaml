@@ -138,7 +138,9 @@ spack:
         modules: []
         environment:
           set:
-            NVLOCALRC: /glade/u/apps/opt/nvhpc/21.7/localrc/casper
+            NVLOCALRC: /glade/u/apps/opt/nvhpc/21.7/localrc/crayenv
+          prepend_path:
+            LD_LIBRARY_PATH: /glade/u/apps/opt/nvhpc/21.7/Linux_x86_64/21.7/compilers/lib
         extra_rpaths: []
   modules:
     default::
@@ -178,7 +180,6 @@ spack:
         - cray-libsci
         - cray-fftw
       whitelist:
-        - cmake
         - git
         - hdf5
       all:
@@ -192,10 +193,18 @@ spack:
         environment:
           set:
             INTEL_LICENSE_FILE: 28518@128.117.177.41
+            PE_ENV: INTEL
+            INTEL_VERSION: '{version}'
+            INTEL_PATH: '{prefix}'
       nvhpc:
         environment:
           set:
-            NVLOCALRC: /glade/u/apps/opt/nvhpc/21.7/localrc/casperrc
+            NVLOCALRC: /glade/u/apps/opt/nvhpc/21.7/localrc/crayenv
+            PE_ENV: NVIDIA
+            NVIDIA_VERSION: '{version}'
+            NVIDIA_PATH: '{prefix}'
+          prepend_path:
+            LD_LIBRARY_PATH: /glade/u/apps/opt/nvhpc/21.7/Linux_x86_64/21.7/compilers/lib
       ncarcompilers:
         environment:
           set:
@@ -226,5 +235,4 @@ spack:
         - cmake %gcc@7.5.0
         - git
         - nco
-        - ncarenv
         - wgrib2
