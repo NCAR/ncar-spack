@@ -63,6 +63,11 @@ prepend-path PATH /opt/cray/libfabric/1.11.0.4.117/bin
 prepend-path LD_LIBRARY_PATH /opt/cray/libfabric/1.11.0.4.117/lib64
 prepend-path MANPATH /opt/cray/libfabric/1.11.0.4.117/share/man
 prepend-path PKG_CONFIG_PATH /opt/cray/libfabric/1.11.0.4.117/lib64/pkgconfig
+
+# PALS support
+prepend-path PATH /opt/cray/pe/pals/1.1.4/bin
+prepend-path MANPATH /opt/cray/pe/pals/1.1.4/man
+set-alias mpirun mpiexec
 EOF
 
 # NOT CURRENTLY ACTIVE AS CRAY MPIS DO NOT PROVIDE WRAPPERS!
