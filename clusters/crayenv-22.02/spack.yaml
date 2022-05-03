@@ -78,7 +78,7 @@ spack:
       compiler: [gcc@7.5.0]
       variants: [+piclibs, 'languages=c,c++,fortran,go']
     openmpi:
-      variants: [+cuda, fabrics=auto]
+      variants: [+cuda, fabrics=auto, schedulers=tm]
     netcdf:
       variants: [+dap, -mpi]
     netcdf-c:

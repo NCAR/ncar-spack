@@ -184,6 +184,5 @@ spack module lmod refresh -y
 
 if [[ -f $NCAR_SPACK_ENV_BUILD/bin/postprocess ]]; then
     tsecho "Running postprocessing script on environment"
-    export NCAR_SPACK_MODULEROOT
-    $NCAR_SPACK_ENV_BUILD/bin/postprocess
+    NCAR_SPACK_ENV_TYPE=public $NCAR_SPACK_ENV_BUILD/bin/postprocess
 fi

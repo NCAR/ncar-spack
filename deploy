@@ -4,7 +4,7 @@
 #   a specified cluster definition. 
 #
 #   Author:         Brian Vanderwende
-#   Last Revised:   10:57, 18 Apr 2022
+#   Last Revised:   12:20, 03 May 2022
 #
 
 set -e
@@ -22,7 +22,7 @@ while [[ $# -gt 0 ]]; do
     key="$1"
 
     case $key in
-        --no-pkgs)
+        --no-pkgs|--nopkgs)
             skip_pkgs=yes
             ;;
         *)

@@ -5,18 +5,22 @@
 #
 
 # CONFIGURABLES
-compilers="cce gcc"
+compilers="cce gcc nvhpc"
 mpis="cray-mpich"
 skip_list="gcc/8.1.0"
 cray_network=ofi
 
-if [[ -z $SPACK_ENV ]]; then
-    2>&1 echo "Error: this script should be executed while build environment active"
-    exit 1
-fi
+# Perform common script setup including environment checks
+export my_dir="$( cd "$(dirname "$0")" ; pwd )"
+. $my_dir/tools/init.sh
 
 log_active=0
-mod_root=${NCAR_SPACK_MODULEROOT:-$SPACK_ENV/modules}
+
+if [[ $SPACK_ENV == $NCAR_SPACK_ENV_PUBLIC ]]; then
+    mod_root=$NCAR_SPACK_MODULEROOT
+else
+    mod_root=$SPACK_ENV/modules
+fi
 
 while [[ $# -gt 0 ]]; do
     case $1 in
@@ -98,10 +102,10 @@ EOF
 
 function copy_mods {
     for mod in ${mod_list[@]}; do
-        [[ $log_active == 1 ]] && echo "Cray module: $mod"
-        cd $1
+        [[ $log_active == 1 ]] && echo "Package: $mod"
+        cd $2
         
-        if [[ " $mpis " == *" $mod "* ]]; then
+        if [[ $1 == cdep ]]; then
             for comp in $comp_list; do
                 mod_path=$mod_root/$comp
                 mkdir -p $mod_path/$mod
@@ -109,8 +113,11 @@ function copy_mods {
                 for mod_file in $(ls -1 --color=never $mod/*); do
                     if [[ " $skip_list " != *" $mod_file "* ]]; then
                         cp $mod_file $mod_path/$mod
-                        [[ $log_active == 1 ]] && echo "  - modifying $mod_file for use as MPI library"
-                        modify_mpi $mod_path/$mod_file
+
+                        if [[ " $mpis " == *" $mod "* ]]; then
+                            [[ $log_active == 1 ]] && echo "  - modifying $mod_file for use as MPI library"
+                            modify_mpi $mod_path/$mod_file
+                        fi
                     fi
                 done
             done
@@ -118,14 +125,13 @@ function copy_mods {
             mod_path=$mod_root/Core
             mkdir -p $mod_path/$mod
 
-            for mod_file in $(ls -1 --color=never $mod/*); do
+            for mod_file in $(ls -1 --color=never $mod/* 2> /dev/null); do
                 if [[ " $skip_list " != *" $mod_file "* ]]; then
                     cp $mod_file $mod_path/$mod
 
                     if [[ " $compilers " == *" $mod "* ]]; then
                         [[ $log_active == 1 ]] && echo "  - modifying $mod_file for use as compiler"
                         modify_comp $mod_path/$mod_file
-                        comp_list="$comp_list $mod_file"
                     else
                         case $mod in
                             craype)
@@ -135,6 +141,17 @@ function copy_mods {
                     fi
                 fi
             done
+
+            if [[ " $compilers " == *" $mod "* ]]; then
+                cd $mod_path
+                for mod_file in $(ls -1 --color=never $mod/* 2> /dev/null); do
+		    mod_file=${mod_file%.lua}
+                    if [[ " $skip_list " != *" $mod_file "* ]]; then
+                        comp_list="$comp_list $mod_file"
+                    fi
+                done
+                cd - > /dev/null
+            fi
         fi
         
         cd - > /dev/null
@@ -152,19 +169,21 @@ if [[ ! -d $mod_root ]] || [[ -n $spack_flags ]]; then
     fi
 fi
 
+[[ $log_active == 1 ]] && echo "Copying modules to $mod_root ..."
+
 declare -A comp_pe
 comp_pe[cce]=CRAY
 comp_pe[gcc]=GNU
 
 mod_list=(  cce
             gcc
+            nvhpc
             craype
-            perftools-base
-            cray-mpich  )
+            perftools-base )
 
-copy_mods /opt/cray/pe/modulefiles
+copy_mods core /opt/cray/pe/modulefiles
 
-#mod_list=(  xpmem
-#            libfabric   )
+mod_list=(  cray-mpich
+            cray-libsci )
 
-#copy_mods /opt/cray/modulefiles
+copy_mods cdep /opt/cray/pe/modulefiles
