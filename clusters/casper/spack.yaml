@@ -189,6 +189,10 @@ spack:
           set:
             NETCDF: '{prefix}'
         autoload: all
+      parallel-netcdf:
+        environment:
+          set:
+            PNETCDF: '{prefix}'
       ncarenv:
         template: ncar_env.lua
       projections:
