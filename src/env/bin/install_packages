@@ -108,22 +108,46 @@ function prepare_spec {
 function add_spec {
     if [[ $install_build == false ]]; then
         tsecho "Skipping spec $PCOL$spec$BCOL$type_msg$DCOL (reason: build=false specified)"
-    elif spack find $spec &> /dev/null; then
-        tsecho "Skipping spec $PCOL$spec$BCOL$type_msg$DCOL (reason: already installed)"
     else
-        # Ensure log directories are present
-        if [[ -z $log_dir ]]; then
-            log_dir=$SPACK_ENV/logs/installs.$start_time
-            mkdir -p $log_dir
+        skip_spec=false
+        set +e
+
+        if [[ -f $my_dir/.cache ]]; then
+            spec_hash=$(grep "^${spec}:" $my_dir/.cache | cut -d: -f2)
         fi
 
-        tsecho "Adding spec   $GCOL$spec$BCOL$type_msg$DCOL to spack.yaml"
-        spack spec -I -N $spec &>> $log_dir/specs
-        spack add $spec &>> $log_dir/specs
-        new_installs=true
+        if [[ -n $spec_hash ]] && grep -q $spec_hash $SPACK_ENV/spack.lock; then
+            skip_spec=true
+        else
+            spack_find_out=$(spack find -L $spec)
 
-        if [[ $spec == lmod* ]]; then
-            new_lmod=true
+            if [[ $? == 0 ]]; then
+                echo "${spec}:$(tail -n1 <<< $spack_find_out | cut -d' ' -f1)" >> $my_dir/.cache
+                skip_spec=true
+            else
+                sed -i "/.*${spec_hash}/d" $my_dir/.cache
+            fi
+        fi
+
+        set -e
+
+        if [[ $skip_spec == true ]]; then
+            tsecho "Skipping spec $PCOL$spec$BCOL$type_msg$DCOL (reason: already installed)"
+        else
+            # Ensure log directories are present
+            if [[ -z $log_dir ]]; then
+                log_dir=$SPACK_ENV/logs/installs.$start_time
+                mkdir -p $log_dir
+            fi
+
+            tsecho "Adding spec   $GCOL$spec$BCOL$type_msg$DCOL to spack.yaml"
+            spack spec -I -N $spec &>> $log_dir/specs
+            spack add $spec &>> $log_dir/specs
+            new_installs=true
+
+            if [[ $spec == lmod* ]]; then
+                new_lmod=true
+            fi
         fi
     fi
 
