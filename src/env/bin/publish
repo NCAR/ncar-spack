@@ -16,7 +16,7 @@
 #           shell script. So we must activate in the script!
 #
 #   Author:         Brian Vanderwende
-#   Last Revised:   14:49, 21 Apr 2022
+#   Last Revised:   17:17, 18 May 2022
 #
 
 function create_gitignore {
@@ -51,6 +51,16 @@ fi
 # Perform common script setup including environment checks
 export my_dir="$( cd "$(dirname "$0")" ; pwd )"
 . $my_dir/tools/init.sh
+
+while [[ $# -gt 0 ]]; do
+    case $1 in
+        -f|--force)
+            force_commit=true
+            ;;
+    esac
+
+    shift
+done
 
 tsecho "Testing build environment for unconcretized changes"
 conc_test=$(2>&1 taskset -c 0-7 spack concretize)
@@ -97,8 +107,12 @@ if [[ -d $NCAR_SPACK_ENV_PUBLIC ]]; then
     # TODO: Add git pull here 
     
     if cmp $NCAR_SPACK_ENV_BUILD/.prototype/spack.yaml spack.yaml >& /dev/null; then
-        echo "No changes detected from public environment"
-        exit 0
+        if [[ $force_commit == true ]]; then
+            tsecho "No new packages but proceeding anyway (--force option enabled)"
+        else
+            echo -e "\nNo changes detected from public environment; exiting."
+            exit 0
+        fi
     fi
 else
     tsecho "Initializing public environment and tracking repo"
