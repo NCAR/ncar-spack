@@ -23,7 +23,7 @@ export INSTALLPATH_ROOT=$pkg_root
 export MODULEPATH_ROOT=$module_root
 
 # Lmod configuration
-export LMOD_SYSTEM_NAME=$NCAR_HOST
+export LMOD_SYSTEM_NAME=$NCAR_SPACK_HOST
 export LMOD_SYSTEM_DEFAULT_MODULES="$NCAR_SPACK_DEFAULT_MODULES"
 export MODULEPATH=$module_root/Core
 
@@ -69,7 +69,7 @@ setenv INSTALLPATH_ROOT $pkg_root
 setenv MODULEPATH_ROOT $module_root
 
 # Lmod configuration
-setenv LMOD_SYSTEM_NAME $NCAR_HOST
+setenv LMOD_SYSTEM_NAME $NCAR_SPACK_HOST
 setenv LMOD_SYSTEM_DEFAULT_MODULES "$NCAR_SPACK_DEFAULT_MODULES"
 setenv MODULEPATH $module_root/Core
 
