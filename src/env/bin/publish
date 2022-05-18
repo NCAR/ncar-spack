@@ -16,7 +16,7 @@
 #           shell script. So we must activate in the script!
 #
 #   Author:         Brian Vanderwende
-#   Last Revised:   17:17, 18 May 2022
+#   Last Revised:   17:29, 18 May 2022
 #
 
 function create_gitignore {
@@ -35,19 +35,6 @@ git add .gitignore
 ## ---- INITIALIZATION ----
 #
 
-if [[ $# -eq 1 ]]; then
-commit_msg="$1"
-else
-cat << EOF
-Error:  You must provide a commit message as the only argument to this
-        script. Make sure to put the message in quotes.
-
-Usage:  publish "new install of very cool modules"
-
-EOF
-exit 1
-fi
-
 # Perform common script setup including environment checks
 export my_dir="$( cd "$(dirname "$0")" ; pwd )"
 . $my_dir/tools/init.sh
@@ -57,10 +44,24 @@ while [[ $# -gt 0 ]]; do
         -f|--force)
             force_commit=true
             ;;
+        *)
+            commit_msg="$1"
+            ;;
     esac
 
     shift
 done
+
+if [[ -z $commit_msg ]]; then
+cat << EOF
+Error:  You must provide a commit message as the only argument to this
+        script. Make sure to put the message in quotes.
+
+Usage:  publish "new install of very cool modules"
+
+EOF
+exit 1
+fi
 
 tsecho "Testing build environment for unconcretized changes"
 conc_test=$(2>&1 taskset -c 0-7 spack concretize)
