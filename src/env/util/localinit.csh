@@ -9,7 +9,7 @@ setenv MODULEPATH_ROOT ${LMOD_SPACK_ENV_ROOT}/modules
 # Lmod configuration
 setenv LMOD_SYSTEM_NAME %LMODSYS%
 setenv LMOD_SYSTEM_DEFAULT_MODULES "%DEFMODS%"
-setenv MODULEPATH `echo $MODULEPATH_ROOT/Core`
+setenv MODULEPATH `echo $MODULEPATH_ROOT/environment`
 
 # Get location of Lmod initialization scripts
 setenv LMOD_ROOT `/bin/bash -c ". $LMOD_SPACK_ROOT/share/spack/setup-env.sh; spack env activate $LMOD_SPACK_ENV_ROOT; spack location -i lmod"`

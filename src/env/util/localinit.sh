@@ -9,7 +9,7 @@ export MODULEPATH_ROOT=$LMOD_SPACK_ENV_ROOT/modules
 # Lmod configuration
 export LMOD_SYSTEM_NAME=%LMODSYS%
 export LMOD_SYSTEM_DEFAULT_MODULES="%DEFMODS%"
-export MODULEPATH=`echo $MODULEPATH_ROOT/Core`
+export MODULEPATH=`echo $MODULEPATH_ROOT/environment`
 
 # Get location of Lmod initialization scripts
 LMOD_ROOT=$(. $LMOD_SPACK_ROOT/share/spack/setup-env.sh; spack env activate $LMOD_SPACK_ENV_ROOT; spack location -i lmod)

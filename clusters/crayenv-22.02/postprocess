@@ -187,3 +187,23 @@ mod_list=(  cray-mpich
             cray-libsci )
 
 copy_mods cdep /opt/cray/pe/modulefiles
+
+# Make sure the meta-modules exist
+cray_mpath=/opt/cray/pe/modulefiles:/opt/cray/modulefiles:/opt/modulefiles:/opt/cray/pe/perftools/default/modulefiles:/opt/cray/pe/modulefiles:/opt/cray/pe/craype-targets/1.4.0/modulefiles:/opt/cray/modulefiles:/opt/cray/pe/craype/2.7.9/modulefiles
+
+for mm_type in ncarenv crayenv; do
+    mkdir -p $mod_root/environment/$mm_type
+    mm_src=$NCAR_SPACK_ENV_BUILD/modules/${mm_type}.lua
+    mm_file=$mod_root/environment/$mm_type/${NCAR_HOST_VERSION}.lua
+
+    if [[ ! -f $mm_file ]]; then
+        if [[ $mm_type == ncarenv ]]; then
+            sed "s|%MODPATH%|${mod_root}/Core|g" $mm_src > $mm_file
+        else
+            sed "s|%MODPATH%|${cray_mpath}|g" $mm_src > $mm_file
+        fi
+
+        sed -i "s|%VERSION%|${NCAR_HOST_VERSION}|g" $mm_file
+        sed -i "s|%DATE%|$(date)|g" $mm_file
+    fi
+done
