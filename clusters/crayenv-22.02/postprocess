@@ -96,7 +96,7 @@ setenv           CRAY_XPMEM_INCLUDE_OPTS -I/opt/cray/xpmem/2.2.40-2.1_6.3__g3cf3
 setenv           CRAY_XPMEM_POST_LINK_OPTS -L/opt/cray/xpmem/2.2.40-2.1_6.3__g3cf3325.shasta/lib64
 
 # Make module "sticky" (need to --force to remove/purge)
-add-property lmod sticky
+# add-property lmod sticky
 EOF
 }
 
