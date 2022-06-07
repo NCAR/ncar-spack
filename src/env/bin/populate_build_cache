@@ -35,13 +35,19 @@ done
 export my_dir="$( cd "$(dirname "$0")" ; pwd )"
 . $my_dir/tools/init.sh
 
+log_dir=$SPACK_ENV/logs
+mkdir -p $log_dir
+log_file=$log_dir/cache.$start_time
+cache_cmd="spack buildcache create -a"
+
 pkglist=$(spack find -L -p | awk -v envpath=${SPACK_ENV}/opt '$3~envpath { print $1 }')
 cachelist=$(ls ${mirror_path:-$NCAR_SPACK_MIRROR}/build_cache/ 2> /dev/null)
 
 for pkg in $pkglist; do
     if [[ $cachelist != *$pkg* ]]; then
         pkg_label=$(spack find --no-groups -f --show-full-compiler -v /$pkg | tail -n1)
-        echo -e "\n==> Creating binary package for: $pkg_label"
-        spack buildcache create -a -d ${mirror_path:-$NCAR_SPACK_MIRROR} --only=package /$pkg
+        tsecho "Creating binary package for $pkg_label"
+        log_cmd "$cache_cmd -d ${mirror_path:-$NCAR_SPACK_MIRROR} --only=package /$pkg" >> $log_file
+        $cache_cmd -d ${mirror_path:-$NCAR_SPACK_MIRROR} --only=package /$pkg &>> $log_file
     fi
 done

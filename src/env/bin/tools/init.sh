@@ -4,6 +4,16 @@ function tsecho {
     echo -e "$(date +%FT%T) - $1 ..."
 }
 
+function log_cmd {
+cat << EOF
+
+=====
+$1
+=====
+
+EOF
+}
+
 . $my_dir/../main.cfg
 
 if [[ $NCAR_SPACK_CLEAN != true ]]; then
@@ -17,6 +27,7 @@ elif [[ -z $SPACK_ENV ]]; then
     my_name=$(basename "$0")
     my_host=$(hostname)
     my_env_type=${NCAR_SPACK_ENV_TYPE:-build}
+    export start_time=${NCAR_SPACK_DEPLOY_TIME:-$(date +%y%m%dT%H%M)}
 
     tsecho "Activating Spack $my_env_type environment"
     

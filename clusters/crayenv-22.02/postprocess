@@ -96,7 +96,7 @@ setenv           CRAY_XPMEM_INCLUDE_OPTS -I/opt/cray/xpmem/2.2.40-2.1_6.3__g3cf3
 setenv           CRAY_XPMEM_POST_LINK_OPTS -L/opt/cray/xpmem/2.2.40-2.1_6.3__g3cf3325.shasta/lib64
 
 # Make module "sticky" (need to --force to remove/purge)
-# add-property lmod sticky
+add-property lmod sticky
 EOF
 }
 
@@ -144,12 +144,13 @@ function copy_mods {
 
             if [[ " $compilers " == *" $mod "* ]]; then
                 cd $mod_path
-                for mod_file in $(ls -1 --color=never $mod/* 2> /dev/null); do
-		    mod_file=${mod_file%.lua}
-                    if [[ " $skip_list " != *" $mod_file "* ]]; then
-                        comp_list="$comp_list $mod_file"
-                    fi
-                done
+                    for mod_file in $(ls -1 --color=never $mod/* 2> /dev/null); do
+                        mod_file=${mod_file%.lua}
+                        
+                        if [[ " $skip_list " != *" $mod_file "* ]]; then
+                            comp_list="$comp_list $mod_file"
+                        fi
+                    done
                 cd - > /dev/null
             fi
         fi
@@ -193,12 +194,13 @@ cray_mpath=/opt/cray/pe/modulefiles:/opt/cray/modulefiles:/opt/modulefiles:/opt/
 
 for mm_type in ncarenv crayenv; do
     mkdir -p $mod_root/environment/$mm_type
-    mm_src=$NCAR_SPACK_ENV_BUILD/modules/${mm_type}.lua
+    mm_src=$NCAR_SPACK_ENV_BUILD/templates/modules/${mm_type}.lua
     mm_file=$mod_root/environment/$mm_type/${NCAR_SPACK_HOST_VERSION}.lua
 
     if [[ ! -f $mm_file ]]; then
         if [[ $mm_type == ncarenv ]]; then
             sed "s|%MODPATH%|${mod_root}/Core|g" $mm_src > $mm_file
+            sed -i "s|%VIEWROOT%|${view_root}|g" $mm_file
         else
             sed "s|%MODPATH%|${cray_mpath}|g" $mm_src > $mm_file
         fi

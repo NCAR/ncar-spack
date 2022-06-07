@@ -2,13 +2,11 @@
 
 function usage {
 cat << EOF
-Usage: $0 [-H HOSTFILE] [-j JOBS] [-p JOBS] [MANIFEST]
+Usage: $0 [MANIFEST]
 
 Options
-    -H, --hostfile          a line-by-line file containing hosts to use
-    -j, --jobs-per-host     number of build jobs to run on each host
-    -p, --jobs-per-proc     number of build jobs to run per Spack process/instance
-                            (must be less or equal to jobs per host)
+    -h                      show this help message
+    -j, --buildjobs         number of build jobs to run (otherwise will use env default)
 
 EOF
 exit
@@ -25,31 +23,16 @@ my_host=$(hostname)
 
 # Defaults
 pkg_manifest=$SPACK_ENV/packages.cfg
-jobs_per_host=$(spack config get config | sed -n 's/^[ ]*build_jobs: \(.*\)/\1/p')
-jobs_per_proc=8
-remote_env="NCAR_SPACK_ENV=$SPACK_ENV NCAR_SPACK_STARTUP=$NCAR_SPACK_STARTUP NCAR_SPACK_PYDIR=$NCAR_SPACK_PYDIR"
-
-# See if it's a PBS job and use values
-if [[ -n $PBS_NODEFILE ]]; then
-    jobs_per_host=$NCPUS
-    build_hosts=$(uniq $PBS_NODEFILE | xargs)
-    batch_job=true
-else
-    build_hosts=$(uniq $SPACK_ENV/buildhosts.cfg | xargs)
-fi
+build_jobs=$(spack config get config | sed -n 's/^[ ]*build_jobs: \(.*\)/\1/p')
+unset cache_label
 
 while [[ $# -gt 0 ]]; do
     case $1 in
-        -j|--jobs-per-host)
-            jobs_per_host=$2
-            shift
+        -c|--cache-only)
+            cache_label=" (cached)"
             ;;
-        -p|--jobs-per-proc)
-            jobs_per_proc=$2
-            shift
-            ;;
-        -H|--hostfile)
-            build_hosts=$(uniq $2 | xargs)
+        -j|--buildjobs)
+            build_jobs=$2
             shift
             ;;
         *)
@@ -60,14 +43,7 @@ while [[ $# -gt 0 ]]; do
     shift
 done
 
-if [[ $jobs_per_proc -gt $jobs_per_host ]]; then
-    jobs_per_proc=$jobs_per_host
-    2>&1 echo "Error: jobs per Spack process ($jobs_per_proc) must be <= jobs per host ($jobs_per_host)"
-    exit
-fi
-
-num_hosts=$(wc -w <<< $build_hosts)
-start_time=${NCAR_SPACK_DEPLOY_TIME:-$(date +%y%m%dT%H%M)}
+spec_cmd="spack spec -I -N -t -l -c edges"
 
 if [[ -n $build_jobs ]]; then
     build_cmd="spack install -j $build_jobs"
@@ -75,14 +51,20 @@ else
     build_cmd="spack install"
 fi
 
+if [[ -n $cache_label ]]; then
+    build_cmd="$build_cmd --cache-only"
+fi
+
+# Detect version of system GCC
+sys_gcc=$(gcc -v |& grep "gcc version" | cut -d' ' -f3)
+
 cat << EOF
 
 Start time          = $start_time
 Spack environment   = $SPACK_ENV
 Package manifest    = $pkg_manifest
-Jobs per host       = $jobs_per_host
-Jobs per process    = $jobs_per_proc
-Hosts               = $build_hosts
+Build jobs          = $build_jobs
+System GCC          = gcc@$sys_gcc
 
 Processing install manifest ...
 
@@ -90,8 +72,9 @@ EOF
 
 function prepare_spec {
     declare -g spec="$pkg" comp=${comp:-$install_compiler} mpi=${mpi:-$install_mpi}
-    [[ -n $comp ]] && spec="$(sed "s|%CMP%|%$comp|;t;s|$| %$comp|" <<< "$spec")"
-    [[ -n $mpi ]]  && spec="$(sed "s|%MPI%|^$mpi|;t;s|$| ^$mpi|" <<< "$spec")"
+    [[ -n $comp ]] && spec="$(sed "s|%CMP%|%$comp|g;t;s|$| %$comp|" <<< "$spec")"
+    [[ -n $mpi ]]  && spec="$(sed "s|%MPI%|^$mpi|g;t;s|$| ^$mpi|" <<< "$spec")"
+    spec="$(sed -r "s/%gcc( |$)/%gcc@${sys_gcc}\1/g" <<< "$spec")"
     
     while [[ $spec == *:* ]]; do
         spec_opt="$(sed 's|.*<\([^>]*\)>.*|\1|' <<< "$spec")"
@@ -105,45 +88,46 @@ function prepare_spec {
     done
 }
 
-function add_spec {
+function check_spec {
     if [[ $install_build == false ]]; then
-        tsecho "Skipping spec $PCOL$spec$BCOL$type_msg$DCOL (reason: build=false specified)"
+        tsecho "Skipping spec   $PCOL$spec$BCOL$type_msg$DCOL (reason: build=false specified)"
     else
         skip_spec=false
         set +e
 
-        if [[ -f $my_dir/.cache ]]; then
-            spec_hash=$(grep "^${spec}:" $my_dir/.cache | cut -d: -f2)
+        if [[ -f $SPACK_ENV/.installs ]]; then
+            spec_hash=$(grep "^${spec}:" $SPACK_ENV/.installs | cut -d: -f2)
         fi
 
-        if [[ -n $spec_hash ]] && grep -q $spec_hash $SPACK_ENV/spack.lock; then
-            skip_spec=true
+        if [[ -n $spec_hash ]]; then
+            if grep -q $spec_hash $SPACK_ENV/spack.lock; then
+                skip_spec=true
+            else
+                sed -i "/.*${spec_hash}/d" $SPACK_ENV/.installs
+            fi
         else
             spack_find_out=$(spack find -L $spec)
 
             if [[ $? == 0 ]]; then
-                echo "${spec}:$(tail -n1 <<< $spack_find_out | cut -d' ' -f1)" >> $my_dir/.cache
+                echo "${spec}:$(tail -n1 <<< $spack_find_out | cut -d' ' -f1)" >> $SPACK_ENV/.installs
                 skip_spec=true
-            else
-                sed -i "/.*${spec_hash}/d" $my_dir/.cache
             fi
         fi
 
         set -e
 
         if [[ $skip_spec == true ]]; then
-            tsecho "Skipping spec $PCOL$spec$BCOL$type_msg$DCOL (reason: already installed)"
+            tsecho "Skipping spec   $PCOL$spec$BCOL$type_msg$DCOL (reason: already installed)"
         else
-            # Ensure log directories are present
-            if [[ -z $log_dir ]]; then
-                log_dir=$SPACK_ENV/logs/installs.$start_time
-                mkdir -p $log_dir
+            if [[ -n $install_type ]]; then
+                tsecho "Installing spec $GCOL$spec $BCOL(${install_type})$DCOL$cache_label"
+            else
+                tsecho "Installing spec $GCOL$spec$DCOL$cache_label"
             fi
 
-            tsecho "Adding spec   $GCOL$spec$BCOL$type_msg$DCOL to spack.yaml"
-            spack spec -I -N $spec &>> $log_dir/specs
-            spack add $spec &>> $log_dir/specs
-            new_installs=true
+            log_cmd "$spec_cmd $spec" >> $log_specs
+            $spec_cmd $spec &>> $log_specs
+            install_spec
 
             if [[ $spec == lmod* ]]; then
                 new_lmod=true
@@ -153,59 +137,48 @@ function add_spec {
 
     if [[ $install_type == mpi ]]; then
         if [[ -n $comp ]]; then
-            type_msg=" (MPI)"
-            mpis[$comp]="${mpis[$comp]} ${pkg//[[:blank:]]/}"
+            mpis[$comp]="${mpis[$comp]} ${spec//[[:blank:]]/}"
         else
             2>&1 echo "Error: cannot install an MPI without setting a compiler!"
             exit 1
         fi
     elif [[ $install_type == compiler ]]; then
-        compilers="$compilers ${pkg//[[:blank:]]/}"
-        type_msg=" (compiler)"
+        if [[ $spec == gcc* ]]; then
+            compilers="${spec//[[:blank:]]/} $compilers"
+        else
+            compilers="$compilers ${spec//[[:blank:]]/}"
+        fi
     fi
-    
-    unset type_msg
 }
 
-function start_installs {
-    if [[ $new_installs == true ]]; then
-        tsecho "Concretizing new specs"
-        
-        # Spack might use too many CPUs on logins and get us killed
-        if [[ $batch_job == true ]]; then
-            spack concretize &> /dev/null
-        else
-            taskset -c 0-7 spack concretize &> /dev/null
+function install_spec {
+    # Install the package and view pertinent log information
+    log_cmd "$build_cmd $spec" >> $log_installs
+    $build_cmd $spec |& tee -a $log_installs | stdbuf -oL sed 's/^/   /'    \
+            | (grep -e "Executing phase" -e "Successfully installed"        \
+            -e " Total: " -e " from binary cache" || true)
+
+    if [[ ${PIPESTATUS[0]} -ne 0 ]]; then
+        echo -e "\nError: install of package $spec failed! Aborting installs ...\n"
+        exit 1
+    fi
+
+    # Register the compiler in the YAML file if GCC or vendor module
+    if [[ $install_type == compiler ]]; then
+        if [[ -z $current_comps ]]; then
+            current_comps=$(spack config get compilers | grep spec | cut -d: -f2)
         fi
 
-        tsecho "Installing $1 using $num_hosts hosts"
-        install_jobs=$(sed "s/max/$jobs_per_host/" <<< ${install_jobs:-$jobs_per_proc})
-        SECONDS=0
+        if [[ $current_comps != *${spec//[[:blank:]]/}* ]]; then
+            tsecho "Registering $spec as a compiler in spack.yaml"
 
-        for build_host in $build_hosts; do
-            host_slots=$jobs_per_host hnum=1
-
-            while [[ $host_slots -ge $jobs_per_proc ]]; do
-                tsecho "Starting Spack with $install_jobs build jobs on $build_host"
-                
-                if [[ $build_host == localhost ]] || [[ $build_host == $my_host* ]]; then
-                    $build_cmd &>> $log_dir/${build_host}.p$hnum &
-                else
-                    ssh -n $build_host $remote_env $my_dir/tools/remote_bash $build_cmd &>> $log_dir/${build_host}.p$hnum &
-                fi
-
-                pids="$pids $!"
-                host_slots=$((host_slots - install_jobs)); ((hnum++))
-                sleep 1
-            done
-        done
-
-        echo
-        tail -f $log_dir/*.p* | grep -e "Executing phase" -e "Successfully installed" &
-        tpid=$!; wait $pids; kill $tpid
-        echo
-        tsecho "Installs finished after $SECONDS seconds"
-        unset new_installs
+            if [[ $install_external == module ]]; then
+                module_name=$(cut -d' ' -f1 <<< "${comp/@//}")
+                (module purge; module load $module_name; spack compiler find > /dev/null)
+            else
+                spack compiler add $(spack location -i $comp) > /dev/null
+            fi
+        fi
     fi
 }
 
@@ -239,6 +212,12 @@ function define_items {
 # Pretty colors
 GCOL="\033[1;32m" BCOL="\033[1;34m" PCOL="\033[1;35m" DCOL="\033[0m"
 
+# Ensure log directory exists
+log_dir=$SPACK_ENV/logs
+mkdir -p $log_dir
+log_specs=$log_dir/specs.$start_time
+log_installs=$log_dir/installs.$start_time
+
 # MPI libraries for each compiler
 declare -A mpis
 
@@ -247,27 +226,6 @@ while read pkg; do
         continue
     elif [[ $pkg != *'<'* ]] && [[ $pkg == *:* ]]; then
         # If compilers were added, we need to add GCCs to compiler list
-        if [[ $install_type == compiler ]]; then
-            current_comps=$(spack config get compilers | grep spec | cut -d: -f2)
-            start_installs compilers
-
-            for comp in $compilers; do
-                if [[ $current_comps != *${comp}* ]]; then
-                    tsecho "Registering $comp as a compiler in spack.yaml"
-
-                    if [[ $install_external == module ]]; then
-                        module_name=$(cut -d' ' -f1 <<< "${comp/@//}")
-                        (module purge; module load $module_name; spack compiler find > /dev/null)
-                    else
-                        spack compiler add $(spack location -i $comp) > /dev/null
-                    fi
-                fi
-            done
-        # If previous category had custom number of jobs or post-sync, start installs
-        elif [[ -n $install_jobs ]] || [[ $install_sync == after ]]; then
-            start_installs packages
-        fi
-
         for ivar in ${!install_*}; do
             unset $ivar
         done
@@ -295,7 +253,7 @@ while read pkg; do
                     for mpi in $my_mpis; do
                         check_exclusions $mpi || continue
                         prepare_spec
-                        add_spec
+                        check_spec
                     done
                 done
                 ;;
@@ -304,12 +262,12 @@ while read pkg; do
                 for comp in $my_compilers; do
                     check_exclusions $comp || continue
                     prepare_spec
-                    add_spec
+                    check_spec
                 done
                 ;;
             singleton)
                 prepare_spec
-                add_spec
+                check_spec
                 ;;
             *)
                 echo -e "\n====="
@@ -321,7 +279,8 @@ while read pkg; do
     fi
 done < <(awk 'NF' $pkg_manifest)
 
-start_installs packages
+if [[ $SPACK_ENV == $NCAR_SPACK_ENV_BUILD ]]; then
+    . $my_dir/tools/make_localinit.sh build
+fi
 
-. $my_dir/tools/make_localinit.sh build
 unset new_lmod

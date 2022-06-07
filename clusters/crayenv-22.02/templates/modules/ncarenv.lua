@@ -21,6 +21,7 @@ local tmpdir    = os.getenv("TMPDIR")
 local othreads  = os.getenv("OMP_NUM_THREADS")
 
 -- Utility locations
+local viewpath  = "%VIEWROOT%"
 local vncbin    = "/glade/u/apps/opt/vncmgr"
 
 -- Put system utilities in PATH
@@ -64,3 +65,8 @@ setenv("LANG",      "en_US.UTF-8")
 
 -- Loading this module unlocks the NCAR Spack module tree
 append_path("MODULEPATH", "%MODPATH%")
+
+-- Add view utilities to PATHS
+prepend_path("PATH",    pathJoin(viewpath, "bin"))
+prepend_path("MANPATH", pathJoin(viewpath, "man"))
+prepend_path("MANPATH", pathJoin(viewpath, "share/man"))

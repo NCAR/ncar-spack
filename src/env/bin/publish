@@ -16,7 +16,7 @@
 #           shell script. So we must activate in the script!
 #
 #   Author:         Brian Vanderwende
-#   Last Revised:   17:29, 18 May 2022
+#   Last Revised:   16:58, 06 Jun 2022
 #
 
 function create_gitignore {
@@ -29,6 +29,17 @@ opt
 EOF
 
 git add .gitignore
+}
+
+function create_manifest {
+# Create package manifest for new installs
+cat > $1 << EOF
+# New package installs
+# Start time: $start_time
+
+singleton:
+$(sed 's/-/ /' <<< "$new_pkgs")
+EOF
 }
 
 #
@@ -90,11 +101,18 @@ pad_length=$(awk '/padded_length: / {print $2}' $SPACK_ENV/spack.yaml)
 
 tsecho "Converting build spack.yaml for use in public environment"
 cd $SPACK_ENV; mkdir -p .prototype; spack env deactivate
-sed -r "s|^([^/]*).{$pad_length}|\1$SPACK_ROOT/opt/spack/|" spack.yaml > .prototype/spack.yaml
+sed '/  specs:/Q' spack.yaml > .prototype/spack.yaml
+
+if [[ -f $NCAR_SPACK_ENV_PUBLIC/spack.yaml ]]; then
+     sed -n '/  specs:/,$ p' $NCAR_SPACK_ENV_PUBLIC/spack.yaml >> .prototype/spack.yaml
+fi
+
+sed -i -r "s|^([^/]*).{$pad_length}|\1$SPACK_ROOT/opt/spack/|" .prototype/spack.yaml
+sed -i "s|\( *lmod: \)/.*|\1$NCAR_SPACK_MODULEROOT|" .prototype/spack.yaml
+sed -i "/[ ]*view:.*/,/[ ]*root:.*/{s|%VIEWROOT%|$NCAR_SPACK_VIEWROOT|}" .prototype/spack.yaml
 spack env activate .prototype
 spack config remove 'config:install_tree:padded_length' 
-spack config remove 'config:install_tree:root' 
-sed -i "s|\( *lmod: \)/.*|\1$NCAR_SPACK_MODULEROOT|" .prototype/spack.yaml
+spack config remove 'config:install_tree:root'
 spack env deactivate
 
 if [[ -d $NCAR_SPACK_ENV_PUBLIC ]]; then
@@ -132,46 +150,28 @@ mv $NCAR_SPACK_ENV_BUILD/.prototype/spack.yaml $NCAR_SPACK_ENV_PUBLIC/spack.yaml
 
 # Switch to the production environment
 spack env activate $NCAR_SPACK_ENV_PUBLIC
+log_dir=$SPACK_ENV/logs
+mkdir -p $log_dir
 
-# Store concretization results
-mkdir -p logs
-tsecho "Concretizing changes in production environment"
-echo "  -> logging to $SPACK_ENV/logs/concretize"
+# If there are new packages, install sequentially to ensure determinism
+new_pkgs=$(grep -v -f <(sed '1,/  specs:/d' spack.yaml) <(sed '1,/  specs:/d' $NCAR_SPACK_ENV_BUILD/spack.yaml))
 
-cat >> logs/concretize << EOF
+if [[ -n $new_pkgs ]]; then
+    tsecho "Creating manifest and installing cached packages"
+    pkg_manifest=$log_dir/manifest.$start_time
+    create_manifest $pkg_manifest
+    $my_dir/install_packages --cache-only $pkg_manifest
 
-=================================================
-   New packages concretized at $(date)
-=================================================
-
-$(2>&1 taskset -c 0-7 spack concretize)
-
-EOF
-
-# Now install new packages
-tsecho "Installing new packages into public environment"
-echo "  -> logging to $SPACK_ENV/logs/install"
-
-cat >> logs/install << EOF
-
-=================================================
-   New packages installed at $(date)
-=================================================
-
-EOF
-
-spack install --cache-only >> logs/install 2>&1
-
-# Check that installs completed successfully
-if [[ ${PIPESTATUS[0]} == 1 ]]; then
-cat << EOF
-Error:  Spack installations did not complete successfully.
-        Check results in \$SPACK_ENV/logs/install and resolve
-        errors before committing changes to GitHub manually.
-
-EOF
-exit 1
+    # Check that installs completed successfully
+    if [[ ${PIPESTATUS[0]} == 1 ]]; then
+        echo "Error:  Spack installations did not complete successfully."
+        echo "        Resolve errors before committing changes to GitHub manually."
+        exit 1
+    fi
 fi
+
+tsecho "Concretizing other environment changes"
+2>&1 taskset -c 0-7 spack concretize > $log_dir/concretize.$start_time
 
 . $my_dir/tools/make_localinit.sh public
 

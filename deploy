@@ -4,12 +4,13 @@
 #   a specified cluster definition. 
 #
 #   Author:         Brian Vanderwende
-#   Last Revised:   11:13, 12 May 2022
+#   Last Revised:   11:55, 07 Jun 2022
 #
 
 set -e
 export NCAR_SPACK_DEPLOY_TIME=$(date +%y%m%d%H%M)
 export NCAR_SPACK_DEPLOY_DIR="$( cd "$(dirname "$0")" ; pwd )"
+export NCAR_SPACK_DEPLOY_TYPE=testing
 
 #
 ## ---- INITIALIZATION ----
@@ -25,6 +26,9 @@ while [[ $# -gt 0 ]]; do
         --no-pkgs|--nopkgs)
             skip_pkgs=yes
             ;;
+        -p|--production)
+            NCAR_SPACK_DEPLOY_TYPE=production
+            ;;
         *)
             export NCAR_SYS=$1
             ;;
@@ -36,7 +40,7 @@ done
 if [[ -z $NCAR_SYS ]]; then
 cat << EOF
 Error:  deployment configuration must be specified!
-Usage:  $0 [--no-pkgs] CONFIG
+Usage:  $0 [--no-pkgs] [-p] CONFIG
 
 EOF
 exit 1
@@ -69,12 +73,17 @@ if [[ -z $NCAR_SPACK_STARTUP ]]; then
         git checkout $NCAR_SPACK_VERSION
 
         # Apply source code patches as necessary
-        for src_patch in $NCAR_SPACK_DEPLOY_DIR/src/patches/*; do
+        for src_patch in $NCAR_SPACK_DEPLOY_DIR/src/patches/$NCAR_SPACK_VERSION/*; do
             git apply $src_patch &> /dev/null
         done
 
         # Copy clean shell scripts to Spack bin
         cp -r $NCAR_SPACK_DEPLOY_DIR/src/spack/* $CUSTOM_SPACK_ROOT/
+
+        # Add custom cluster source files if found
+        if [[ -d $NCAR_SPACK_DEPLOY_DIR/clusters/$NCAR_SYS/src/spack ]]; then
+            cp -r $NCAR_SPACK_DEPLOY_DIR/clusters/$NCAR_SYS/src/spack/* $CUSTOM_SPACK_ROOT/
+        fi
 
         if [[ -n $NCAR_SPACK_PYDIR ]]; then
             sed -i "/^env_args=/a NCAR_SPACK_PYDIR=$NCAR_SPACK_PYDIR" $CUSTOM_SPACK_ROOT/bin/clean_bash
@@ -124,9 +133,9 @@ mkdir -p $NCAR_SPACK_ENV_BUILD/logs
 cp clusters/$NCAR_SYS/spack.yaml $NCAR_SPACK_ENV_BUILD
 cp -r src/env/* $NCAR_SPACK_ENV_BUILD
 envsubst '$USER,$NCAR_SYS' < clusters/$NCAR_SYS/main.cfg > $NCAR_SPACK_ENV_BUILD/main.cfg
+sed -i "1i\NCAR_SPACK_DEPLOY_TYPE=$NCAR_SPACK_DEPLOY_TYPE" $NCAR_SPACK_ENV_BUILD/main.cfg
 cp clusters/$NCAR_SYS/packages.cfg $NCAR_SPACK_ENV_BUILD
-cp clusters/$NCAR_SYS/buildhosts.cfg $NCAR_SPACK_ENV_BUILD
-cp -r clusters/$NCAR_SYS/modules $NCAR_SPACK_ENV_BUILD
+cp -r clusters/$NCAR_SYS/templates $NCAR_SPACK_ENV_BUILD
 
 if [[ -f clusters/$NCAR_SYS/postprocess ]]; then
     cp clusters/$NCAR_SYS/postprocess $NCAR_SPACK_ENV_BUILD/bin
@@ -135,12 +144,7 @@ fi
 # Add relevant paths to spack.yaml
 sed -i "s|%INSTALLROOT%|${NCAR_SPACK_ENV_BUILD}/opt|" $NCAR_SPACK_ENV_BUILD/spack.yaml
 sed -i "s|%MODULESROOT%|${NCAR_SPACK_ENV_BUILD}/modules|" $NCAR_SPACK_ENV_BUILD/spack.yaml
-
-# Modify paths in localinit files
-sed -i "s|%SPACKROOT%|${SPACK_ROOT}|" $NCAR_SPACK_ENV_BUILD/util/localinit.*
-sed -i "s|%ENVROOT%|${NCAR_SPACK_ENV_BUILD}|" $NCAR_SPACK_ENV_BUILD/util/localinit.*
-sed -i "s|%LMODSYS%|${NCAR_SYS}|" $NCAR_SPACK_ENV_BUILD/util/localinit.*
-sed -i "s|%DEFMODS%|${NCAR_SPACK_DEFAULT_MODULES}|" $NCAR_SPACK_ENV_BUILD/util/localinit.*
+sed -i "s|%VIEWROOT%|${NCAR_SPACK_ENV_BUILD}/ncarenv|" $NCAR_SPACK_ENV_BUILD/spack.yaml
 
 # Activate the environment
 spack env activate $NCAR_SPACK_ENV_BUILD
@@ -164,8 +168,12 @@ spack gpg publish -d $NCAR_SPACK_MIRROR
 # Add local filesystem mirror
 spack mirror add $NCAR_SPACK_MIRROR_NAME $NCAR_SPACK_MIRROR
 
-# Add NCAR repos
-spack repo add $NCAR_SPACK_DEPLOY_DIR/repos/ncar.hpcd
+# Add custom repos
+if [[ -f clusters/$NCAR_SYS/repos.cfg ]]; then
+    while read -r repo; do
+        spack repo add $NCAR_SPACK_DEPLOY_DIR/repos/$repo
+    done < clusters/$NCAR_SYS/repos.cfg
+fi
 
 # Add NCAR templates
 spack config add "config:template_dirs:$NCAR_SPACK_DEPLOY_DIR/templates/modules"
@@ -182,7 +190,7 @@ if [[ ${skip_pkgs:-no} != yes ]]; then
 
     # Run script to populate the binary build_cache
     echo -e "Populating build cache with package binaries ...\n"
-    bin/populate_build_cache |& tee $NCAR_SPACK_ENV_BUILD/logs/cache.$NCAR_SPACK_DEPLOY_TIME
+    bin/populate_build_cache
 
     # Create modules in build environment
     echo "Generating modules in build environment ..."
@@ -206,6 +214,7 @@ cat << EOF
 
 Machine:        $NCAR_SYS
 Date:           $NCAR_SPACK_DEPLOY_TIME
+Type:           $NCAR_SPACK_DEPLOY_TYPE
 
 Spack root:     $SPACK_ROOT
 Build root:     $NCAR_SPACK_ENV_BUILD
@@ -226,7 +235,7 @@ fi
 cat << EOF
 *** First check that builds in build environment are valid! ***
 
-To install into public production environment, run the following:
+To install into $NCAR_SPACK_DEPLOY_TYPE public environment, run the following:
 
 $NCAR_SPACK_ENV_BUILD/bin/publish "Initial deployment of environment on $NCAR_SYS"
 
