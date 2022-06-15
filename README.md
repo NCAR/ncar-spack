@@ -50,9 +50,9 @@ The following recommendations are not necessarily required, but are strongly adv
 As we are installing/cloning an instance of Spack for each cluster deployment, it is not necessary to manually install Spack before running the `deploy` script. The exact version of Spack, along with certain runtime settings, can be configured in the file `clusters/<cluster>/main.cfg`. The following configurables are currently used by `./deploy`.
 
 * **NCAR_HOST** - the name of the system set for users in `ncarenv` 
-* **NCAR_SPACK_PUBLIC_ROOT** - the path at which user-facing elements of the deployment will reside (e.g., /glade/u/apps)
-* **NCAR_SPACK_ENV_ROOT** - the path at which the build and production environments will reside (e.g., csgteam work)
-* **NCAR_SPACK_VERSION** - the version/tag of Spack to be used in the deployment
+* **NCAR_SPACK_ROOT_PUBLIC** - the path at which user-facing elements of the deployment will reside (e.g., /glade/u/apps)
+* **NCAR_SPACK_ROOT_ENVS** - the path at which the build and production environments will reside (e.g., csgteam work)
+* **NCAR_SPACK_CLONE_VERSION** - the version/tag of Spack to be used in the deployment
 * **NCAR_SPACK_MIRROR_NAME** - the name used by Spack for the source and [build cache](https://spack.readthedocs.io/en/latest/binary_caches.html) mirror
 * **NCAR_SPACK_GITHUB** - a URL to the GitHub repository that will track modifications to this deployment
 * **NCAR_SPACK_DEFAULT_MODULES** - initial default Lmod modules assigned to the users by localinit scripts

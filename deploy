@@ -4,7 +4,7 @@
 #   a specified cluster definition. 
 #
 #   Author:         Brian Vanderwende
-#   Last Revised:   11:55, 07 Jun 2022
+#   Last Revised:   13:27, 14 Jun 2022
 #
 
 set -e
@@ -60,7 +60,7 @@ fi
 #
 
 if [[ -z $NCAR_SPACK_STARTUP ]]; then 
-    export CUSTOM_SPACK_ROOT=$NCAR_SPACK_PUBLIC_ROOT/spack
+    export CUSTOM_SPACK_ROOT=$NCAR_SPACK_ROOT_DEPLOYMENT/spack
 
     if [[ -d $CUSTOM_SPACK_ROOT ]]; then
         echo "Activating existing spack install at $CUSTOM_SPACK_ROOT ..."
@@ -70,10 +70,10 @@ if [[ -z $NCAR_SPACK_STARTUP ]]; then
         echo "Installing Spack into $CUSTOM_SPACK_ROOT ..."
         git clone -c feature.manyFiles=true https://github.com/spack/spack.git $CUSTOM_SPACK_ROOT
         cd $CUSTOM_SPACK_ROOT
-        git checkout $NCAR_SPACK_VERSION
+        git checkout $NCAR_SPACK_CLONE_VERSION
 
         # Apply source code patches as necessary
-        for src_patch in $NCAR_SPACK_DEPLOY_DIR/src/patches/$NCAR_SPACK_VERSION/*; do
+        for src_patch in $NCAR_SPACK_DEPLOY_DIR/src/patches/$NCAR_SPACK_CLONE_VERSION/*; do
             git apply $src_patch &> /dev/null
         done
 
@@ -143,7 +143,7 @@ fi
 
 # Add relevant paths to spack.yaml
 sed -i "s|%INSTALLROOT%|${NCAR_SPACK_ENV_BUILD}/opt|" $NCAR_SPACK_ENV_BUILD/spack.yaml
-sed -i "s|%MODULESROOT%|${NCAR_SPACK_ENV_BUILD}/modules|" $NCAR_SPACK_ENV_BUILD/spack.yaml
+sed -i "s|%MODULESROOT%|${NCAR_SPACK_ENV_BUILD}/modules/$NCAR_SPACK_HOST_VERSION|" $NCAR_SPACK_ENV_BUILD/spack.yaml
 sed -i "s|%VIEWROOT%|${NCAR_SPACK_ENV_BUILD}/ncarenv|" $NCAR_SPACK_ENV_BUILD/spack.yaml
 
 # Activate the environment

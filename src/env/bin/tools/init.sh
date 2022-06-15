@@ -18,7 +18,7 @@ EOF
 
 if [[ $NCAR_SPACK_CLEAN != true ]]; then
     tsecho "Sanitizing user environment"
-    export CUSTOM_SPACK_ROOT=$NCAR_SPACK_PUBLIC_ROOT/spack NCAR_SPACK_CLEAN=true
+    export CUSTOM_SPACK_ROOT=$NCAR_SPACK_ROOT_DEPLOYMENT/spack NCAR_SPACK_CLEAN=true
 
     $CUSTOM_SPACK_ROOT/bin/clean_bash $0 "$@"
     exit $?
@@ -31,8 +31,8 @@ elif [[ -z $SPACK_ENV ]]; then
 
     tsecho "Activating Spack $my_env_type environment"
     
-    if [[ -f $NCAR_SPACK_ENV_ROOT/$my_env_type/spack.yaml ]]; then
-        spack env activate $NCAR_SPACK_ENV_ROOT/$my_env_type
+    if [[ -f $NCAR_SPACK_ROOT_ENVS/$my_env_type/spack.yaml ]]; then
+        spack env activate $NCAR_SPACK_ROOT_ENVS/$my_env_type
     else
         echo "Error:  This $my_name script does not appear to be part of a cluster"
         echo -e "        $my_env_type environment. Use \$SPACK_ENV/bin/$my_name instead.\n"

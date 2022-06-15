@@ -16,7 +16,7 @@
 #           shell script. So we must activate in the script!
 #
 #   Author:         Brian Vanderwende
-#   Last Revised:   16:58, 06 Jun 2022
+#   Last Revised:   00:01, 15 Jun 2022
 #
 
 function create_gitignore {
@@ -52,6 +52,9 @@ export my_dir="$( cd "$(dirname "$0")" ; pwd )"
 
 while [[ $# -gt 0 ]]; do
     case $1 in
+        -d|--set-default)
+            set_as_default=true
+            ;;
         -f|--force)
             force_commit=true
             ;;
@@ -77,7 +80,7 @@ fi
 tsecho "Testing build environment for unconcretized changes"
 conc_test=$(2>&1 taskset -c 0-7 spack concretize)
 
-if [[ -n $conc_test ]]; then
+if [[ -n $conc_test ]] && [[ $conc_test != "==> Updating view at $SPACK_ENV/ncarenv" ]]; then
 cat << EOF
 $conc_test
 
@@ -108,8 +111,8 @@ if [[ -f $NCAR_SPACK_ENV_PUBLIC/spack.yaml ]]; then
 fi
 
 sed -i -r "s|^([^/]*).{$pad_length}|\1$SPACK_ROOT/opt/spack/|" .prototype/spack.yaml
-sed -i "s|\( *lmod: \)/.*|\1$NCAR_SPACK_MODULEROOT|" .prototype/spack.yaml
-sed -i "/[ ]*view:.*/,/[ ]*root:.*/{s|%VIEWROOT%|$NCAR_SPACK_VIEWROOT|}" .prototype/spack.yaml
+sed -i "s|\([ ]*lmod: \)/.*|\1$NCAR_SPACK_ROOT_MODULES/$NCAR_SPACK_HOST_VERSION|" .prototype/spack.yaml
+sed -i "/[ ]*view:.*/,/[ ]*root:.*/{s|\([ ]*root: \)/.*|\1$NCAR_SPACK_ROOT_VIEW|}" .prototype/spack.yaml
 spack env activate .prototype
 spack config remove 'config:install_tree:padded_length' 
 spack config remove 'config:install_tree:root'
@@ -154,7 +157,7 @@ log_dir=$SPACK_ENV/logs
 mkdir -p $log_dir
 
 # If there are new packages, install sequentially to ensure determinism
-new_pkgs=$(grep -v -f <(sed '1,/  specs:/d' spack.yaml) <(sed '1,/  specs:/d' $NCAR_SPACK_ENV_BUILD/spack.yaml))
+new_pkgs=$(grep -v -f <(sed '1,/  specs:/d' spack.yaml) <(sed '1,/  specs:/d' $NCAR_SPACK_ENV_BUILD/spack.yaml) || [[ $? == 1 ]])
 
 if [[ -n $new_pkgs ]]; then
     tsecho "Creating manifest and installing cached packages"
@@ -173,23 +176,19 @@ fi
 tsecho "Concretizing other environment changes"
 2>&1 taskset -c 0-7 spack concretize > $log_dir/concretize.$start_time
 
+tsecho "Refreshing module init scripts"
 . $my_dir/tools/make_localinit.sh public
 
-tsecho "Linking util scripts into public cluster root"
-if [[ ! -e $NCAR_SPACK_PUBLIC_ROOT/util ]]; then
-    ln -s $SPACK_ENV/util $NCAR_SPACK_PUBLIC_ROOT/util
-fi
-
 tsecho "Creating split configuration files for community use"
-mkdir -p $NCAR_SPACK_USER_CONFIG
+mkdir -p $SPACK_ENV/config
 
 for cfg_file in config packages compilers modules mirrors repos; do
-    sed -n "/^  ${cfg_file}:/,/^  [a-z]*:/p" spack.yaml | sed '$d; s/^  //' > $NCAR_SPACK_USER_CONFIG/${cfg_file}.yaml
+    sed -n "/^  ${cfg_file}:/,/^  [a-z]*:/p" spack.yaml | sed '$d; s/^  //' > $SPACK_ENV/config/${cfg_file}.yaml
 done
 
-tsecho "Pushing YAML, lock, util changes to GitHub"
+tsecho "Pushing YAML, lock, util and config changes to GitHub"
 echo
-git add spack.yaml spack.lock util/localinit.sh util/localinit.csh
+git add spack.yaml spack.lock util config
 git commit -m "$commit_msg"
 echo
 
@@ -200,4 +199,15 @@ spack module lmod refresh -y
 if [[ -f $NCAR_SPACK_ENV_BUILD/bin/postprocess ]]; then
     tsecho "Running postprocessing script on environment"
     NCAR_SPACK_ENV_TYPE=public $NCAR_SPACK_ENV_BUILD/bin/postprocess
+fi
+
+if [[ ! -e $NCAR_SPACK_ROOT_DEPLOYMENT/util ]]; then
+    for public_dir in util config; do
+        ln -sf $SPACK_ENV/$public_dir $NCAR_SPACK_ROOT_DEPLOYMENT/$public_dir
+    done
+fi
+
+if [[ ! -d $NCAR_SPACK_ROOT_PUBLIC/default ]] || [[ $set_as_default == true ]]; then
+    tsecho "Setting environment as default public environment"
+    ln -s $NCAR_SPACK_ROOT_DEPLOYMENT $NCAR_SPACK_ROOT_PUBLIC/default
 fi

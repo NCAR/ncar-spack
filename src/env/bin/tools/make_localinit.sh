@@ -4,8 +4,8 @@ if [[ $1 == build ]]; then
     pkg_root=$SPACK_ENV/opt
     module_root=$SPACK_ENV/modules
 else
-    pkg_root=$NCAR_SPACK_PUBLIC_ROOT/spack/opt/spack
-    module_root=$NCAR_SPACK_MODULEROOT
+    pkg_root=$NCAR_SPACK_ROOT_PUBLIC/default/spack/opt/spack
+    module_root=$NCAR_SPACK_ROOT_PUBLIC/modules
 fi
 
 util_path=$SPACK_ENV/util
@@ -18,7 +18,7 @@ mkdir -p $util_path
 tsecho "Generating localinit.sh and localinit.csh"
 
 cat > $util_path/localinit.sh << EOF
-# Legacy variables
+# Location variables
 export INSTALLPATH_ROOT=$pkg_root
 export MODULEPATH_ROOT=$module_root
 
@@ -64,7 +64,7 @@ fi
 EOF
 
 cat > $util_path/localinit.csh << EOF
-# Legacy variables
+# Location variables
 setenv INSTALLPATH_ROOT $pkg_root
 setenv MODULEPATH_ROOT $module_root
 
