@@ -21,6 +21,7 @@ spack:
       providers:
         mpi:: [cray-mpich, openmpi]
         szip:: [libszip]
+        pkgconfig:: [pkg-config]
       permissions:
         read: world
         write: user

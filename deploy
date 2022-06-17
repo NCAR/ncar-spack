@@ -4,7 +4,7 @@
 #   a specified cluster definition. 
 #
 #   Author:         Brian Vanderwende
-#   Last Revised:   13:27, 14 Jun 2022
+#   Last Revised:   11:28, 17 Jun 2022
 #
 
 set -e
@@ -55,58 +55,68 @@ fi
 # Source cluster settings
 . $NCAR_SPACK_DEPLOY_DIR/clusters/$NCAR_SYS/main.cfg
 
+# Check if Github repo exists
+if [[ -n $NCAR_SPACK_GITHUB ]] && [[ $skip_github != yes ]]; then
+    echo -e "Checking status of $NCAR_SPACK_GITHUB ...\n"
+    
+    if ! git ls-remote -h "$NCAR_SPACK_GITHUB"; then
+        exit 1
+    fi
+fi
+
 #
 ## ---- INSTALL/CLONE SPACK FOR CLUSTER ----
 #
 
-if [[ -z $NCAR_SPACK_STARTUP ]]; then 
-    export CUSTOM_SPACK_ROOT=$NCAR_SPACK_ROOT_DEPLOYMENT/spack
+if [[ -d $NCAR_SPACK_ROOT_DEPLOYMENT ]]; then
+cat << EOF
+Error:  Existing deployment found at ${NCAR_SPACK_ROOT_DEPLOYMENT}. Will not
+        overwrite. Resolve and rerun this script.
 
-    if [[ -d $CUSTOM_SPACK_ROOT ]]; then
-        echo "Activating existing spack install at $CUSTOM_SPACK_ROOT ..."
-        echo "    Please manually clean up if reinstall is desired"
-    else
-        # Install latest source from GitHub and checkout specified version
-        echo "Installing Spack into $CUSTOM_SPACK_ROOT ..."
-        git clone -c feature.manyFiles=true https://github.com/spack/spack.git $CUSTOM_SPACK_ROOT
-        cd $CUSTOM_SPACK_ROOT
-        git checkout $NCAR_SPACK_CLONE_VERSION
+EOF
+exit 1
+fi
 
-        # Apply source code patches as necessary
-        for src_patch in $NCAR_SPACK_DEPLOY_DIR/src/patches/$NCAR_SPACK_CLONE_VERSION/*; do
-            git apply $src_patch &> /dev/null
-        done
+spack_clone_path=$NCAR_SPACK_ROOT_DEPLOYMENT/spack
 
-        # Copy clean shell scripts to Spack bin
-        cp -r $NCAR_SPACK_DEPLOY_DIR/src/spack/* $CUSTOM_SPACK_ROOT/
+if [[ $NCAR_SPACK_ROOT != $spack_clone_path ]]; then 
+    # Install latest source from GitHub and checkout specified version
+    echo "Installing Spack into $spack_clone_path ..."
+    git clone -c feature.manyFiles=true https://github.com/spack/spack.git $spack_clone_path
+    cd $spack_clone_path
+    git checkout $NCAR_SPACK_CLONE_VERSION
 
-        # Add custom cluster source files if found
-        if [[ -d $NCAR_SPACK_DEPLOY_DIR/clusters/$NCAR_SYS/src/spack ]]; then
-            cp -r $NCAR_SPACK_DEPLOY_DIR/clusters/$NCAR_SYS/src/spack/* $CUSTOM_SPACK_ROOT/
-        fi
+    # Apply source code patches as necessary
+    for src_patch in $NCAR_SPACK_DEPLOY_DIR/src/patches/$NCAR_SPACK_CLONE_VERSION/*; do
+        git apply $src_patch &> /dev/null
+    done
 
-        if [[ -n $NCAR_SPACK_PYDIR ]]; then
-            sed -i "/^env_args=/a NCAR_SPACK_PYDIR=$NCAR_SPACK_PYDIR" $CUSTOM_SPACK_ROOT/bin/clean_bash
-        fi
+    # Copy clean shell scripts to Spack bin
+    cp -r $NCAR_SPACK_DEPLOY_DIR/src/spack/* $spack_clone_path/
 
-        # Modify permissions according
-        chgrp -R csgteam $CUSTOM_SPACK_ROOT
-        chmod -R a=rX,u+w $CUSTOM_SPACK_ROOT
-
-        # Activate spack installation
-        . $CUSTOM_SPACK_ROOT/share/spack/setup-env.sh
-
-        # Create trusted GPG key in spack install
-        echo -e "\nCreating trusted GPG key for build cache creation ..."
-        spack gpg create "NCAR BUILD Spack" "<csg@ucar.edu>"
-
-        # Allow group access to keys
-        chmod -R g+rwX $CUSTOM_SPACK_ROOT/opt/spack/gpg
+    # Add custom cluster source files if found
+    if [[ -d $NCAR_SPACK_DEPLOY_DIR/clusters/$NCAR_SYS/src/spack ]]; then
+        cp -r $NCAR_SPACK_DEPLOY_DIR/clusters/$NCAR_SYS/src/spack/* $spack_clone_path/
     fi
-    
+
+    if [[ -n $NCAR_SPACK_PYDIR ]]; then
+        sed -i "/^env_args=/a NCAR_SPACK_PYDIR=$NCAR_SPACK_PYDIR" $spack_clone_path/bin/clean_bash
+    fi
+
+    # Modify permissions according
+    chgrp -R csgteam $spack_clone_path
+    chmod -R a=rX,u+w $spack_clone_path
+
+    # Activate spack installation
+    . $spack_clone_path/share/spack/setup-env.sh
+
+    # Create trusted GPG key in spack install
+    echo -e "\nCreating trusted GPG key for build cache creation ..."
+    spack gpg create "NCAR BUILD Spack" "<csg@ucar.edu>"
+
     # Make sure environment is clean
     cd $NCAR_SPACK_DEPLOY_DIR
-    $CUSTOM_SPACK_ROOT/bin/clean_bash $0 "${user_args[@]}"
+    $spack_clone_path/bin/clean_bash $0 "${user_args[@]}"
     exit $?
 else
     # Activate spack installation
@@ -132,8 +142,14 @@ echo "Creating env at $NCAR_SPACK_ENV_BUILD ..."
 mkdir -p $NCAR_SPACK_ENV_BUILD/logs
 cp clusters/$NCAR_SYS/spack.yaml $NCAR_SPACK_ENV_BUILD
 cp -r src/env/* $NCAR_SPACK_ENV_BUILD
-envsubst '$USER,$NCAR_SYS' < clusters/$NCAR_SYS/main.cfg > $NCAR_SPACK_ENV_BUILD/main.cfg
-sed -i "1i\NCAR_SPACK_DEPLOY_TYPE=$NCAR_SPACK_DEPLOY_TYPE" $NCAR_SPACK_ENV_BUILD/main.cfg
+
+cat > $NCAR_SPACK_ENV_BUILD/main.cfg << EOF
+NCAR_SPACK_DEPLOY_TYPE=$NCAR_SPACK_DEPLOY_TYPE
+NCAR_SPACK_DEPLOY_COMMIT=$(git rev-parse HEAD)
+
+EOF
+
+envsubst '$USER,$NCAR_SYS' < clusters/$NCAR_SYS/main.cfg >> $NCAR_SPACK_ENV_BUILD/main.cfg
 cp clusters/$NCAR_SYS/packages.cfg $NCAR_SPACK_ENV_BUILD
 cp -r clusters/$NCAR_SYS/templates $NCAR_SPACK_ENV_BUILD
 

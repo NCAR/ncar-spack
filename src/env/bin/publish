@@ -16,7 +16,7 @@
 #           shell script. So we must activate in the script!
 #
 #   Author:         Brian Vanderwende
-#   Last Revised:   00:01, 15 Jun 2022
+#   Last Revised:   11:23, 17 Jun 2022
 #
 
 function create_gitignore {
@@ -29,6 +29,26 @@ opt
 EOF
 
 git add .gitignore
+}
+
+function create_git_readme {
+cat > $SPACK_ENV/README.md << EOF
+# NCAR Spack Deployment
+This branch tracks the **production** deployment of Spack for the following configuration:
+
+| | $NCAR_SPACK_HOST |
+|--|--|
+| Creation date | $(date) |
+| ncar-spack commit | $NCAR_SPACK_DEPLOY_COMMIT |
+| Host version | $NCAR_SPACK_HOST_VERSION |
+| Spack version | $NCAR_SPACK_CLONE_VERSION |
+| Deployment path | $NCAR_SPACK_ROOT_DEPLOYMENT |
+| Environments path | $NCAR_SPACK_ROOT_ENVS |
+
+This repository should *only* be updated via the `publish` script contained in the build environment. Any manual changes to this branch will cause headaches when you or another consultant attempt to publish new packages!
+EOF
+
+git add README.md
 }
 
 function create_manifest {
@@ -67,7 +87,7 @@ while [[ $# -gt 0 ]]; do
 done
 
 if [[ -z $commit_msg ]]; then
-cat << EOF
+2>&1 cat << EOF
 Error:  You must provide a commit message as the only argument to this
         script. Make sure to put the message in quotes.
 
@@ -81,7 +101,7 @@ tsecho "Testing build environment for unconcretized changes"
 conc_test=$(2>&1 taskset -c 0-7 spack concretize)
 
 if [[ -n $conc_test ]] && [[ $conc_test != "==> Updating view at $SPACK_ENV/ncarenv" ]]; then
-cat << EOF
+2>&1 cat << EOF
 $conc_test
 
 Error:  Modifications to $SPACK_ENV/spack.yaml are not properly installed!
@@ -121,13 +141,19 @@ spack env deactivate
 if [[ -d $NCAR_SPACK_ENV_PUBLIC ]]; then
     tsecho "Testing public environment for untracked changes"
     cd $NCAR_SPACK_ENV_PUBLIC
-    if ! git diff --quiet || ! git diff --cached --quiet; then
-        echo -e "Error:  Uncommitted changes in public repo. Resolve and then retry.\n"
+
+    local_branch="$(git rev-parse --abbrev-ref HEAD)"
+
+    if [[ $(git rev-parse --abbrev-ref HEAD) != $NCAR_SPACK_HOST_VERSION ]]; then
+        2>&1 echo "Error:  Incorrect Git repo branch ($local_branch != $NCAR_SPACK_HOST_VERSION)."
         exit 1
     fi
 
-    # TODO: Add git pull here 
-    
+    if ! git diff --quiet || ! git diff --cached --quiet; then
+        2>&1 echo -e "Error:  Uncommitted changes in Git repo. Resolve and then retry.\n"
+        exit 1
+    fi
+
     if cmp $NCAR_SPACK_ENV_BUILD/.prototype/spack.yaml spack.yaml >& /dev/null; then
         if [[ $force_commit == true ]]; then
             tsecho "No new packages but proceeding anyway (--force option enabled)"
@@ -136,16 +162,33 @@ if [[ -d $NCAR_SPACK_ENV_PUBLIC ]]; then
             exit 0
         fi
     fi
+    
+    if [[ -n $NCAR_SPACK_GITHUB ]]; then
+        tsecho "Checking that local and remote Git repos match"
+        remote_commit=$(git ls-remote -h origin "$NCAR_SPACK_HOST_VERSION" | awk '{print $1}')
+        local_commit=$(git rev-parse HEAD)
+        
+        if [[ $remote_commit != $local_commit ]]; then
+            2>&1 echo "Error:  Remote repo $NCAR_SPACK_GITHUB and local repo are not in sync."
+            2>&1 echo "           Remote: $remote_commit"
+            2>&1 echo -e "           Local:  $local_commit\n"
+            exit 1
+        fi
+    fi
 else
-    tsecho "Initializing public environment and tracking repo"
-    # TODO: Add code here to use github later
+    tsecho "Initializing public environment and Git repo"
     echo
     git init $NCAR_SPACK_ENV_PUBLIC
     cd $NCAR_SPACK_ENV_PUBLIC
-    git checkout -b main
+    
+    if [[ $NCAR_SPACK_GITHUB ]]; then
+        git remote add origin $NCAR_SPACK_GITHUB
+    fi
+
+    git checkout -b "$NCAR_SPACK_HOST_VERSION"
     echo
-    mkdir util
     create_gitignore
+    create_git_readme
 fi
 
 # Finally, let's move the YAML file
@@ -186,7 +229,7 @@ for cfg_file in config packages compilers modules mirrors repos; do
     sed -n "/^  ${cfg_file}:/,/^  [a-z]*:/p" spack.yaml | sed '$d; s/^  //' > $SPACK_ENV/config/${cfg_file}.yaml
 done
 
-tsecho "Pushing YAML, lock, util and config changes to GitHub"
+tsecho "Committing YAML, lock, util and config changes to Git repo"
 echo
 git add spack.yaml spack.lock util config
 git commit -m "$commit_msg"
@@ -210,4 +253,10 @@ fi
 if [[ ! -d $NCAR_SPACK_ROOT_PUBLIC/default ]] || [[ $set_as_default == true ]]; then
     tsecho "Setting environment as default public environment"
     ln -s $NCAR_SPACK_ROOT_DEPLOYMENT $NCAR_SPACK_ROOT_PUBLIC/default
+fi
+
+if [[ -n $NCAR_SPACK_GITHUB ]]; then
+    tsecho "Pushing changes to GitHub"
+    echo
+    git push -u origin "$NCAR_SPACK_HOST_VERSION"
 fi
