@@ -4,7 +4,7 @@
 #   a specified cluster definition. 
 #
 #   Author:         Brian Vanderwende
-#   Last Revised:   11:28, 17 Jun 2022
+#   Last Revised:   14:11, 17 Jun 2022
 #
 
 set -e
@@ -38,14 +38,14 @@ while [[ $# -gt 0 ]]; do
 done
 
 if [[ -z $NCAR_SYS ]]; then
-cat << EOF
+2>&1 cat << EOF
 Error:  deployment configuration must be specified!
 Usage:  $0 [--no-pkgs] [-p] CONFIG
 
 EOF
 exit 1
 elif [[ ! -f $NCAR_SPACK_DEPLOY_DIR/clusters/$NCAR_SYS/main.cfg ]]; then
-cat << EOF
+2>&1 cat << EOF
 Error:  deployment "$NCAR_SYS" not recognized from available options
 
 EOF
@@ -68,18 +68,15 @@ fi
 ## ---- INSTALL/CLONE SPACK FOR CLUSTER ----
 #
 
-if [[ -d $NCAR_SPACK_ROOT_DEPLOYMENT ]]; then
-cat << EOF
-Error:  Existing deployment found at ${NCAR_SPACK_ROOT_DEPLOYMENT}. Will not
-        overwrite. Resolve and rerun this script.
-
-EOF
-exit 1
-fi
-
 spack_clone_path=$NCAR_SPACK_ROOT_DEPLOYMENT/spack
 
 if [[ $NCAR_SPACK_ROOT != $spack_clone_path ]]; then 
+    if [[ -d $NCAR_SPACK_ROOT_DEPLOYMENT ]]; then
+        2>&1 echo "Error:  Existing deployment found at ${NCAR_SPACK_ROOT_DEPLOYMENT}. Will not"
+        2>&1 echo -e "        overwrite. Resolve and rerun this script.\n"
+        exit 1
+    fi
+
     # Install latest source from GitHub and checkout specified version
     echo "Installing Spack into $spack_clone_path ..."
     git clone -c feature.manyFiles=true https://github.com/spack/spack.git $spack_clone_path
@@ -128,7 +125,7 @@ fi
 #
 
 if [[ -d $NCAR_SPACK_ENV_BUILD ]]; then
-cat << EOF
+2>&1 cat << EOF
 Error:  Existing environment found at ${NCAR_SPACK_ENV_BUILD}. Will not
         overwrite. Resolve and rerun this script.
 
@@ -186,8 +183,15 @@ spack mirror add $NCAR_SPACK_MIRROR_NAME $NCAR_SPACK_MIRROR
 
 # Add custom repos
 if [[ -f clusters/$NCAR_SYS/repos.cfg ]]; then
+    mkdir -p $SPACK_ENV/repos
+
     while read -r repo; do
-        spack repo add $NCAR_SPACK_DEPLOY_DIR/repos/$repo
+        if [[ -f $NCAR_SPACK_DEPLOY_DIR/repos/$repo/setup.sh ]]; then
+            . $NCAR_SPACK_DEPLOY_DIR/repos/$repo/setup.sh
+        else
+            cp -r $NCAR_SPACK_DEPLOY_DIR/repos/$repo $SPACK_ENV/repos
+            spack repo add $SPACK_ENV/repos/$repo
+        fi
     done < clusters/$NCAR_SYS/repos.cfg
 fi
 

@@ -16,7 +16,7 @@
 #           shell script. So we must activate in the script!
 #
 #   Author:         Brian Vanderwende
-#   Last Revised:   11:23, 17 Jun 2022
+#   Last Revised:   18:21, 17 Jun 2022
 #
 
 function create_gitignore {
@@ -32,7 +32,7 @@ git add .gitignore
 }
 
 function create_git_readme {
-cat > $SPACK_ENV/README.md << EOF
+cat > $NCAR_SPACK_ENV_PUBLIC/README.md << EOF
 # NCAR Spack Deployment
 This branch tracks the **production** deployment of Spack for the following configuration:
 
@@ -45,7 +45,7 @@ This branch tracks the **production** deployment of Spack for the following conf
 | Deployment path | $NCAR_SPACK_ROOT_DEPLOYMENT |
 | Environments path | $NCAR_SPACK_ROOT_ENVS |
 
-This repository should *only* be updated via the `publish` script contained in the build environment. Any manual changes to this branch will cause headaches when you or another consultant attempt to publish new packages!
+This repository should *only* be updated via the \`publish\` script contained in the build environment. Any manual changes to this branch will cause headaches when you or another consultant attempt to publish new packages!
 EOF
 
 git add README.md
