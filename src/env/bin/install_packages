@@ -43,7 +43,7 @@ while [[ $# -gt 0 ]]; do
     shift
 done
 
-spec_cmd="spack spec -I -N -t -l -c edges"
+spec_cmd="spack spec -I -N -t -L -c edges"
 
 if [[ -n $build_jobs ]]; then
     build_cmd="spack install -j $build_jobs"
@@ -60,7 +60,20 @@ function prepare_spec {
     [[ -n $comp ]] && spec="$(sed "s|%CMP%|%$comp|g;t;s|$| %$comp|" <<< "$spec")"
     [[ -n $mpi ]]  && spec="$(sed "s|%MPI%|^$mpi|g;t;s|$| ^$mpi|" <<< "$spec")"
     spec="$(sed -r "s/%gcc( |$)/%gcc@${sys_gcc}\1/g" <<< "$spec")"
-    
+
+    while [[ $spec == */%* ]]; do
+        declare {hash_var,hash_ref}="$(sed 's|.*/%\([^%]*\).*|\1|' <<< "$spec")"
+        [[ -n $comp ]] && hash_ref="$hash_ref $comp"
+        [[ -n $mpi ]]  && hash_ref="$hash_ref $mpi"
+        spec="$(sed "s/%${hash_var}%/${hashes["${hash_ref}"]}/g" <<< "$spec")"
+        unset hash_var hash_ref
+    done
+
+    if [[ $spec == */%* ]]; then
+        2>&1 echo -e "\nError: spec still contains reference! ($spec)"
+        exit 1
+    fi
+
     while [[ $spec == *:* ]]; do
         spec_opt="$(sed 's|.*<\([^>]*\)>.*|\1|' <<< "$spec")"
         IFS=: read opt_type opt_body <<< "$spec_opt"
@@ -68,6 +81,12 @@ function prepare_spec {
         if [[ $comp == ${opt_type}* ]] || [[ $mpi == ${opt_type}* ]]; then
             spec="${spec/<$spec_opt>/$opt_body}"
         else
+            if [[ $opt_type == hash-ref ]]; then
+                hash_ref="$opt_body"
+                [[ -n $comp ]] && hash_ref="$hash_ref $comp"
+                [[ -n $mpi ]]  && hash_ref="$hash_ref $mpi"
+            fi
+
             spec="${spec/<$spec_opt>}"
         fi
     done
@@ -77,30 +96,40 @@ function check_spec {
     if [[ $install_build == false ]]; then
         tsecho "Skipping spec   $PCOL$spec$BCOL$type_msg$DCOL (reason: build=false specified)"
     else
-        skip_spec=false
+        skip_spec=false spec_hash=
         set +e
 
         if [[ -f $SPACK_ENV/.installs ]]; then
             spec_hash=$(grep "^${spec}:" $SPACK_ENV/.installs | cut -d: -f2)
-        fi
 
-        if [[ -n $spec_hash ]]; then
-            if grep -q $spec_hash $SPACK_ENV/spack.lock; then
-                skip_spec=true
-            else
-                sed -i "/.*${spec_hash}/d" $SPACK_ENV/.installs
-            fi
-        else
-            spack_find_out=$(spack find -L $spec)
-
-            if [[ $? == 0 ]]; then
-                echo "${spec}:$(tail -n1 <<< $spack_find_out | cut -d' ' -f1)" >> $SPACK_ENV/.installs
-                skip_spec=true
+            if [[ -n $spec_hash ]]; then
+                if grep -q $spec_hash $SPACK_ENV/spack.lock; then
+                    skip_spec=true
+                else
+                    sed -i "/.*${spec_hash}/d" $SPACK_ENV/.installs
+                fi
             fi
         fi
-
+        
         set -e
 
+        if [[ $skip_spec == false ]]; then
+            spack_spec_out=$($spec_cmd $spec)
+            spec_status=$(grep -A2 ^Concretized <<< "$spack_spec_out" | tail -n1)
+            spec_hash=$(awk '{print $2}' <<< "$spec_status")
+
+            if [[ $spec_status == "[+] "* ]]; then
+                echo "${spec}:$spec_hash" >> $SPACK_ENV/.installs
+                skip_spec=true
+            fi
+        fi
+
+        # Register the hash if requested
+        if [[ -n $hash_ref ]]; then
+            hashes["$hash_ref"]=$spec_hash
+            unset hash_ref 
+        fi
+        
         if [[ $skip_spec == true ]]; then
             tsecho "Skipping spec   $PCOL$spec$BCOL$type_msg$DCOL (reason: already installed)"
         else
@@ -111,8 +140,10 @@ function check_spec {
             fi
 
             log_cmd "$spec_cmd $spec" >> $log_specs
-            $spec_cmd $spec &>> $log_specs
+            echo "$spack_spec_out" &>> $log_specs
+            unset spack_spec_out
             install_spec
+            echo "${spec}:$spec_hash" >> $SPACK_ENV/.installs
 
             if [[ $spec == lmod* ]]; then
                 new_lmod=true
@@ -144,8 +175,14 @@ function install_spec {
             -e " Total: " -e " from binary cache" -e " Error: " -e " Warning: " || true)
 
     if [[ ${PIPESTATUS[0]} -ne 0 ]]; then
-        echo -e "\nError: install of package $spec failed! Aborting installs ...\n"
+        2>&1 echo -e "\nError: install of package $spec failed! Aborting installs ...\n"
         exit 1
+    fi
+
+    # Register the hash if requested
+    if [[ -n $hash_ref ]]; then
+        hashes["$hash_ref"]=$(tac $log_installs | grep -m1 " Successfully installed " | sed 's/.*-\(.*\)$/\1/')
+        unset hash_ref 
     fi
 
     # Register the compiler in the YAML file if GCC or vendor module
@@ -229,8 +266,8 @@ Processing install manifest ...
 
 EOF
 
-# MPI libraries for each compiler
-declare -A mpis
+# Associative arrays to store mpis and requested hashes
+declare -A mpis hashes
 
 while read pkg; do
     if [[ $pkg == \#* ]]; then
