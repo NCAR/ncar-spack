@@ -55,21 +55,6 @@ if [[ -n $cache_label ]]; then
     build_cmd="$build_cmd --cache-only"
 fi
 
-# Detect version of system GCC
-sys_gcc=$(gcc -v |& grep "gcc version" | cut -d' ' -f3)
-
-cat << EOF
-
-Start time          = $start_time
-Spack environment   = $SPACK_ENV
-Package manifest    = $pkg_manifest
-Build jobs          = $build_jobs
-System GCC          = gcc@$sys_gcc
-
-Processing install manifest ...
-
-EOF
-
 function prepare_spec {
     declare -g spec="$pkg" comp=${comp:-$install_compiler} mpi=${mpi:-$install_mpi}
     [[ -n $comp ]] && spec="$(sed "s|%CMP%|%$comp|g;t;s|$| %$comp|" <<< "$spec")"
@@ -156,7 +141,7 @@ function install_spec {
     log_cmd "$build_cmd $spec" >> $log_installs
     $build_cmd $spec |& tee -a $log_installs | stdbuf -oL sed 's/^/   /'    \
             | (grep -e "Executing phase" -e "Successfully installed"        \
-            -e " Total: " -e " from binary cache" || true)
+            -e " Total: " -e " from binary cache" -e " Error: " -e " Warning: " || true)
 
     if [[ ${PIPESTATUS[0]} -ne 0 ]]; then
         echo -e "\nError: install of package $spec failed! Aborting installs ...\n"
@@ -217,6 +202,32 @@ log_dir=$SPACK_ENV/logs
 mkdir -p $log_dir
 log_specs=$log_dir/specs.$start_time
 log_installs=$log_dir/installs.$start_time
+
+# Detect version of system GCC
+sys_gcc=$(gcc -v |& grep "gcc version" | cut -d' ' -f3)
+
+# Detect Spack and builtin commits
+spack_commit=$(cd $NCAR_SPACK_ROOT_DEPLOYMENT/spack; git rev-parse HEAD)
+
+if [[ -d $NCAR_SPACK_ENV_BUILD/repos/builtin ]]; then
+    builtin_commit=$(cd $NCAR_SPACK_ENV_BUILD/repos/builtin; git rev-parse HEAD)
+else
+    builtin_commit=$spack_commit
+fi
+
+tee $log_installs << EOF
+
+Start time          = $start_time
+Spack environment   = $SPACK_ENV
+Package manifest    = $pkg_manifest
+Spack version       = $spack_commit
+Builtin version     = $builtin_commit
+Build jobs          = $build_jobs
+System GCC          = gcc@$sys_gcc
+
+Processing install manifest ...
+
+EOF
 
 # MPI libraries for each compiler
 declare -A mpis

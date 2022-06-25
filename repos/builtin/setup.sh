@@ -11,7 +11,7 @@ cd $SPACK_ENV/repos
 git clone -c feature.manyFiles=true --sparse --filter blob:none git@github.com:spack/spack.git $repo
 cd $repo
 git sparse-checkout set var/spack/repos/builtin/packages
-git checkout $NCAR_SPACK_CLONE_VERSION
+git checkout ${NCAR_SPACK_BUILTIN_VERSION:-$NCAR_SPACK_CLONE_VERSION}
 ln -s var/spack/repos/builtin/packages packages
 cat > repo.yaml << EOF
 repo:

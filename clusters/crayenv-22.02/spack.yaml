@@ -63,12 +63,6 @@ spack:
         - cray-mpich/8.1.13
         - craype-network-ofi
       buildable: false
-    cray-fftw:
-      externals:
-      - spec: cray-fftw@3.3.8.12
-        modules:
-        - cray-fftw/3.3.8.12
-      buildable: false
     cray-libsci:
       externals:
       - spec: cray-libsci@21.08.1.2
@@ -91,9 +85,11 @@ spack:
     fftw:
       variants: [-mpi]
     eccodes:
-      variants: [+fortran, +netcdf, +png, jp2k=jasper]
+      variants: [+tools, +fortran, +netcdf, +png, jp2k=jasper]
     curl:
       variants: [tls=gnutls]
+    cdo:
+      variants: [+curl]
   view:
     ncarenv:
       root: %VIEWROOT%

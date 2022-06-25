@@ -4,11 +4,11 @@
 #   a specified cluster definition. 
 #
 #   Author:         Brian Vanderwende
-#   Last Revised:   14:11, 17 Jun 2022
+#   Last Revised:   14:54, 24 Jun 2022
 #
 
 set -e
-export NCAR_SPACK_DEPLOY_TIME=$(date +%y%m%d%H%M)
+export NCAR_SPACK_DEPLOY_TIME=$(date +%y%m%dT%H%M)
 export NCAR_SPACK_DEPLOY_DIR="$( cd "$(dirname "$0")" ; pwd )"
 export NCAR_SPACK_DEPLOY_TYPE=testing
 

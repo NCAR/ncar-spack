@@ -16,6 +16,7 @@ class Netcdf(MakefilePackage):
 
     maintainers = ['vanderwb']
     
+    version('4.9.0', sha256='d45410057b29764ca2ccef79a21f558f9012fbd6686bdd6cc585bfb277241085')
     version('4.8.1', sha256='d45410057b29764ca2ccef79a21f558f9012fbd6686bdd6cc585bfb277241085')
 
     # Inherit relevant variants from netcdf-c package
@@ -37,9 +38,11 @@ class Netcdf(MakefilePackage):
     depends_on('netcdf-fortran')
     depends_on('netcdf-cxx4')
 
+    depends_on('netcdf-c@4.9.0', when='@4.9.0')
     depends_on('netcdf-c@4.8.1', when='@4.8.1')
+    depends_on('netcdf-fortran@4.5.4', when='@4.9.0:')
     depends_on('netcdf-fortran@4.5.3', when='@4.8.1')
-    depends_on('netcdf-cxx4@4.3.1', when='@4.8.1')
+    depends_on('netcdf-cxx4@4.3.1', when='@4.8.1:')
 
     def build(self, spec, prefix):
         ncroot      = self.spec['netcdf-c'].prefix
