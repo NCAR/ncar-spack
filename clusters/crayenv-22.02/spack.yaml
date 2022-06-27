@@ -79,7 +79,7 @@ spack:
     netcdf-c:
       variants: [+dap, -mpi]
     hdf5:
-      variants: [+hl, +szip, +fortran, +cxx, -mpi]
+      variants: [+hl, +szip, +fortran, +cxx, -mpi, +threadsafe]
     netcdf-cxx4:
       variants: [-doxygen]
     fftw:

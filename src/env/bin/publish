@@ -16,7 +16,7 @@
 #           shell script. So we must activate in the script!
 #
 #   Author:         Brian Vanderwende
-#   Last Revised:   18:21, 17 Jun 2022
+#   Last Revised:   10:02, 25 Jun 2022
 #
 
 function create_gitignore {
@@ -58,7 +58,7 @@ cat > $1 << EOF
 # Start time: $start_time
 
 singleton:
-$(sed 's/-/ /' <<< "$new_pkgs")
+$(echo $new_pkgs | sed 's/- /\n    /g' | tail -n +2)
 EOF
 }
 
