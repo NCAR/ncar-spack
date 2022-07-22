@@ -4,7 +4,7 @@
 #   a specified cluster definition. 
 #
 #   Author:         Brian Vanderwende
-#   Last Revised:   14:54, 24 Jun 2022
+#   Last Revised:   18:38, 21 Jul 2022
 #
 
 set -e
@@ -84,9 +84,12 @@ if [[ $NCAR_SPACK_ROOT != $spack_clone_path ]]; then
     git checkout $NCAR_SPACK_CLONE_VERSION
 
     # Apply source code patches as necessary
-    for src_patch in $NCAR_SPACK_DEPLOY_DIR/src/patches/$NCAR_SPACK_CLONE_VERSION/*; do
-        git apply $src_patch &> /dev/null
-    done
+    if [[ -d $NCAR_SPACK_DEPLOY_DIR/src/patches/$NCAR_SPACK_CLONE_VERSION ]]; then
+        for src_patch in $NCAR_SPACK_DEPLOY_DIR/src/patches/$NCAR_SPACK_CLONE_VERSION/*; do
+            echo "Applying patch to Spack: $src_patch"
+            git apply $src_patch &> /dev/null
+        done
+    fi
 
     # Copy clean shell scripts to Spack bin
     cp -r $NCAR_SPACK_DEPLOY_DIR/src/spack/* $spack_clone_path/
@@ -174,11 +177,17 @@ fi
 spack compiler find
 
 # Create mirror and prepare workshop to generate build_cache (binaries)
-spack config add "config:install_tree:padded_length:128"
-spack mirror create -d $NCAR_SPACK_MIRROR -a
-spack gpg publish -d $NCAR_SPACK_MIRROR
+spack config add "config:install_tree:padded_length:${NCAR_SPACK_PAD_LENGTH:-128}"
 
-# Add local filesystem mirror
+if [[ -d $NCAR_SPACK_MIRROR/build_cache/_pgp ]]; then
+    for gpg_key in $NCAR_SPACK_MIRROR/build_cache/_pgp/*.pub; do
+        spack gpg trust $gpg_key
+    done
+else
+    spack mirror create -d $NCAR_SPACK_MIRROR -a
+    spack gpg publish -d $NCAR_SPACK_MIRROR
+fi
+
 spack mirror add $NCAR_SPACK_MIRROR_NAME $NCAR_SPACK_MIRROR
 
 # Add custom repos

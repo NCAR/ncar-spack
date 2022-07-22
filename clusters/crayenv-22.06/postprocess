@@ -7,7 +7,7 @@
 # CONFIGURABLES
 compilers="cce gcc nvhpc"
 mpis="cray-mpich"
-skip_list="gcc/8.1.0"
+skip_list=
 cray_network=ofi
 
 # Perform common script setup including environment checks
@@ -65,14 +65,14 @@ append-path MODULEPATH [ lindex \$mpi_mod_path 0 ]
 setenv CRAYPE_NETWORK_TARGET $cray_network
 
 # Libfabric settings
-prepend-path PATH /opt/cray/libfabric/1.11.0.4.117/bin
-prepend-path LD_LIBRARY_PATH /opt/cray/libfabric/1.11.0.4.117/lib64
-prepend-path MANPATH /opt/cray/libfabric/1.11.0.4.117/share/man
-prepend-path PKG_CONFIG_PATH /opt/cray/libfabric/1.11.0.4.117/lib64/pkgconfig
+prepend-path PATH /opt/cray/libfabric/1.11.0.4.116/bin
+prepend-path LD_LIBRARY_PATH /opt/cray/libfabric/1.11.0.4.116/lib64
+prepend-path MANPATH /opt/cray/libfabric/1.11.0.4.116/share/man
+prepend-path PKG_CONFIG_PATH /opt/cray/libfabric/1.11.0.4.116/lib64/pkgconfig
 
 # PALS support
-prepend-path PATH /opt/cray/pe/pals/1.1.4/bin
-prepend-path MANPATH /opt/cray/pe/pals/1.1.4/man
+prepend-path PATH /opt/cray/pe/pals/1.1.8/bin
+prepend-path MANPATH /opt/cray/pe/pals/1.1.8/man
 set-alias mpirun mpiexec
 EOF
 
@@ -94,8 +94,8 @@ setenv           CRAY_CPU_TARGET x86-skylake
 # Cray XPMEM configuration
 prepend-path     PE_PKGCONFIG_PRODUCTS PE_XPMEM
 setenv           PE_XPMEM_PKGCONFIG_LIBS cray-xpmem
-setenv           CRAY_XPMEM_INCLUDE_OPTS -I/opt/cray/xpmem/2.2.40-2.1_6.3__g3cf3325.shasta/include
-setenv           CRAY_XPMEM_POST_LINK_OPTS -L/opt/cray/xpmem/2.2.40-2.1_6.3__g3cf3325.shasta/lib64
+setenv           CRAY_XPMEM_INCLUDE_OPTS -I/opt/cray/xpmem/2.3.2-2.2_7.18__g93dd7ee.shasta/include
+setenv           CRAY_XPMEM_POST_LINK_OPTS -L/opt/cray/xpmem/2.3.2-2.2_7.18__g93dd7ee.shasta/lib64
 
 # Make module "sticky" (need to --force to remove/purge)
 add-property lmod sticky

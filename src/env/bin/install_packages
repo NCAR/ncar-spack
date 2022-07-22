@@ -43,7 +43,7 @@ while [[ $# -gt 0 ]]; do
     shift
 done
 
-spec_cmd="spack spec -I -N -t -L -c edges"
+spec_cmd="spack spec -I -N -t -L"
 
 if [[ -n $build_jobs ]]; then
     build_cmd="spack install -j $build_jobs"
@@ -57,6 +57,33 @@ fi
 
 function prepare_spec {
     declare -g spec="$pkg" comp=${comp:-$install_compiler} mpi=${mpi:-$install_mpi}
+
+    while [[ $spec == *:* ]]; do
+        spec_opt="$(sed 's|.*<\([^>]*\)>.*|\1|' <<< "$spec")"
+        IFS=: read opt_type opt_body <<< "$spec_opt"
+
+        if [[ $comp == ${opt_type}* ]] || [[ $mpi == ${opt_type}* ]]; then
+            spec="${spec/<$spec_opt>/$opt_body}"
+        else
+            # Make sure white space is trimmed using xargs
+            spec=$(xargs <<< ${spec/<$spec_opt>})
+            
+            if [[ $opt_type == hash-ref ]]; then
+                hash_ref="$opt_body"
+                [[ -n $comp ]] && hash_ref="$hash_ref $comp"
+                [[ -n $mpi ]]  && hash_ref="$hash_ref $mpi"
+            elif [[ $opt_type == spec-ref ]]; then
+                if [[ -z ${specs[$opt_body]} ]]; then
+                    specs[$opt_body]="$spec"
+                fi
+            fi
+        fi
+    done
+
+    for spec_ref in $(xargs -n1 <<< ${!specs[@]} | tac | xargs); do
+        spec="$(sed "s|%${spec_ref}%|^${specs[$spec_ref]}|g" <<< "$spec")"
+    done
+
     [[ -n $comp ]] && spec="$(sed "s|%CMP%|%$comp|g;t;s|$| %$comp|" <<< "$spec")"
     [[ -n $mpi ]]  && spec="$(sed "s|%MPI%|^$mpi|g;t;s|$| ^$mpi|" <<< "$spec")"
     spec="$(sed -r "s/%gcc( |$)/%gcc@${sys_gcc}\1/g" <<< "$spec")"
@@ -73,23 +100,6 @@ function prepare_spec {
         2>&1 echo -e "\nError: spec still contains reference! ($spec)"
         exit 1
     fi
-
-    while [[ $spec == *:* ]]; do
-        spec_opt="$(sed 's|.*<\([^>]*\)>.*|\1|' <<< "$spec")"
-        IFS=: read opt_type opt_body <<< "$spec_opt"
-
-        if [[ $comp == ${opt_type}* ]] || [[ $mpi == ${opt_type}* ]]; then
-            spec="${spec/<$spec_opt>/$opt_body}"
-        else
-            if [[ $opt_type == hash-ref ]]; then
-                hash_ref="$opt_body"
-                [[ -n $comp ]] && hash_ref="$hash_ref $comp"
-                [[ -n $mpi ]]  && hash_ref="$hash_ref $mpi"
-            fi
-
-            spec="${spec/<$spec_opt>}"
-        fi
-    done
 }
 
 function check_spec {
@@ -267,7 +277,7 @@ Processing install manifest ...
 EOF
 
 # Associative arrays to store mpis and requested hashes
-declare -A mpis hashes
+declare -A mpis hashes specs
 
 while read pkg; do
     if [[ $pkg == \#* ]]; then

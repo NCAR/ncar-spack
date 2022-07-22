@@ -3,7 +3,7 @@
 #
 # SPDX-License-Identifier: (Apache-2.0 OR MIT)
 
-from spack import *
+from spack.package import *
 
 class Netcdf(MakefilePackage):
     """NetCDF (network Common Data Form) is a set of software libraries and
