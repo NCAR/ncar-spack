@@ -6,6 +6,7 @@ Usage: $0 [MANIFEST]
 
 Options
     -h                      show this help message
+    -d, --dry-run           show what would be installed but do not make any changes
     -j, --buildjobs         number of build jobs to run (otherwise will use env default)
 
 EOF
@@ -24,12 +25,17 @@ my_host=$(hostname)
 # Defaults
 pkg_manifest=$SPACK_ENV/packages.cfg
 build_jobs=$(spack config get config | sed -n 's/^[ ]*build_jobs: \(.*\)/\1/p')
+header_cmd='tee $log_installs'
 unset cache_label
 
 while [[ $# -gt 0 ]]; do
     case $1 in
         -c|--cache-only)
             cache_label=" (cached)"
+            ;;
+        -d|--dry-run|--dryrun)
+            header_cmd="cat"
+            dry_run=true
             ;;
         -j|--buildjobs)
             build_jobs=$2
@@ -84,6 +90,16 @@ function prepare_spec {
         spec="$(sed "s|%${spec_ref}%|^${specs[$spec_ref]}|g" <<< "$spec")"
     done
 
+    # Remove any duplicate dependency references from the spec
+    for spec_element in $spec; do
+        if [[ $spec_element != ^* ]] || [[ " ${filter_spec[@]} " != *" $spec_element "* ]]; then
+            filter_spec+=( $spec_element )
+        fi
+    done
+
+    spec="${filter_spec[@]}"
+    unset filter_spec
+
     [[ -n $comp ]] && spec="$(sed "s|%CMP%|%$comp|g;t;s|$| %$comp|" <<< "$spec")"
     [[ -n $mpi ]]  && spec="$(sed "s|%MPI%|^$mpi|g;t;s|$| ^$mpi|" <<< "$spec")"
     spec="$(sed -r "s/%gcc( |$)/%gcc@${sys_gcc}\1/g" <<< "$spec")"
@@ -123,7 +139,7 @@ function check_spec {
         
         set -e
 
-        if [[ $skip_spec == false ]]; then
+        if [[ $skip_spec == false ]] && [[ $dry_run != true ]]; then
             spack_spec_out=$($spec_cmd $spec)
             spec_status=$(grep -A2 ^Concretized <<< "$spack_spec_out" | tail -n1)
             spec_hash=$(awk '{print $2}' <<< "$spec_status")
@@ -149,11 +165,13 @@ function check_spec {
                 tsecho "Installing spec $GCOL$spec$DCOL$cache_label"
             fi
 
-            log_cmd "$spec_cmd $spec" >> $log_specs
-            echo "$spack_spec_out" &>> $log_specs
-            unset spack_spec_out
-            install_spec
-            echo "${spec}:$spec_hash" >> $SPACK_ENV/.installs
+            if [[ $dry_run != true ]]; then
+                log_cmd "$spec_cmd $spec" >> $log_specs
+                echo "$spack_spec_out" &>> $log_specs
+                unset spack_spec_out
+                install_spec
+                echo "${spec}:$spec_hash" >> $SPACK_ENV/.installs
+            fi
 
             if [[ $spec == lmod* ]]; then
                 new_lmod=true
@@ -262,7 +280,14 @@ else
     builtin_commit=$spack_commit
 fi
 
-tee $log_installs << EOF
+if [[ $dry_run == true ]]; then
+cat << EOF
+
+*** DRY RUN REQUESTED - NO CHANGES WILL BE MADE! ***
+EOF
+fi
+
+eval $header_cmd << EOF
 
 Start time          = $start_time
 Spack environment   = $SPACK_ENV
@@ -337,7 +362,7 @@ while read pkg; do
     fi
 done < <(awk 'NF' $pkg_manifest)
 
-if [[ $SPACK_ENV == $NCAR_SPACK_ENV_BUILD ]]; then
+if [[ $dry_run != true ]] && [[ $SPACK_ENV == $NCAR_SPACK_ENV_BUILD ]]; then
     . $my_dir/tools/make_localinit.sh build
 fi
 
