@@ -124,12 +124,6 @@ The `clean_bash` script is located in the `bin` directory of the **cluster deplo
 
 `clean_bash` modifies your shell prompt to indicate that you are in a clean shell session. You can further customize the prompt by exporting `$NCAR_SPACK_PROMPT` in your environment (or setting it at startup) before invoking `clean_bash`.
 
-#### Using a Custom Spack Install
-When using a test cluster deployment and/or debugging, it can be useful to use a non-default Spack installation. The `clean_bash` script can initialize a custom version instead of the one set in your startup files using the following environment setting:
-```
-CUSTOM_SPACK_ROOT=/glade/work/$USER/custom-spack clean_bash
-```
-
 ### Configuring Vim
 Since Spack will output YAML lines with two-space indentation, the following Vim settings are recommended:
 ```

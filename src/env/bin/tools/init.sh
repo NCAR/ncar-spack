@@ -18,9 +18,7 @@ EOF
 
 if [[ $NCAR_SPACK_CLEAN != true ]]; then
     tsecho "Sanitizing user environment"
-    export CUSTOM_SPACK_ROOT=$NCAR_SPACK_ROOT_DEPLOYMENT/spack NCAR_SPACK_CLEAN=true
-
-    $CUSTOM_SPACK_ROOT/bin/clean_bash $0 "$@"
+    NCAR_SPACK_CLEAN=true $NCAR_SPACK_ROOT_DEPLOYMENT/spack/bin/clean_bash $0 "$@"
     exit $?
 elif [[ -z $SPACK_ENV ]]; then
     set -e
