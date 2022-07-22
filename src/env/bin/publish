@@ -16,7 +16,7 @@
 #           shell script. So we must activate in the script!
 #
 #   Author:         Brian Vanderwende
-#   Last Revised:   10:02, 25 Jun 2022
+#   Last Revised:   19:14, 21 Jul 2022
 #
 
 function create_gitignore {
@@ -236,8 +236,10 @@ git commit -m "$commit_msg"
 echo
 
 # Create modules in build environment
-tsecho "Generating modules in public environment"
-spack module lmod refresh -y
+if [[ -n $NCAR_SPACK_ROOT_MODULES ]]; then
+    tsecho "Generating modules in public environment"
+    spack module lmod refresh -y
+fi
 
 if [[ -f $NCAR_SPACK_ENV_BUILD/bin/postprocess ]]; then
     tsecho "Running postprocessing script on environment"

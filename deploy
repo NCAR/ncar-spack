@@ -4,7 +4,7 @@
 #   a specified cluster definition. 
 #
 #   Author:         Brian Vanderwende
-#   Last Revised:   18:38, 21 Jul 2022
+#   Last Revised:   19:13, 21 Jul 2022
 #
 
 set -e
@@ -222,8 +222,10 @@ if [[ ${skip_pkgs:-no} != yes ]]; then
     bin/populate_build_cache
 
     # Create modules in build environment
-    echo "Generating modules in build environment ..."
-    spack module lmod refresh -y
+    if [[ -n $NCAR_SPACK_ROOT_MODULES ]]; then
+        echo "Generating modules in build environment ..."
+        spack module lmod refresh -y
+    fi
 
     # Some clusters (e.g., Cray) need to run extra commands to prep environment
     if [[ -f $NCAR_SPACK_ENV_BUILD/bin/postprocess ]]; then
