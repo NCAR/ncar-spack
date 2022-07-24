@@ -9,7 +9,7 @@ else
 fi
 
 util_path=$SPACK_ENV/util
-lmod_location=$(spack location -i lmod 2> /dev/null)
+lmod_location=$(spack location -i lmod 2> /dev/null || true)
 
 if [[ $? != 0 ]]; then
 tsecho "lmod is not installed; skipping module generation"

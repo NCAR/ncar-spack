@@ -219,14 +219,19 @@ function install_spec {
             current_comps=$(spack config get compilers | grep spec | cut -d: -f2)
         fi
 
-        if [[ $current_comps != *${spec//[[:blank:]]/}* ]]; then
+        if [[ $current_comps != *${spec//[[:blank:]]/}* ]] || [[ $install_register == replace ]]; then
             tsecho "Registering $spec as a compiler in spack.yaml"
 
+            if [[ $current_comps == *${spec//[[:blank:]]/}* ]]; then
+                tsecho "(replacing existing compiler $spec)"
+                spack compiler remove $spec
+            fi
+
             if [[ $install_external == module ]]; then
-                module_name=$(cut -d' ' -f1 <<< "${comp/@//}")
+                module_name=$(cut -d' ' -f1 <<< "${spec/@//}")
                 (module purge; module load $module_name; spack compiler find > /dev/null)
             else
-                spack compiler add $(spack location -i $comp) > /dev/null
+                spack compiler add $(spack location -i $spec) > /dev/null
             fi
         fi
     fi

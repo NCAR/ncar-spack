@@ -4,10 +4,6 @@ env_args=( SPACK_DISABLE_LOCAL_CONFIG=true )
 my_dir="$( cd "$(dirname "$0")" ; pwd )"
 NCAR_SPACK_ROOT=$(readlink -f $my_dir/..)
 
-if [[ $NCAR_SPACK_ROOT_DEVELOPMENT == $NCAR_SPACK_ROOT ]]; then
-    NCAR_PASSVARS=${!NCAR_SPACK_*}
-fi
-
 if [[ ! -f $NCAR_SPACK_ROOT/bin/spack ]]; then
     2>&1 echo "Error: script is not installed into a Spack clone"
     exit 1
@@ -37,7 +33,7 @@ fi
 
 env_args+=( PATH=${NCAR_SPACK_PYDIR:+${NCAR_SPACK_PYDIR}:}/usr/local/bin:/usr/bin:/bin )
 
-for pass_vars in USER SUDO_USER HOME TERM SPACK_SYSTEM_CONFIG_PATH $NCAR_PASSVARS LS_COLORS TMPDIR; do
+for pass_vars in USER SUDO_USER HOME TERM SPACK_SYSTEM_CONFIG_PATH ${!NCAR_SPACK_*} LS_COLORS TMPDIR; do
     if [[ -n ${!pass_vars} ]]; then
         env_args+=( $pass_vars="${!pass_vars}" )
     fi

@@ -1,0 +1,31 @@
+# This is a Spack Environment file.
+#
+# It describes a set of packages to be installed, along with
+# configuration settings.
+spack:
+  config:
+    install_tree:
+      root: %INSTALLROOT%
+      projections:
+        gcc: '{name}/{version}'
+        all: '{name}/{version}/{compiler.name}/{compiler.version}'
+        ^mpi: '{name}/{version}/{compiler.name}/{compiler.version}/{^mpi.name}/{^mpi.version}'
+    build_jobs: 8
+    test_stage: /glade/scratch/$user/temp/spack/tests
+    source_cache: /glade/scratch/$user/temp/spack/cache
+    build_stage:
+      - /glade/scratch/$user/temp/spack/builds
+  packages:
+    all:
+      compiler:: [gcc@7.5.0, gcc, cce, nvhpc, intel]
+      target: [x86_64_v3]
+      providers:
+        mpi:: [cray-mpich, openmpi]
+        szip:: [libszip]
+        pkgconfig:: [pkg-config]
+      permissions:
+        read: world
+        write: user
+    gcc:
+      compiler: [gcc@7.5.0]
+      variants: [+piclibs, 'languages=c,c++,fortran,go']
