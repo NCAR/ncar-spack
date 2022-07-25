@@ -3,14 +3,14 @@
 #   This script prepares the common env for public use
 #
 
+# Perform common script setup including environment checks
+export my_dir="$( cd "$(dirname "$0")" ; pwd )"
+. $my_dir/tools/init.sh
+
 # Only run this for the public env
 if [[ $SPACK_ENV != $NCAR_SPACK_ENV_PUBLIC ]]; then
    exit
 fi
-
-# Perform common script setup including environment checks
-export my_dir="$( cd "$(dirname "$0")" ; pwd )"
-. $my_dir/tools/init.sh
 
 log_active=0
 
