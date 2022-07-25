@@ -187,10 +187,14 @@ function check_spec {
             exit 1
         fi
     elif [[ $install_type == compiler ]]; then
-        if [[ $spec == gcc* ]]; then
-            compilers="${spec//[[:blank:]]/} $compilers"
+        comp_spec="${spec//[[:blank:]]/}"
+
+        if [[ $comp_spec == gcc* ]]; then
+            compilers="$comp_spec $compilers"
+        elif [[ $comp_spec == intel-oneapi-compilers* ]]; then
+            compilers="$compilers ${comp_spec/intel-oneapi-compilers/oneapi}"
         else
-            compilers="$compilers ${spec//[[:blank:]]/}"
+            compilers="$compilers $comp_spec"
         fi
     fi
 }
