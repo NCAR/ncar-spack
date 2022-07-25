@@ -8,7 +8,7 @@
 return_dir=$(pwd)
 
 cd $SPACK_ENV/repos
-git clone -c feature.manyFiles=true --sparse --filter blob:none git@github.com:spack/spack.git $repo
+git clone -c feature.manyFiles=true --sparse --filter blob:none https://github.com/spack/spack.git $repo
 cd $repo
 git sparse-checkout set var/spack/repos/builtin/packages
 git checkout ${NCAR_SPACK_BUILTIN_VERSION:-$NCAR_SPACK_CLONE_VERSION}
