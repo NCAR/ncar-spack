@@ -17,7 +17,7 @@ spack:
       - /glade/scratch/$user/temp/spack/builds
   packages:
     all:
-      compiler:: [gcc@7.5.0, gcc, cce, nvhpc, intel]
+      compiler:: [gcc@7.5.0, gcc, cce, nvhpc, oneapi]
       providers:
         mpi:: [cray-mpich, openmpi]
         szip:: [libszip]
@@ -35,15 +35,15 @@ spack:
       - spec: pbspro@2021.1.1
         prefix: /opt/pbs
       buildable: false
-    intel:
-      externals:
-      - spec: intel@19.1.1%gcc@7.5.0
-        prefix: /glade/u/apps/opt/intel/2020u1/compilers_and_libraries/linux
-      buildable: false
     nvhpc:
       externals:
       - spec: nvhpc@22.5%gcc@7.5.0
         prefix: /glade/u/apps/opt/nvhpc/22.5/Linux_x86_64/22.5/compilers
+      buildable: false
+    intel-oneapi-compilers:
+      externals:
+      - spec: intel-oneapi-compilers@2022.1.0%gcc@7.5.0
+        prefix: /glade/u/apps/common/22.07/spack/opt/spack/intel-oneapi-compilers/2022.1.0/gcc/7.5.0/compiler/latest/linux
       buildable: false
     cray-mpich:
       externals:
@@ -62,7 +62,7 @@ spack:
         modules:
         - cray-mpich/8.1.17
         - craype-network-ofi
-      - spec: cray-mpich@8.1.17 %intel
+      - spec: cray-mpich@8.1.17 %oneapi
         prefix: /opt/cray/pe/mpich/8.1.17/ofi/intel/19.0
         modules:
         - cray-mpich/8.1.17
@@ -116,21 +116,19 @@ spack:
         flags: {}
         spec: gcc@7.5.0
     - compiler:
-        spec: intel@19.1.1
+        spec: oneapi@2022.1.0
         paths:
-          cc: /glade/u/apps/opt/intel/2020u1/compilers_and_libraries/linux/bin/intel64/icc
-          cxx: /glade/u/apps/opt/intel/2020u1/compilers_and_libraries/linux/bin/intel64/icpc
-          f77: /glade/u/apps/opt/intel/2020u1/compilers_and_libraries/linux/bin/intel64/ifort
-          fc: /glade/u/apps/opt/intel/2020u1/compilers_and_libraries/linux/bin/intel64/ifort
+          cc: /glade/u/apps/common/22.07/spack/opt/spack/intel-oneapi-compilers/2022.1.0/gcc/7.5.0/compiler/latest/linux/bin/icx
+          cxx: /glade/u/apps/common/22.07/spack/opt/spack/intel-oneapi-compilers/2022.1.0/gcc/7.5.0/compiler/latest/linux/bin/icpx
+          f77: /glade/u/apps/common/22.07/spack/opt/spack/intel-oneapi-compilers/2022.1.0/gcc/7.5.0/compiler/latest/linux/bin/ifx
+          fc: /glade/u/apps/common/22.07/spack/opt/spack/intel-oneapi-compilers/2022.1.0/gcc/7.5.0/compiler/latest/linux/bin/ifx
         flags: {}
         operating_system: sles15
         target: x86_64
         modules: []
         environment:
-          set:
-            INTEL_LICENSE_FILE: 28518@128.117.177.41
           prepend_path:
-            LD_LIBRARY_PATH: /glade/u/apps/opt/intel/2020u1/compilers_and_libraries/linux/lib/intel64
+            LD_LIBRARY_PATH: /glade/u/apps/common/22.07/spack/opt/spack/intel-oneapi-compilers/2022.1.0/gcc/7.5.0/compiler/latest/linux/compiler/lib/intel64
         extra_rpaths: []
     - compiler:
         spec: nvhpc@22.5
@@ -196,20 +194,26 @@ spack:
           template: ncar_default.lua
         mpi:
           template: ncar_wrapper_mpi.lua
-        intel:
+        intel-oneapi-compilers:
           environment:
             set:
-              INTEL_LICENSE_FILE: 28518@128.117.177.41
               PE_ENV: INTEL
               INTEL_VERSION: '{version}'
               INTEL_PATH: '{prefix}'
+        intel-oneapi-compilers@2022.1.0:
+          environment:
+            prepend_path:
+              LD_LIBRARY_PATH: /glade/u/apps/common/22.07/spack/opt/spack/intel-oneapi-compilers/2022.1.0/gcc/7.5.0/compiler/latest/linux/compiler/lib/intel64
         nvhpc:
           environment:
             set:
-              NVLOCALRC: /glade/u/apps/opt/nvhpc/22.5/localrc/crayenv
               PE_ENV: NVIDIA
               NVIDIA_VERSION: '{version}'
               NVIDIA_PATH: '{prefix}'
+        nvhpc@22.5:
+          environment:
+            set:
+              NVLOCALRC: /glade/u/apps/opt/nvhpc/22.5/localrc/crayenv
             prepend_path:
               LD_LIBRARY_PATH: /glade/u/apps/opt/nvhpc/22.5/Linux_x86_64/22.5/compilers/lib
         ncarcompilers:
@@ -238,6 +242,7 @@ spack:
           netcdf+mpi: netcdf-mpi/{version}
           hdf5+mpi: hdf5-mpi/{version}
           netcdf: netcdf/{version}
+          intel-oneapi-compilers: intel/{version}
         core_compilers:
           - gcc@7.5.0
         core_specs:

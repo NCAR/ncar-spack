@@ -16,8 +16,8 @@ fi
 # If left set, will contaminate Spack child shells
 unset BASH_ENV
 
-# Add unzip to path (to get around Spack luarocks bug)
-export PATH=/glade/work/vanderwb/nwsc3/crayenv-22.02/test/bin:$PATH
+# Add common view to the path
+export PATH=/glade/u/apps/common/default/ncarenv/bin:$PATH
 
 # Initialize Bash Spack shell integration
 . $NCAR_SPACK_STARTUP

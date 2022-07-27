@@ -17,7 +17,7 @@ spack:
       - /glade/scratch/$user/temp/spack/builds
   packages:
     all:
-      compiler:: [gcc@7.5.0, gcc, cce, nvhpc, intel]
+      compiler:: [gcc@7.5.0, gcc, cce, nvhpc, oneapi]
       target: [x86_64_v3]
       providers:
         mpi:: [cray-mpich, openmpi]
@@ -29,3 +29,9 @@ spack:
     gcc:
       compiler: [gcc@7.5.0]
       variants: [+piclibs, 'languages=c,c++,fortran,go']
+  view:
+    ncarenv:
+      root: %VIEWROOT%
+      select: [gcc@7.5.0, unzip]
+      link_type: symlink
+      link: roots

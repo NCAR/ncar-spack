@@ -119,6 +119,27 @@ function prepare_spec {
 }
 
 function check_spec {
+    if [[ $install_type == mpi ]]; then
+        if [[ -n $comp ]]; then
+            mpis[$comp]="${mpis[$comp]} ${spec//[[:blank:]]/}"
+        else
+            2>&1 echo "Error: cannot install an MPI without setting a compiler!"
+            exit 1
+        fi
+    elif [[ $install_type == compiler ]]; then
+        comp_spec="${spec//[[:blank:]]/}"
+
+        if [[ $comp_spec == gcc* ]]; then
+            compilers="$comp_spec $compilers"
+        else
+            if [[ $comp_spec == intel-oneapi-compilers* ]]; then
+                comp_spec="${comp_spec/intel-oneapi-compilers/oneapi}"
+            fi
+
+            compilers="$compilers $comp_spec"
+        fi
+    fi
+    
     if [[ $install_build == false ]]; then
         tsecho "Skipping spec   $PCOL$spec$BCOL$type_msg$DCOL (reason: build=false specified)"
     else
@@ -178,25 +199,6 @@ function check_spec {
             fi
         fi
     fi
-
-    if [[ $install_type == mpi ]]; then
-        if [[ -n $comp ]]; then
-            mpis[$comp]="${mpis[$comp]} ${spec//[[:blank:]]/}"
-        else
-            2>&1 echo "Error: cannot install an MPI without setting a compiler!"
-            exit 1
-        fi
-    elif [[ $install_type == compiler ]]; then
-        comp_spec="${spec//[[:blank:]]/}"
-
-        if [[ $comp_spec == gcc* ]]; then
-            compilers="$comp_spec $compilers"
-        elif [[ $comp_spec == intel-oneapi-compilers* ]]; then
-            compilers="$compilers ${comp_spec/intel-oneapi-compilers/oneapi}"
-        else
-            compilers="$compilers $comp_spec"
-        fi
-    fi
 }
 
 function install_spec {
@@ -223,12 +225,12 @@ function install_spec {
             current_comps=$(spack config get compilers | grep spec | cut -d: -f2)
         fi
 
-        if [[ $current_comps != *${spec//[[:blank:]]/}* ]] || [[ $install_register == replace ]]; then
-            tsecho "Registering $spec as a compiler in spack.yaml"
+        if [[ $current_comps != *${comp_spec}* ]] || [[ $install_register == replace ]]; then
+            tsecho "Registering $comp_spec as a compiler in spack.yaml"
 
-            if [[ $current_comps == *${spec//[[:blank:]]/}* ]]; then
-                tsecho "(replacing existing compiler $spec)"
-                spack compiler remove $spec
+            if [[ $current_comps == *${comp_spec}* ]]; then
+                tsecho "(replacing existing compiler $comp_spec)"
+                spack compiler remove $comp_spec
             fi
 
             if [[ $install_external == module ]]; then

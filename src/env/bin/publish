@@ -16,12 +16,13 @@
 #           shell script. So we must activate in the script!
 #
 #   Author:         Brian Vanderwende
-#   Last Revised:   19:14, 21 Jul 2022
+#   Last Revised:   23:43, 26 Jul 2022
 #
 
 function create_gitignore {
 cat > $NCAR_SPACK_ENV_PUBLIC/.gitignore << EOF
 .spack-env
+.installs
 cache
 logs
 modules
@@ -124,15 +125,12 @@ pad_length=$(awk '/padded_length: / {print $2}' $SPACK_ENV/spack.yaml)
 
 tsecho "Converting build spack.yaml for use in public environment"
 cd $SPACK_ENV; mkdir -p .prototype; spack env deactivate
-sed '/  specs:/Q' spack.yaml > .prototype/spack.yaml
+cp spack.yaml .prototype
 
-if [[ -f $NCAR_SPACK_ENV_PUBLIC/spack.yaml ]]; then
-     sed -n '/  specs:/,$ p' $NCAR_SPACK_ENV_PUBLIC/spack.yaml >> .prototype/spack.yaml
-fi
-
-sed -i -r "s|^([^/]*).{$pad_length}|\1$SPACK_ROOT/opt/spack/|" .prototype/spack.yaml
+sed -i -r "/${NCAR_SPACK_ENV_BUILD//\//\\/}/ s|^([^/]*).{$pad_length}|\1$SPACK_ROOT/opt/spack/|" .prototype/spack.yaml
 sed -i "s|\([ ]*lmod: \)/.*|\1$NCAR_SPACK_ROOT_MODULES/$NCAR_SPACK_HOST_VERSION|" .prototype/spack.yaml
 sed -i "/[ ]*view:.*/,/[ ]*root:.*/{s|\([ ]*root: \)/.*|\1$NCAR_SPACK_ROOT_VIEW|}" .prototype/spack.yaml
+
 spack env activate .prototype
 spack config remove 'config:install_tree:padded_length' 
 spack config remove 'config:install_tree:root'
@@ -192,6 +190,12 @@ else
 fi
 
 # Finally, let's move the YAML file
+sed -i '/  specs:/Q' $NCAR_SPACK_ENV_BUILD/.prototype/spack.yaml
+
+if [[ -f $NCAR_SPACK_ENV_PUBLIC/spack.yaml ]]; then
+     sed -n '/  specs:/,$ p' $NCAR_SPACK_ENV_PUBLIC/spack.yaml >> $NCAR_SPACK_ENV_BUILD/.prototype/spack.yaml
+fi
+
 mv $NCAR_SPACK_ENV_BUILD/.prototype/spack.yaml $NCAR_SPACK_ENV_PUBLIC/spack.yaml
 
 # Switch to the production environment
