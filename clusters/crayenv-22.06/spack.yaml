@@ -186,7 +186,6 @@ spack:
           - cray-fftw
         whitelist:
           - git
-          - hdf5
         all:
           environment:
             set:
