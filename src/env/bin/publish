@@ -16,7 +16,7 @@
 #           shell script. So we must activate in the script!
 #
 #   Author:         Brian Vanderwende
-#   Last Revised:   23:43, 26 Jul 2022
+#   Last Revised:   23:59, 26 Jul 2022
 #
 
 function create_gitignore {
@@ -233,12 +233,6 @@ for cfg_file in config packages compilers modules mirrors repos; do
     sed -n "/^  ${cfg_file}:/,/^  [a-z]*:/p" spack.yaml | sed '$d; s/^  //' > $SPACK_ENV/config/${cfg_file}.yaml
 done
 
-tsecho "Committing YAML, lock, util and config changes to Git repo"
-echo
-git add spack.yaml spack.lock util config
-git commit -m "$commit_msg"
-echo
-
 # Create modules in build environment
 if [[ -n $NCAR_SPACK_ROOT_MODULES ]]; then
     tsecho "Generating modules in public environment"
@@ -260,6 +254,12 @@ if [[ ! -d $NCAR_SPACK_ROOT_PUBLIC/default ]] || [[ $set_as_default == true ]]; 
     tsecho "Setting environment as default public environment"
     ln -s $NCAR_SPACK_ROOT_DEPLOYMENT $NCAR_SPACK_ROOT_PUBLIC/default
 fi
+
+tsecho "Committing YAML, lock, util and config changes to Git repo"
+echo
+git add spack.yaml spack.lock util config
+git commit -m "$commit_msg"
+echo
 
 if [[ -n $NCAR_SPACK_GITHUB ]]; then
     tsecho "Pushing changes to GitHub"
