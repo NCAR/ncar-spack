@@ -32,6 +32,6 @@ spack:
   view:
     ncarenv:
       root: %VIEWROOT%
-      select: [gcc@7.5.0, unzip]
+      exclude: [intel-oneapi-compilers, nvhpc, byacc]
       link_type: symlink
       link: roots
