@@ -4,7 +4,7 @@
 #   a specified cluster definition. 
 #
 #   Author:         Brian Vanderwende
-#   Last Revised:   00:33, 27 Jul 2022
+#   Last Revised:   11:11, 28 Jul 2022
 #
 
 set -e
@@ -127,6 +127,16 @@ fi
 ## ---- CREATE AND CUSTOMIZE ENV ----
 #
 
+function manual_external {
+cat << EOF | sed -i '/^[ ]*packages:[ ]*$/ r /dev/stdin' $1
+    $ext_name:
+      externals:
+        - spec: $ext_spec
+          prefix: $ext_path
+      buildable: false
+EOF
+}
+
 if [[ -d $NCAR_SPACK_ENV_BUILD ]]; then
 2>&1 cat << EOF
 Error:  Existing environment found at ${NCAR_SPACK_ENV_BUILD}. Will not
@@ -182,8 +192,19 @@ if [[ -f clusters/$NCAR_SYS/externals.cfg ]]; then
         if [[ $ext_pkgs == /* ]]; then
             ext_flags="$ext_flags --path"
         fi
-        
-        spack external find $ext_flags $ext_pkgs
+    
+        auto_result=$(spack external find $ext_flags $ext_pkgs)
+
+        if [[ $auto_result == *spack.yaml* ]]; then
+            echo "Detected: $(tail -n +2 <<< $auto_result | xargs)"
+        elif [[ $ext_pkgs == /* ]]; then
+            ext_path=$(awk '{print $1}' <<< $ext_pkgs)
+            ext_spec=$(sed "s|.*/spack/opt/spack/\([^/]*\)/\([^/]*\)/.*|\1@\2|" <<< $ext_path)
+            ext_name=${ext_spec%@*}
+            manual_external $NCAR_SPACK_ENV_BUILD/spack.yaml
+            echo "Manual:   $ext_spec"
+        fi
+
         unset ext_flags
     done < clusters/$NCAR_SYS/externals.cfg
 fi

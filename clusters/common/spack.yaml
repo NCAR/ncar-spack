@@ -30,7 +30,7 @@ spack:
       compiler: [gcc@7.5.0]
       variants: [+piclibs, 'languages=c,c++,fortran,go']
   view:
-    ncarenv:
+    baseenv:
       root: %VIEWROOT%
       exclude: [intel-oneapi-compilers, nvhpc, byacc]
       link_type: symlink

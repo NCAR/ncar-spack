@@ -38,12 +38,12 @@ spack:
     nvhpc:
       externals:
       - spec: nvhpc@22.5%gcc@7.5.0
-        prefix: /glade/u/apps/opt/nvhpc/22.5/Linux_x86_64/22.5/compilers
+        prefix: /glade/u/apps/opt/nvhpc/22.5
       buildable: false
     intel-oneapi-compilers:
       externals:
       - spec: intel-oneapi-compilers@2022.1.0%gcc@7.5.0
-        prefix: /glade/u/apps/common/22.07/spack/opt/spack/intel-oneapi-compilers/2022.1.0/gcc/7.5.0/compiler/latest/linux
+        prefix: /glade/u/apps/common/22.07/spack/opt/spack/intel-oneapi-compilers/2022.1.0/gcc/7.5.0
       buildable: false
     cray-mpich:
       externals:
@@ -96,7 +96,7 @@ spack:
     cdo:
       variants: [+curl]
   view:
-    ncarenv:
+    baseenv:
       root: %VIEWROOT%
       select: [tmux, ghostscript]
       link_type: symlink
