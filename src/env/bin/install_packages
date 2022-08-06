@@ -150,7 +150,7 @@ function check_spec {
             spec_hash=$(grep "^${spec}:" $SPACK_ENV/.installs | cut -d: -f2)
 
             if [[ -n $spec_hash ]]; then
-                if grep -q $spec_hash $SPACK_ENV/spack.lock; then
+                if [[ " $start_hashes " == *" $spec_hash "* ]]; then
                     skip_spec=true
                 else
                     sed -i "/.*${spec_hash}/d" $SPACK_ENV/.installs
@@ -162,10 +162,9 @@ function check_spec {
 
         if [[ $skip_spec == false ]] && [[ $dry_run != true ]]; then
             spack_spec_out=$($spec_cmd $spec)
-            spec_status=$(grep -A2 ^Concretized <<< "$spack_spec_out" | tail -n1)
-            spec_hash=$(awk '{print $2}' <<< "$spec_status")
+            spec_hash=$(grep -A2 ^Concretized <<< "$spack_spec_out" | tail -n1 | awk '{print $2}')
 
-            if [[ $spec_status == "[+] "* ]]; then
+            if [[ " $start_hashes " == *" $spec_hash "* ]]; then
                 echo "${spec}:$spec_hash" >> $SPACK_ENV/.installs
                 skip_spec=true
             fi
@@ -205,7 +204,7 @@ function install_spec {
     # Install the package and view pertinent log information
     log_cmd "$build_cmd $spec" >> $log_installs
     $build_cmd $spec |& tee -a $log_installs | stdbuf -oL sed 's/^/   /'    \
-            | (grep -e "Executing phase" -e "Successfully installed"        \
+            | (grep -e "Executing phase" -e "Successfully installed" -e "already installed"     \
             -e " Total: " -e " from binary cache" -e " Error: " -e " Warning: " || true)
 
     if [[ ${PIPESTATUS[0]} -ne 0 ]]; then
@@ -308,9 +307,11 @@ Builtin version     = $builtin_commit
 Build jobs          = $build_jobs
 System GCC          = gcc@$sys_gcc
 
-Processing install manifest ...
-
 EOF
+
+echo "Querying current explicit packages ..."
+start_hashes=$(spack find -x --format '{hash}' | xargs)
+echo -e "Processing install manifest ...\n"
 
 # Associative arrays to store mpis and requested hashes
 declare -A mpis hashes specs
