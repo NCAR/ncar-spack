@@ -4,7 +4,7 @@
 #   a specified cluster definition. 
 #
 #   Author:         Brian Vanderwende
-#   Last Revised:   14:57, 03 Aug 2022
+#   Last Revised:   14:50, 06 Aug 2022
 #
 
 set -e
@@ -129,10 +129,10 @@ fi
 
 function manual_external {
 cat << EOF | sed -i '/^[ ]*packages:[ ]*$/ r /dev/stdin' $1
-    $ext_name:
+    $pkg_name:
       externals:
-        - spec: $ext_spec
-          prefix: $ext_path
+        - spec: $pkg_spec
+          prefix: $pkg_path
       buildable: false
 EOF
 }
@@ -184,28 +184,46 @@ spack env status
 if [[ -f clusters/$NCAR_SYS/externals.cfg ]]; then
     echo -e "Finding specified externals in clusters/$NCAR_SYS/externals.cfg ...\n"
     while read ext_entry; do
-        IFS=" : " read ext_type ext_pkgs <<< $ext_entry
+        IFS=" : " read ext_type ext_data <<< $ext_entry
 
         if [[ $ext_type == fixed ]]; then
             ext_flags=--not-buildable
         fi
 
-        if [[ $ext_pkgs == /* ]]; then
+        if [[ $ext_data == /* ]]; then
             ext_flags="$ext_flags --path"
+            ext_path=$(cut -d' ' -f1 <<< $ext_data)
+            ext_pkgs=$(cut -d' ' -f2- <<< $ext_data)
+
+            for pkg in $ext_pkgs; do
+                IFS="@" read pkg_name pkg_version <<< $pkg
+                pkg_paths=$(echo $(sed "s|%PKG%|$pkg_name|;s|%VER%|$pkg_version|" <<< $ext_path))
+               
+                for pkg_path in $pkg_paths; do
+                    if [[ -d $pkg_path ]]; then
+                        pkg_spec=$(sed "s|.*/spack/opt/spack/\([^/]*\)/\([^/]*\)/.*|\1@\2|" <<< $pkg_path)
+                        pkg_name=${pkg_spec%@*}
+                        auto_result=$(spack external find $ext_flags $pkg_path $pkg_name)
+
+                        if [[ $auto_result == *spack.yaml* ]]; then
+                            echo "Detected: $pkg_spec"
+                        else
+                            manual_external $NCAR_SPACK_ENV_BUILD/spack.yaml
+                            echo "Manual:   $pkg_spec"
+                        fi
+                    else
+                        2>&1 echo "Warning:  external not found ($pkg)"
+                    fi
+                done
+            done
+        else
+            auto_result=$(spack external find $ext_flags $ext_pkgs)
+
+            if [[ $auto_result == *spack.yaml* ]]; then
+                echo "Detected: $(tail -n +2 <<< $auto_result | xargs)"
+            fi
         fi
     
-        auto_result=$(spack external find $ext_flags $ext_pkgs)
-
-        if [[ $auto_result == *spack.yaml* ]]; then
-            echo "Detected: $(tail -n +2 <<< $auto_result | xargs)"
-        elif [[ $ext_pkgs == /* ]]; then
-            ext_path=$(awk '{print $1}' <<< $ext_pkgs)
-            ext_spec=$(sed "s|.*/spack/opt/spack/\([^/]*\)/\([^/]*\)/.*|\1@\2|" <<< $ext_path)
-            ext_name=${ext_spec%@*}
-            manual_external $NCAR_SPACK_ENV_BUILD/spack.yaml
-            echo "Manual:   $ext_spec"
-        fi
-
         unset ext_flags
     done < clusters/$NCAR_SYS/externals.cfg
 fi
