@@ -114,8 +114,8 @@ cat >> $1 << EOF
 # Cray XPMEM configuration
 prepend-path     PE_PKGCONFIG_PRODUCTS PE_XPMEM
 setenv           PE_XPMEM_PKGCONFIG_LIBS cray-xpmem
-setenv           CRAY_XPMEM_INCLUDE_OPTS -I/opt/cray/xpmem/2.3.2-2.2_7.18__g93dd7ee.shasta/include
-setenv           CRAY_XPMEM_POST_LINK_OPTS -L/opt/cray/xpmem/2.3.2-2.2_7.18__g93dd7ee.shasta/lib64
+setenv           CRAY_XPMEM_INCLUDE_OPTS -I/opt/cray/xpmem/${xpmem[$modfile]}/include
+setenv           CRAY_XPMEM_POST_LINK_OPTS -L/opt/cray/xpmem/${xpmem[$modfile]}/lib64
 EOF
 fi
 }
