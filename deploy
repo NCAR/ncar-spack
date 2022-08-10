@@ -4,7 +4,7 @@
 #   a specified cluster definition. 
 #
 #   Author:         Brian Vanderwende
-#   Last Revised:   14:50, 06 Aug 2022
+#   Last Revised:   15:17, 06 Aug 2022
 #
 
 set -e
@@ -217,7 +217,7 @@ if [[ -f clusters/$NCAR_SYS/externals.cfg ]]; then
                 done
             done
         else
-            auto_result=$(spack external find $ext_flags $ext_pkgs)
+            auto_result=$(spack external find $ext_flags $ext_data)
 
             if [[ $auto_result == *spack.yaml* ]]; then
                 echo "Detected: $(tail -n +2 <<< $auto_result | xargs)"
