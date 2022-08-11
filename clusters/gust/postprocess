@@ -7,7 +7,12 @@
 # CONFIGURABLES
 compilers="cce gcc nvhpc"
 mpis="cray-mpich"
-skip_list=
+skip_list=" cce/13.0.2 cce/14.0.1
+            craype/2.7.14 craype/2.7.16
+            perftools-base/21.12.0
+            cray-libsci/22.06.1.3 cray-libsci/21.08.1.2
+            cray-pals/1.1.8 cray-pals/1.1.5
+            cray-mpich/8.1.14 cray-mpich/8.1.17"
 cray_network=ofi
 
 # Perform common script setup including environment checks
@@ -191,8 +196,8 @@ if [[ ! -d $mod_deployment ]] || [[ -n $spack_flags ]]; then
 fi
 
 # Version dictionaries
-declare -A libfabric=( [8.1.17]=1.15.0.0 )
-declare -A pals=( [8.1.17]=1.1.8 )
+declare -A libfabric=( [8.1.18]=1.15.0.0 )
+declare -A pals=( [8.1.18]=1.2.0 )
 declare -A xpmem=( )
 
 [[ $log_active == 1 ]] && echo "Copying modules to $mod_root ..."

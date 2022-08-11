@@ -17,7 +17,7 @@ fi
 unset BASH_ENV
 
 # Add common view to the path
-export PATH=/glade/u/apps/common/default/ncarenv/bin:$PATH
+export PATH=/glade/u/apps/common/default/opt/bin:$PATH
 
 # Initialize Bash Spack shell integration
 . $NCAR_SPACK_STARTUP

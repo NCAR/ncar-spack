@@ -27,7 +27,7 @@ end
 
 -- Set user's TMPDIR if not already set
 if not tmpdir or not string.match(tmpdir, "^/glade") then
-    setenv("TMPDIR", pathJoin("/glade/scratch", user))
+    setenv("TMPDIR", pathJoin("/glade/gust/scratch", user))
 end
 
 -- Loading this module unlocks the CPE module tree
