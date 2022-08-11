@@ -33,7 +33,7 @@ fi
 
 env_args+=( PATH=${NCAR_SPACK_PYDIR:+${NCAR_SPACK_PYDIR}:}/usr/local/bin:/usr/bin:/bin )
 
-for pass_vars in USER SUDO_USER HOME TERM SPACK_SYSTEM_CONFIG_PATH ${!NCAR_SPACK_*} LS_COLORS TMPDIR; do
+for pass_vars in USER SUDO_USER HOME TERM SPACK_SYSTEM_CONFIG_PATH ${!NCAR_SPACK_*} LS_COLORS TMPDIR GIT_SSH; do
     if [[ -n ${!pass_vars} ]]; then
         env_args+=( $pass_vars="${!pass_vars}" )
     fi
