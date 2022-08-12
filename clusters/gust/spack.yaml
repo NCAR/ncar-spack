@@ -98,7 +98,7 @@ spack:
   view:
     baseenv:
       root: %VIEWROOT%
-      select: [tmux, ghostscript]
+      select: [tmux, ghostscript, emacs]
       link_type: symlink
       link: roots
   compilers:

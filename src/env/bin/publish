@@ -16,7 +16,7 @@
 #           shell script. So we must activate in the script!
 #
 #   Author:         Brian Vanderwende
-#   Last Revised:   23:59, 26 Jul 2022
+#   Last Revised:   15:35, 12 Aug 2022
 #
 
 function create_gitignore {
@@ -179,7 +179,7 @@ else
     git init $NCAR_SPACK_ENV_PUBLIC
     cd $NCAR_SPACK_ENV_PUBLIC
     
-    if [[ $NCAR_SPACK_GITHUB ]]; then
+    if [[ -n $NCAR_SPACK_GITHUB ]]; then
         git remote add origin $NCAR_SPACK_GITHUB
     fi
 
@@ -187,6 +187,12 @@ else
     echo
     create_gitignore
     create_git_readme
+
+    git commit -m "Initialize repo with README and .gitignore"
+    
+    if [[ -n $NCAR_SPACK_GITHUB ]]; then
+        git push -u origin "$NCAR_SPACK_HOST_VERSION"
+    fi
 fi
 
 # Finally, let's move the YAML file

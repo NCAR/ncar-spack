@@ -7,12 +7,12 @@
 # CONFIGURABLES
 compilers="cce gcc nvhpc"
 mpis="cray-mpich"
-skip_list=" cce/13.0.2 cce/14.0.1
-            craype/2.7.14 craype/2.7.16
-            perftools-base/21.12.0
-            cray-libsci/22.06.1.3 cray-libsci/21.08.1.2
-            cray-pals/1.1.8 cray-pals/1.1.5
-            cray-mpich/8.1.14 cray-mpich/8.1.17"
+skip_list=" cce/13.0.2 cce/14.0.1 
+            craype/2.7.14 craype/2.7.16 
+            perftools-base/21.12.0 
+            cray-libsci/22.06.1.3 cray-libsci/21.08.1.2 
+            cray-pals/1.1.8 cray-pals/1.1.5 
+            cray-mpich/8.1.14 cray-mpich/8.1.17 "
 cray_network=ofi
 
 # Perform common script setup including environment checks
@@ -70,26 +70,26 @@ append-path MODULEPATH [ lindex \$mpi_mod_path 0 ]
 setenv CRAYPE_NETWORK_TARGET $cray_network
 EOF
 
-if [[ ${libfabric[$modfile]+a} ]]; then
+if [[ ${libfabric[$mod_version]+a} ]]; then
 cat >> $1 << EOF
 
 # Libfabric settings
-prepend-path PATH /opt/cray/libfabric/${libfabric[$modfile]}/bin
-prepend-path LD_LIBRARY_PATH /opt/cray/libfabric/${libfabric[$modfile]}/lib64
-prepend-path MANPATH /opt/cray/libfabric/${libfabric[$modfile]}/share/man
-prepend-path PKG_CONFIG_PATH /opt/cray/libfabric/${libfabric[$modfile]}/lib64/pkgconfig
+prepend-path PATH /opt/cray/libfabric/${libfabric[$mod_version]}/bin
+prepend-path LD_LIBRARY_PATH /opt/cray/libfabric/${libfabric[$mod_version]}/lib64
+prepend-path MANPATH /opt/cray/libfabric/${libfabric[$mod_version]}/share/man
+prepend-path PKG_CONFIG_PATH /opt/cray/libfabric/${libfabric[$mod_version]}/lib64/pkgconfig
 EOF
 fi
 
-if [[ ${pals[$modfile]+a} ]]; then
+if [[ ${pals[$mod_version]+a} ]]; then
 cat >> $1 << EOF
 
 # PALS support
-prepend-path PATH /opt/cray/pe/pals/${pals[$modfile]}/bin
-prepend-path MANPATH /opt/cray/pe/pals/${pals[$modfile]}/man
-prepend-path PKG_CONFIG_PATH /opt/cray/pe/pals/${pals[$modfile]}/lib/pkgconfig
+prepend-path PATH /opt/cray/pe/pals/${pals[$mod_version]}/bin
+prepend-path MANPATH /opt/cray/pe/pals/${pals[$mod_version]}/man
+prepend-path PKG_CONFIG_PATH /opt/cray/pe/pals/${pals[$mod_version]}/lib/pkgconfig
 prepend-path PE_PALS_PKGCONFIG_LIBS libpals
-prepend_path PE_PKGCONFIG_PRODUCTS PE_PALS
+prepend-path PE_PKGCONFIG_PRODUCTS PE_PALS
 set-alias mpirun mpiexec
 EOF
 fi
@@ -113,14 +113,14 @@ setenv           CRAY_CPU_TARGET x86-milan
 add-property lmod sticky
 EOF
 
-if [[ ${xpmem[$modfile]+a} ]]; then
+if [[ ${xpmem[$mod_version]+a} ]]; then
 cat >> $1 << EOF
 
 # Cray XPMEM configuration
 prepend-path     PE_PKGCONFIG_PRODUCTS PE_XPMEM
 setenv           PE_XPMEM_PKGCONFIG_LIBS cray-xpmem
-setenv           CRAY_XPMEM_INCLUDE_OPTS -I/opt/cray/xpmem/${xpmem[$modfile]}/include
-setenv           CRAY_XPMEM_POST_LINK_OPTS -L/opt/cray/xpmem/${xpmem[$modfile]}/lib64
+setenv           CRAY_XPMEM_INCLUDE_OPTS -I/opt/cray/xpmem/${xpmem[$mod_version]}/include
+setenv           CRAY_XPMEM_POST_LINK_OPTS -L/opt/cray/xpmem/${xpmem[$mod_version]}/lib64
 EOF
 fi
 }
@@ -137,6 +137,7 @@ function copy_mods {
 
                 for mod_file in $(ls -1 --color=never $mod/*); do
                     if [[ " $skip_list " != *" $mod_file "* ]]; then
+			mod_version=${mod_file##*/}
                         cp $mod_file $mod_path/$mod
 
                         if [[ " $mpis " == *" $mod "* ]]; then
@@ -152,6 +153,7 @@ function copy_mods {
 
             for mod_file in $(ls -1 --color=never $mod/* 2> /dev/null); do
                 if [[ " $skip_list " != *" $mod_file "* ]]; then
+		    mod_version=${mod_file##*/}
                     cp $mod_file $mod_path/$mod
 
                     if [[ " $compilers " == *" $mod "* ]]; then
@@ -183,8 +185,6 @@ function copy_mods {
         cd - > /dev/null
     done
 }
-
-set -e
 
 # First, let's make sure module tree exists
 if [[ ! -d $mod_deployment ]] || [[ -n $spack_flags ]]; then
@@ -240,3 +240,13 @@ for mm_type in ncarenv crayenv; do
         sed -i "s|%DATE%|$(date)|g" $mm_file
     fi
 done
+
+[[ $log_active == 1 ]] && echo "Adding external utilities to the view ..."
+
+# Finally, add utilities to the view if missing
+if [[ $SPACK_ENV == $NCAR_SPACK_ENV_PUBLIC ]]; then
+    if [[ ! -e $NCAR_SPACK_ROOT_VIEW/bin/qstat ]]; then
+	[[ $log_active == 1 ]] && echo "  - adding cached qstat"
+        ln -s /glade/u/apps/opt/qstat-cache/qstat $NCAR_SPACK_ROOT_VIEW/bin/
+    fi
+fi

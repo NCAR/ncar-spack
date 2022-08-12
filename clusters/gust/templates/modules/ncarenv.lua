@@ -23,9 +23,6 @@ local othreads  = os.getenv("OMP_NUM_THREADS")
 -- Utility locations
 local viewpath  = "%VIEWROOT%"
 
--- Put system utilities in PATH
-prepend_path("PATH",    vncbin)     -- vncmgr
-
 -- Convenience variables
 setenv("NCAR_ENV_VERSION",  "%VERSION%")
 setenv("ENV",               "/etc/profile.d/modules.sh")
