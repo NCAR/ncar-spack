@@ -5,14 +5,9 @@
 #
 
 # CONFIGURABLES
-compilers="cce gcc nvhpc"
+compilers="cce gcc nvhpc oneapi"
 mpis="cray-mpich"
-skip_list=" cce/13.0.2 cce/14.0.1 
-            craype/2.7.14 craype/2.7.16 
-            perftools-base/21.12.0 
-            cray-libsci/22.06.1.3 cray-libsci/21.08.1.2 
-            cray-pals/1.1.8 cray-pals/1.1.5 
-            cray-mpich/8.1.14 cray-mpich/8.1.17 "
+skip_list="cce/13.0.2 cce/14.0.1 craype/2.7.14 craype/2.7.16 perftools-base/21.12.0 cray-libsci/22.06.1.3 cray-libsci/21.08.1.2 cray-pals/1.1.8 cray-pals/1.1.5 cray-mpich/8.1.14 cray-mpich/8.1.17"
 cray_network=ofi
 
 # Perform common script setup including environment checks
@@ -168,18 +163,6 @@ function copy_mods {
                     fi
                 fi
             done
-
-            if [[ " $compilers " == *" $mod "* ]]; then
-                cd $mod_path
-                    for mod_file in $(ls -1 --color=never $mod/* 2> /dev/null); do
-                        mod_file=${mod_file%.lua}
-                        
-                        if [[ " $skip_list " != *" $mod_file "* ]]; then
-                            comp_list="$comp_list $mod_file"
-                        fi
-                    done
-                cd - > /dev/null
-            fi
         fi
         
         cd - > /dev/null
@@ -199,6 +182,16 @@ fi
 declare -A libfabric=( [8.1.18]=1.15.0.0 )
 declare -A pals=( [8.1.18]=1.2.0 )
 declare -A xpmem=( )
+
+[[ $log_active == 1 ]] && echo "Searching for installed compilers ..."
+
+cd $mod_deployment
+
+for comp in $compilers; do
+    comp_list="$comp_list $(ls -d $comp/* --color=never)"
+done
+
+cd - > /dev/null
 
 [[ $log_active == 1 ]] && echo "Copying modules to $mod_root ..."
 
@@ -221,7 +214,7 @@ mod_list=(  cray-mpich
 copy_mods cdep /opt/cray/pe/modulefiles
 
 # Make sure the meta-modules exist
-cray_mpath=/opt/cray/pe/modulefiles:/opt/cray/modulefiles:/opt/modulefiles:/opt/cray/pe/perftools/default/modulefiles:/opt/cray/pe/modulefiles:/opt/cray/pe/craype-targets/1.4.0/modulefiles:/opt/cray/modulefiles:/opt/cray/pe/craype/2.7.9/modulefiles
+cray_mpath=/opt/cray/pe/modulefiles:/opt/cray/modulefiles:/opt/modulefiles:/opt/cray/pe/perftools/default/modulefiles:/opt/cray/pe/modulefiles:/opt/cray/pe/craype-targets/default/modulefiles:/opt/cray/modulefiles:/opt/cray/pe/craype/default/modulefiles
 
 for mm_type in ncarenv crayenv; do
     mkdir -p $mod_root/environment/$mm_type
