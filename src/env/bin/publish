@@ -16,7 +16,7 @@
 #           shell script. So we must activate in the script!
 #
 #   Author:         Brian Vanderwende
-#   Last Revised:   15:35, 12 Aug 2022
+#   Last Revised:   17:06, 16 Aug 2022
 #
 
 function create_gitignore {
@@ -154,7 +154,7 @@ if [[ -d $NCAR_SPACK_ENV_PUBLIC ]]; then
 
     if cmp $NCAR_SPACK_ENV_BUILD/.prototype/spack.yaml spack.yaml >& /dev/null; then
         if [[ $force_commit == true ]]; then
-            tsecho "No new packages but proceeding anyway (--force option enabled)"
+            tsecho "No spack.ymal changes but proceeding anyway (--force option enabled)"
         else
             echo -e "\nNo changes detected from public environment; exiting."
             exit 0
@@ -209,8 +209,19 @@ spack env activate $NCAR_SPACK_ENV_PUBLIC
 log_dir=$SPACK_ENV/logs
 mkdir -p $log_dir
 
+# Find any packages to remove
+rm_pkgs=$(grep -xv -f <(sed '1,/  specs:/d' $NCAR_SPACK_ENV_BUILD/spack.yaml) <(sed '1,/  specs:/d' spack.yaml) || [[ $? == 1 ]])
+
+if [[ -n $rm_pkgs ]]; then
+    tsecho "Removing packages that have been uninstalled from build"
+
+    while read -r spec; do
+        spack uninstall -y $spec
+    done < <(tr -d - <<< $rm_pkgs)
+fi
+
 # If there are new packages, install sequentially to ensure determinism
-new_pkgs=$(grep -v -f <(sed '1,/  specs:/d' spack.yaml) <(sed '1,/  specs:/d' $NCAR_SPACK_ENV_BUILD/spack.yaml) || [[ $? == 1 ]])
+new_pkgs=$(grep -xv -f <(sed '1,/  specs:/d' spack.yaml) <(sed '1,/  specs:/d' $NCAR_SPACK_ENV_BUILD/spack.yaml) || [[ $? == 1 ]])
 
 if [[ -n $new_pkgs ]]; then
     tsecho "Creating manifest and installing cached packages"
@@ -264,6 +275,11 @@ fi
 tsecho "Committing YAML, lock, util and config changes to Git repo"
 echo
 git add spack.yaml spack.lock util config
+
+if [[ -n $SUDO_USER ]]; then
+    commit_msg="${SUDO_USER}: $commit_msg"
+fi
+
 git commit -m "$commit_msg"
 echo
 
