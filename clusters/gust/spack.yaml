@@ -209,7 +209,7 @@ spack:
               PE_ENV: NVIDIA
               NVIDIA_VERSION: '{version}'
               NVIDIA_PATH: '{prefix}'
-        nvhpc@22.5:
+        nvhpc@22.7:
           environment:
             set:
               NVLOCALRC: /glade/u/apps/common/22.08/spack/opt/spack/nvhpc/22.7/gcc/7.5.0/localrc/gust
