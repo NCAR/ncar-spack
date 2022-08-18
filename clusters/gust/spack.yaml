@@ -95,6 +95,14 @@ spack:
       variants: [tls=gnutls]
     cdo:
       variants: [+curl]
+    intel-tbb:
+      variants: [cxxstd=17]
+    amd-aocl:
+      variants: [+openmp]
+    amdfftw:
+      variants: [~mpi]
+    valgrind:
+      variants: [~mpi, ~boost]
   view:
     baseenv:
       root: %VIEWROOT%
