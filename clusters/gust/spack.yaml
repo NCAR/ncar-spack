@@ -103,6 +103,8 @@ spack:
       variants: [~mpi]
     valgrind:
       variants: [~mpi, ~boost]
+    gdb:
+      variants: [~python]
   view:
     baseenv:
       root: %VIEWROOT%
