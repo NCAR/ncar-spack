@@ -52,21 +52,25 @@ spack:
         modules:
         - cray-mpich/8.1.18
         - craype-network-ofi
+        - libfabric/1.15.0.0
       - spec: cray-mpich@8.1.18 %cce
         prefix: /opt/cray/pe/mpich/8.1.18/ofi/cray/10.0
         modules:
         - cray-mpich/8.1.18
         - craype-network-ofi
+        - libfabric/1.15.0.0
       - spec: cray-mpich@8.1.18 %nvhpc
         prefix: /opt/cray/pe/mpich/8.1.18/ofi/nvidia/20.7
         modules:
         - cray-mpich/8.1.18
         - craype-network-ofi
+        - libfabric/1.15.0.0
       - spec: cray-mpich@8.1.18 %oneapi
         prefix: /opt/cray/pe/mpich/8.1.18/ofi/intel/19.0
         modules:
         - cray-mpich/8.1.18
         - craype-network-ofi
+        - libfabric/1.15.0.0
       buildable: false
     cray-libsci:
       externals:
