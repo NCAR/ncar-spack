@@ -1,4 +1,5 @@
 require("posix")
+family("env")
 
 -- The message printed by the module whatis command
 whatis("crayenv v%VERSION%")

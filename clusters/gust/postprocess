@@ -236,10 +236,33 @@ done
 
 [[ $log_active == 1 ]] && echo "Adding external utilities to the view ..."
 
-# Finally, add utilities to the view if missing
+# Add utilities to the view if missing
+util_root=/glade/u/apps/opt; cd $util_root
+
+declare -A ncar_utils
+ncar_utils[qstat]=qstat-cache
+ncar_utils[qinteractive]=pbstools
+ncar_utils[qcmd]=pbstools
+ncar_utils[qhist]=qhist
+ncar_utils[gladequota]=gladequota
+
+skip_clone="gladequota"
+
 if [[ $SPACK_ENV == $NCAR_SPACK_ENV_PUBLIC ]]; then
-    if [[ ! -e $NCAR_SPACK_ROOT_VIEW/bin/qstat ]]; then
-	[[ $log_active == 1 ]] && echo "  - adding cached qstat"
-        ln -s /glade/u/apps/opt/qstat-cache/qstat $NCAR_SPACK_ROOT_VIEW/bin/
-    fi
+    for util in ${!ncar_utils[@]}; do
+        if [[ ! -d ${ncar_utils[$util]} ]]; then
+            if [[ " $skip_clone " != *" ${ncar_utils[$util]} "* ]]; then
+                [[ $log_active == 1 ]] && echo "  - cloning ${ncar_utils[$util]} repo"
+                git clone git@github.com:NCAR/${ncar_utils[$util]}.git
+            else
+                2>&1 echo "Error: No github repo for $util. Perform manual install and retry!"
+                exit 1
+            fi
+        fi
+
+        if [[ ! -e $NCAR_SPACK_ROOT_VIEW/bin/$util ]]; then
+            [[ $log_active == 1 ]] && echo "  - adding $util"
+            ln -s $util_root/${ncar_utils[$util]}/bin/$util $NCAR_SPACK_ROOT_VIEW/bin/
+        fi
+    done
 fi

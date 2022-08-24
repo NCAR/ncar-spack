@@ -29,9 +29,13 @@ spack:
     gcc:
       compiler: [gcc@7.5.0]
       variants: [+piclibs, 'languages=c,c++,fortran,go']
+    cuda:
+      variants: [+allow-unsupported-compilers]
+    git:
+      variants: [+svn]
   view:
     baseenv:
       root: %VIEWROOT%
-      exclude: [intel-oneapi-compilers, nvhpc, byacc]
+      exclude: [intel-oneapi-compilers, nvhpc, byacc, jasper@2.0.32, cuda]
       link_type: symlink
       link: roots

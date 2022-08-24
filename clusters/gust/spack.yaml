@@ -25,25 +25,10 @@ spack:
       permissions:
         read: world
         write: user
-    cuda:
-      externals:
-        - spec: cuda@11.7
-          prefix: /glade/u/apps/common/22.08/spack/opt/spack/nvhpc/22.7/gcc/7.5.0/Linux_x86_64/22.7/cuda/11.7
-      buildable: false
     pbspro:
       externals:
       - spec: pbspro@2021.1.1
         prefix: /opt/pbs
-      buildable: false
-    nvhpc:
-      externals:
-      - spec: nvhpc@22.7%gcc@7.5.0
-        prefix: /glade/u/apps/common/22.08/spack/opt/spack/nvhpc/22.7/gcc/7.5.0
-      buildable: false
-    intel-oneapi-compilers:
-      externals:
-      - spec: intel-oneapi-compilers@2022.1.0%gcc@7.5.0
-        prefix: /glade/u/apps/common/22.08/spack/opt/spack/intel-oneapi-compilers/2022.1.0/gcc/7.5.0
       buildable: false
     cray-mpich:
       externals:
@@ -82,11 +67,13 @@ spack:
       compiler: [gcc@7.5.0]
       variants: [+piclibs, 'languages=c,c++,fortran,go']
     openmpi:
-      variants: [+cuda, fabrics=auto, schedulers=tm]
+      variants: [+cuda, fabrics=auto, schedulers=tm, +gpfs, +lustre, +thread_multiple]
     netcdf:
       variants: [+dap, -mpi]
     netcdf-c:
       variants: [+dap, -mpi]
+    hdf:
+      variants: [+fortran, +szip]
     hdf5:
       variants: [+hl, +szip, +fortran, +cxx, -mpi]
     netcdf-cxx4:
@@ -95,10 +82,12 @@ spack:
       variants: [-mpi]
     eccodes:
       variants: [+tools, +fortran, +netcdf, +png, jp2k=jasper]
-    curl:
-      variants: [tls=gnutls]
     cdo:
       variants: [+curl]
+    singularityce:
+      variants: [~suid]
+    apptainer:
+      variants: [~suid]
   view:
     baseenv:
       root: %VIEWROOT%
@@ -133,6 +122,23 @@ spack:
         environment:
           prepend_path:
             LD_LIBRARY_PATH: /glade/u/apps/common/22.08/spack/opt/spack/intel-oneapi-compilers/2022.1.0/gcc/7.5.0/compiler/latest/linux/compiler/lib/intel64
+        extra_rpaths: []
+    - compiler:
+        spec: nvhpc@21.3
+        paths:
+          cc: /glade/u/apps/common/22.08/spack/opt/spack/nvhpc/21.3/gcc/7.5.0/Linux_x86_64/21.3/compilers/bin/nvc
+          cxx: /glade/u/apps/common/22.08/spack/opt/spack/nvhpc/21.3/gcc/7.5.0/Linux_x86_64/21.3/compilers/bin/nvc++
+          f77: /glade/u/apps/common/22.08/spack/opt/spack/nvhpc/21.3/gcc/7.5.0/Linux_x86_64/21.3/compilers/bin/nvfortran
+          fc: /glade/u/apps/common/22.08/spack/opt/spack/nvhpc/21.3/gcc/7.5.0/Linux_x86_64/21.3/compilers/bin/nvfortran
+        flags: {}
+        operating_system: sles15
+        target: x86_64
+        modules: []
+        environment:
+          set:
+            NVLOCALRC: /glade/u/apps/common/22.08/spack/opt/spack/nvhpc/21.3/gcc/7.5.0/localrc/gust
+          prepend_path:
+            LD_LIBRARY_PATH: /glade/u/apps/common/22.08/spack/opt/spack/nvhpc/21.3/gcc/7.5.0/Linux_x86_64/21.3/compilers/lib
         extra_rpaths: []
     - compiler:
         spec: nvhpc@22.7
@@ -203,22 +209,17 @@ spack:
               PE_ENV: INTEL
               INTEL_VERSION: '{version}'
               INTEL_PATH: '{prefix}'
-        intel-oneapi-compilers@2022.1.0:
-          environment:
             prepend_path:
-              LD_LIBRARY_PATH: /glade/u/apps/common/22.08/spack/opt/spack/intel-oneapi-compilers/2022.1.0/gcc/7.5.0/compiler/latest/linux/compiler/lib/intel64
+              LD_LIBRARY_PATH: '{prefix}/compiler/latest/linux/compiler/lib/intel64'
         nvhpc:
           environment:
             set:
               PE_ENV: NVIDIA
               NVIDIA_VERSION: '{version}'
               NVIDIA_PATH: '{prefix}'
-        nvhpc@22.7:
-          environment:
-            set:
-              NVLOCALRC: /glade/u/apps/common/22.08/spack/opt/spack/nvhpc/22.7/gcc/7.5.0/localrc/gust
+              NVLOCALRC: '{prefix}/localrc/gust'
             prepend_path:
-              LD_LIBRARY_PATH: /glade/u/apps/common/22.08/spack/opt/spack/nvhpc/22.7/gcc/7.5.0/Linux_x86_64/22.7/compilers/lib
+              LD_LIBRARY_PATH: '{prefix}/Linux_x86_64/{version}/compilers/lib'
         ncarcompilers:
           environment:
             set:
