@@ -4,7 +4,7 @@
 #   a specified cluster definition. 
 #
 #   Author:         Brian Vanderwende
-#   Last Revised:   22:45, 23 Aug 2022
+#   Last Revised:   10:30, 25 Aug 2022
 #
 
 set -e
@@ -170,6 +170,7 @@ EOF
 
 envsubst '$USER,$NCAR_SYS' < clusters/$NCAR_SYS/main.cfg >> $NCAR_SPACK_ENV_BUILD/main.cfg
 cp clusters/$NCAR_SYS/packages.cfg $NCAR_SPACK_ENV_BUILD
+cp -r templates $NCAR_SPACK_ENV_BUILD
 
 if [[ -d clusters/$NCAR_SYS/templates ]]; then
     cp -r clusters/$NCAR_SYS/templates $NCAR_SPACK_ENV_BUILD
@@ -269,7 +270,7 @@ if [[ -f clusters/$NCAR_SYS/repos.cfg ]]; then
 fi
 
 # Add NCAR templates
-spack config add "config:template_dirs:$NCAR_SPACK_DEPLOY_DIR/templates/modules"
+spack config add "config:template_dirs:$SPACK_ENV/templates/modules"
 
 #
 ## ---- BUILD PACKAGES IN ENVIRONMENTS ----
