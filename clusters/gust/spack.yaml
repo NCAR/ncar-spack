@@ -7,9 +7,11 @@ spack:
     install_tree:
       root: %INSTALLROOT%
       projections:
-        gcc: '{name}/{version}/{hash:7}'
-        all: '{name}/{version}/{compiler.name}/{compiler.version}/{hash:7}'
-        ^mpi: '{name}/{version}/{compiler.name}/{compiler.version}/{^mpi.name}/{^mpi.version}/{hash:7}'
+        gcc: '{name}/{version}'
+        hdf5+threadsafe^mpi: '{name}/{version}-safe/{compiler.name}/{compiler.version}'
+        hdf5+threadsafe: '{name}/{version}-safe/{compiler.name}/{compiler.version}/{^mpi.name}/{^mpi.version}'
+        all: '{name}/{version}/{compiler.name}/{compiler.version}'
+        ^mpi: '{name}/{version}/{compiler.name}/{compiler.version}/{^mpi.name}/{^mpi.version}'
     build_jobs: 8
     test_stage: %TMPDIR%/spack/tests
     source_cache: %TMPDIR%/spack/cache
