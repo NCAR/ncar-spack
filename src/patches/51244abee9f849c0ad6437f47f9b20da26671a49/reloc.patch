@@ -1,0 +1,14 @@
+diff --git a/lib/spack/spack/store.py b/lib/spack/spack/store.py
+index 4e38d0c634..f5f92f13fd 100644
+--- a/lib/spack/spack/store.py
++++ b/lib/spack/spack/store.py
+@@ -121,6 +121,9 @@ def parse_install_tree(config_dict):
+             msg = "Cannot pad %s to %s characters." % (root, padded_length)
+             msg += " It is already %s characters long" % len(root)
+             tty.warn(msg)
++
++        #BJV - this fix resolves issues with relocation RPATHs
++        root = root.rstrip(os.path.sep)
+     else:
+         root = unpadded_root
+ 

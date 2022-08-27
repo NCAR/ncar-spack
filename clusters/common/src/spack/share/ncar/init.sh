@@ -14,7 +14,10 @@ if [[ -n $(type -t module) ]]; then
 fi
 
 # If left set, will contaminate Spack child shells
-unset BASH_ENV MODULEPATH
+unset BASH_ENV
+
+# We do not want Spack to consider this a "Cray" environment
+unset MODULEPATH
 
 # Initialize Bash Spack shell integration
 . $NCAR_SPACK_STARTUP

@@ -4,7 +4,7 @@
 #   a specified cluster definition. 
 #
 #   Author:         Brian Vanderwende
-#   Last Revised:   10:30, 25 Aug 2022
+#   Last Revised:   20:07, 26 Aug 2022
 #
 
 set -e
@@ -128,24 +128,6 @@ fi
 ## ---- CREATE AND CUSTOMIZE ENV ----
 #
 
-function manual_external {
-pkg_entry=$(grep -n -A1 "$pkg_name:" $1 | grep "externals:" || true)
-if [[ -n $pkg_entry ]]; then
-cat << EOF | sed -i "$(sed 's/^\([0-9]*\).*/\1/' <<< $pkg_entry) r /dev/stdin" $1
-      - spec: $pkg_spec
-        prefix: $pkg_path
-EOF
-else
-cat << EOF | sed -i '/^[ ]*packages:[ ]*$/ r /dev/stdin' $1
-    $pkg_name:
-      externals:
-      - spec: $pkg_spec
-        prefix: $pkg_path
-      buildable: false
-EOF
-fi
-}
-
 if [[ -d $NCAR_SPACK_ENV_BUILD ]]; then
 2>&1 cat << EOF
 Error:  Existing environment found at ${NCAR_SPACK_ENV_BUILD}. Will not
@@ -170,6 +152,7 @@ EOF
 
 envsubst '$USER,$NCAR_SYS' < clusters/$NCAR_SYS/main.cfg >> $NCAR_SPACK_ENV_BUILD/main.cfg
 cp clusters/$NCAR_SYS/packages.cfg $NCAR_SPACK_ENV_BUILD
+cp clusters/$NCAR_SYS/externals.cfg $NCAR_SPACK_ENV_BUILD
 cp -r templates $NCAR_SPACK_ENV_BUILD
 
 if [[ -d clusters/$NCAR_SYS/templates ]]; then
@@ -190,53 +173,8 @@ sed -i "s|%TMPDIR%|$NCAR_SPACK_TMPDIR|g" $NCAR_SPACK_ENV_BUILD/spack.yaml
 spack env activate $NCAR_SPACK_ENV_BUILD
 spack env status
 
-# Add system packages as externals
-if [[ -f clusters/$NCAR_SYS/externals.cfg ]]; then
-    echo -e "Finding specified externals in clusters/$NCAR_SYS/externals.cfg ...\n"
-    while read ext_entry; do
-        IFS=" : " read ext_type ext_data <<< $ext_entry
-
-        if [[ $ext_type == fixed ]]; then
-            ext_flags=--not-buildable
-        fi
-
-        if [[ $ext_data == /* ]]; then
-            ext_flags="$ext_flags --path"
-            ext_path=$(cut -d' ' -f1 <<< $ext_data)
-            ext_pkgs=$(cut -d' ' -f2- <<< $ext_data)
-
-            for pkg in $ext_pkgs; do
-                IFS="@" read pkg_name pkg_version <<< $pkg
-                pkg_paths=$(echo $(sed "s|%PKG%|$pkg_name|;s|%VER%|$pkg_version|" <<< $ext_path))
-               
-                for pkg_path in $pkg_paths; do
-                    if [[ -d $pkg_path ]]; then
-                        pkg_spec=$(sed "s|.*/spack/opt/spack/\([^/]*\)/\([^/]*\)/.*|\1@\2|" <<< $pkg_path)
-                        pkg_name=${pkg_spec%@*}
-                        auto_result=$(spack external find $ext_flags $pkg_path $pkg_name)
-
-                        if [[ $auto_result == *spack.yaml* ]]; then
-                            echo "Detected: $pkg_spec"
-                        else
-                            manual_external $NCAR_SPACK_ENV_BUILD/spack.yaml
-                            echo "Manual:   $pkg_spec"
-                        fi
-                    else
-                        2>&1 echo "Warning:  external not found ($pkg)"
-                    fi
-                done
-            done
-        else
-            auto_result=$(spack external find $ext_flags $ext_data)
-
-            if [[ $auto_result == *spack.yaml* ]]; then
-                echo "Detected: $(tail -n +2 <<< $auto_result | xargs)"
-            fi
-        fi
-    
-        unset ext_flags
-    done < clusters/$NCAR_SYS/externals.cfg
-fi
+# Add externals from initial config file
+$NCAR_SPACK_ENV_BUILD/bin/add_externals
 
 # Detect available external compilers (e.g., Cray compilers)
 spack compiler find
