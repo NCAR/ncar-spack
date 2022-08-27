@@ -1,0 +1,15 @@
+diff --git a/lib/spack/spack/modules/lmod.py b/lib/spack/spack/modules/lmod.py
+index bb288336ea..c3c126dfc7 100644
+--- a/lib/spack/spack/modules/lmod.py
++++ b/lib/spack/spack/modules/lmod.py
+@@ -294,7 +294,9 @@ def token_to_path(self, name, value):
+         # among flavors of the same library (e.g. openblas~openmp vs.
+         # openblas+openmp)
+         path = path_part_fmt.format(token=value)
+-        path = "-".join([path, value.dag_hash(length=7)])
++
++        # BJV - turn this off to get MPIs all under the same directory
++        #path = "-".join([path, value.dag_hash(length=7)])
+         return path
+ 
+     @property
