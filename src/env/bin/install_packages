@@ -113,7 +113,7 @@ function prepare_spec {
     done
 
     if [[ $spec == */%* ]]; then
-        2>&1 echo -e "\nError: spec still contains reference! ($spec)"
+        >&2 echo -e "\nError: spec still contains reference! ($spec)"
         exit 1
     fi
 }
@@ -123,7 +123,7 @@ function check_spec {
         if [[ -n $comp ]]; then
             mpis[$comp]="${mpis[$comp]} ${spec//[[:blank:]]/}"
         else
-            2>&1 echo "Error: cannot install an MPI without setting a compiler!"
+            >&2 echo "Error: cannot install an MPI without setting a compiler!"
             exit 1
         fi
     elif [[ $install_type == compiler ]]; then
@@ -208,7 +208,7 @@ function install_spec {
             -e " Total: " -e " from binary cache" -e " Error: " -e " Warning: " || true)
 
     if [[ ${PIPESTATUS[0]} -ne 0 ]]; then
-        2>&1 echo -e "\nError: install of package $spec failed! Aborting installs ...\n"
+        >&2 echo -e "\nError: install of package $spec failed! Aborting installs ...\n"
         exit 1
     fi
 

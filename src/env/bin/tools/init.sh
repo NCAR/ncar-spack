@@ -16,6 +16,14 @@ EOF
 
 . $my_dir/../main.cfg
 
+# Make sure nobody else is publishing to public
+if [[ -f $NCAR_SPACK_ENV_BUILD/.publock ]]; then
+    if [[ $(cat $NCAR_SPACK_ENV_BUILD/.publock) != $NCAR_SPACK_LOCK_PID ]]; then
+        >&2 echo "Error: Someone else is publishing changes; unsafe to proceed."
+        exit 1
+    fi
+fi
+
 if [[ $NCAR_SPACK_CLEAN != true ]]; then
     tsecho "Sanitizing user environment"
     NCAR_SPACK_CLEAN=true $NCAR_SPACK_ROOT_DEPLOYMENT/spack/bin/clean_bash $0 "$@"
@@ -32,8 +40,8 @@ elif [[ -z $SPACK_ENV ]]; then
     if [[ -f $NCAR_SPACK_ROOT_ENVS/$my_env_type/spack.yaml ]]; then
         spack env activate $NCAR_SPACK_ROOT_ENVS/$my_env_type
     else
-        echo "Error:  This $my_name script does not appear to be part of a cluster"
-        echo -e "        $my_env_type environment. Use \$SPACK_ENV/bin/$my_name instead.\n"
+        >&2 echo "Error: This $my_name script does not appear to be part of a cluster"
+        >&2 echo -e "       $my_env_type environment. Use \$SPACK_ENV/bin/$my_name instead.\n"
         exit 1
     fi
 
@@ -41,8 +49,8 @@ elif [[ -z $SPACK_ENV ]]; then
     spack_env_user=$(stat -c "%U" $SPACK_ENV)
 
     if [[ $USER != $spack_env_user ]]; then
-        echo "Error:  This script must be run by the owner of the active $my_env_type environment."
-        echo -e "        $SPACK_ENV -> owned by $spack_env_user"
+        >&2 echo "Error: This script must be run by the owner of the active $my_env_type environment."
+        >&2 echo -e "       $SPACK_ENV -> owned by $spack_env_user"
         exit 1
     fi
 fi

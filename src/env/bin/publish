@@ -16,8 +16,14 @@
 #           shell script. So we must activate in the script!
 #
 #   Author:         Brian Vanderwende
-#   Last Revised:   17:06, 16 Aug 2022
+#   Last Revised:   15:04, 27 Aug 2022
 #
+
+function remove_lock {
+    if [[ $NCAR_SPACK_LOCK_PID ]]; then
+        rm -f $NCAR_SPACK_ENV_BUILD/.publock
+    fi
+}
 
 function create_gitignore {
 cat > $NCAR_SPACK_ENV_PUBLIC/.gitignore << EOF
@@ -71,6 +77,11 @@ EOF
 export my_dir="$( cd "$(dirname "$0")" ; pwd )"
 . $my_dir/tools/init.sh
 
+# Create lockfile to block other actions during publishing
+trap remove_lock EXIT
+export NCAR_SPACK_LOCK_PID=$$
+echo $NCAR_SPACK_LOCK_PID > $NCAR_SPACK_ENV_BUILD/.publock
+
 while [[ $# -gt 0 ]]; do
     case $1 in
         -d|--set-default)
@@ -88,7 +99,7 @@ while [[ $# -gt 0 ]]; do
 done
 
 if [[ -z $commit_msg ]]; then
-2>&1 cat << EOF
+>&2 cat << EOF
 Error:  You must provide a commit message as the only argument to this
         script. Make sure to put the message in quotes.
 
@@ -102,7 +113,7 @@ tsecho "Testing build environment for unconcretized changes"
 conc_test=$(2>&1 taskset -c 0-7 spack concretize)
 
 if [[ -n $conc_test ]] && [[ $conc_test != "==> Updating view at $SPACK_ENV/ncarenv" ]]; then
-2>&1 cat << EOF
+>&2 cat << EOF
 $conc_test
 
 Error:  Modifications to $SPACK_ENV/spack.yaml are not properly installed!
@@ -143,12 +154,12 @@ if [[ -d $NCAR_SPACK_ENV_PUBLIC ]]; then
     local_branch="$(git rev-parse --abbrev-ref HEAD)"
 
     if [[ $(git rev-parse --abbrev-ref HEAD) != $NCAR_SPACK_HOST_VERSION ]]; then
-        2>&1 echo "Error:  Incorrect Git repo branch ($local_branch != $NCAR_SPACK_HOST_VERSION)."
+        >&2 echo "Error:  Incorrect Git repo branch ($local_branch != $NCAR_SPACK_HOST_VERSION)."
         exit 1
     fi
 
     if ! git diff --quiet || ! git diff --cached --quiet; then
-        2>&1 echo -e "Error:  Uncommitted changes in Git repo. Resolve and then retry.\n"
+        >&2 echo -e "Error:  Uncommitted changes in Git repo. Resolve and then retry.\n"
         exit 1
     fi
 
@@ -167,9 +178,9 @@ if [[ -d $NCAR_SPACK_ENV_PUBLIC ]]; then
         local_commit=$(git rev-parse HEAD)
         
         if [[ $remote_commit != $local_commit ]]; then
-            2>&1 echo "Error:  Remote repo $NCAR_SPACK_GITHUB and local repo are not in sync."
-            2>&1 echo "           Remote: $remote_commit"
-            2>&1 echo -e "           Local:  $local_commit\n"
+            >&2 echo "Error:  Remote repo $NCAR_SPACK_GITHUB and local repo are not in sync."
+            >&2 echo "           Remote: $remote_commit"
+            >&2 echo -e "           Local:  $local_commit\n"
             exit 1
         fi
     fi

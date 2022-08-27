@@ -4,7 +4,7 @@
 #   a specified cluster definition. 
 #
 #   Author:         Brian Vanderwende
-#   Last Revised:   20:07, 26 Aug 2022
+#   Last Revised:   14:48, 27 Aug 2022
 #
 
 set -e
@@ -38,14 +38,14 @@ while [[ $# -gt 0 ]]; do
 done
 
 if [[ -z $NCAR_SYS ]]; then
-2>&1 cat << EOF
+>&2 cat << EOF
 Error:  deployment configuration must be specified!
 Usage:  $0 [--no-pkgs] [-p] CONFIG
 
 EOF
 exit 1
 elif [[ ! -f $NCAR_SPACK_DEPLOY_DIR/clusters/$NCAR_SYS/main.cfg ]]; then
-2>&1 cat << EOF
+>&2 cat << EOF
 Error:  deployment "$NCAR_SYS" not recognized from available options
 
 EOF
@@ -72,8 +72,8 @@ spack_clone_path=$NCAR_SPACK_ROOT_DEPLOYMENT/spack
 
 if [[ $NCAR_SPACK_ROOT != $spack_clone_path ]]; then 
     if [[ -d $NCAR_SPACK_ROOT_DEPLOYMENT ]]; then
-        2>&1 echo "Error:  Existing deployment found at ${NCAR_SPACK_ROOT_DEPLOYMENT}. Will not"
-        2>&1 echo -e "        overwrite. Resolve and rerun this script.\n"
+        >&2 echo "Error:  Existing deployment found at ${NCAR_SPACK_ROOT_DEPLOYMENT}. Will not"
+        >&2 echo -e "        overwrite. Resolve and rerun this script.\n"
         exit 1
     fi
 
@@ -129,7 +129,7 @@ fi
 #
 
 if [[ -d $NCAR_SPACK_ENV_BUILD ]]; then
-2>&1 cat << EOF
+>&2 cat << EOF
 Error:  Existing environment found at ${NCAR_SPACK_ENV_BUILD}. Will not
         overwrite. Resolve and rerun this script.
 
