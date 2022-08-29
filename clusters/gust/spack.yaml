@@ -271,7 +271,8 @@ spack:
           netcdf+mpi: netcdf-mpi/{version}
           hdf5+mpi: hdf5-mpi/{version}
           netcdf: netcdf/{version}
-          intel-oneapi-compilers: intel-oneapi/{version}
+          intel-oneapi-compilers: oneapi/{version}
+          intel-oneapi-compilers-classic: intel/{version}
         core_compilers:
           - gcc@7.5.0
         core_specs:
