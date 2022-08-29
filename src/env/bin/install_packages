@@ -82,6 +82,8 @@ function prepare_spec {
                 if [[ -z ${specs[$opt_body]} ]]; then
                     specs[$opt_body]="$spec"
                 fi
+            elif [[ $opt_type == cache ]]; then
+                cache_override=${opt_body/never/no}
             fi
         fi
     done
@@ -201,9 +203,16 @@ function check_spec {
 }
 
 function install_spec {
+    if [[ $cache_override == no ]]; then
+        spec_build_cmd="${build_cmd/\ --cache-only} --no-cache"
+        unset cache_override
+    else
+        spec_build_cmd="$build_cmd"
+    fi
+
     # Install the package and view pertinent log information
     log_cmd "$build_cmd $spec" >> $log_installs
-    $build_cmd $spec |& tee -a $log_installs | stdbuf -oL sed 's/^/   /'    \
+    $spec_build_cmd $spec |& tee -a $log_installs | stdbuf -oL sed 's/^/   /'    \
             | (grep -e "Executing phase" -e "Successfully installed" -e "already installed"     \
             -e " Total: " -e " from binary cache" -e " Error: " -e " Warning: " || true)
 
