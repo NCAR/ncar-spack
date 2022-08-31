@@ -134,7 +134,9 @@ function check_spec {
         if [[ $comp_spec == gcc* ]]; then
             compilers="$comp_spec $compilers"
         else
-            if [[ $comp_spec == intel-oneapi-compilers* ]]; then
+            if [[ $comp_spec == intel-oneapi-compilers-classic* ]]; then
+                comp_spec="${comp_spec/intel-oneapi-compilers-classic/intel}"
+            elif [[ $comp_spec == intel-oneapi-compilers* ]]; then
                 comp_spec="${comp_spec/intel-oneapi-compilers/oneapi}"
             fi
 

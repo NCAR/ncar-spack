@@ -16,7 +16,7 @@
 #           shell script. So we must activate in the script!
 #
 #   Author:         Brian Vanderwende
-#   Last Revised:   15:04, 27 Aug 2022
+#   Last Revised:   18:38, 30 Aug 2022
 #
 
 function remove_lock {
@@ -228,7 +228,7 @@ if [[ -n $rm_pkgs ]]; then
 
     while read -r spec; do
         spack uninstall -y $spec
-    done < <(tr -d - <<< $rm_pkgs)
+    done < <(sed 's/[ ]*- //' <<< $rm_pkgs)
 fi
 
 # If there are new packages, install sequentially to ensure determinism
