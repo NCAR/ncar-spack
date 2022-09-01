@@ -36,6 +36,6 @@ spack:
   view:
     baseenv:
       root: %VIEWROOT%
-      exclude: [intel-oneapi-compilers, nvhpc, byacc, jasper@2.0.32, cuda, openssl]
+      exclude: [intel-oneapi-compilers, intel-oneapi-compilers-classic, nvhpc, byacc,
+        jasper@2.0.32, cuda, openssl, cudnn]
       link_type: symlink
-      link: roots

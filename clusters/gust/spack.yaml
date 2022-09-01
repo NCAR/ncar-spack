@@ -284,6 +284,21 @@ spack:
               F77: '{prefix}/compiler/{version}/linux/bin/ifx'
             prepend_path:
               LD_LIBRARY_PATH: '{prefix}/compiler/{version}/linux/compiler/lib/intel64'
+        intel-oneapi-compilers-classic:
+          autoload: none
+          filter:
+            exclude_env_vars: [NCAR_ROOT_INTEL_ONEAPI_COMPILERS_CLASSIC, CMAKE_PREFIX_PATH]
+          environment:
+            set:
+              PE_ENV: INTEL
+              INTEL_VERSION: '{version}'
+              INTEL_PATH: '{^intel-oneapi-compilers.prefix}'
+              NCAR_ROOT_INTEL: '{^intel-oneapi-compilers.prefix}'
+            prepend_path:
+              LD_LIBRARY_PATH: '{^intel-oneapi-compilers.prefix}/compiler/{version}/linux/compiler/lib/intel64'
+              PATH: '{^intel-oneapi-compilers.prefix}/compiler/{version}/linux/bin/intel64'
+              NLSPATH: '{^intel-oneapi-compilers.prefix}/compiler/{version}/linux/compiler/lib/intel64_lin/locale/%l_%t/%N'
+              MANPATH: '{^intel-oneapi-compilers.prefix}/compiler/{version}/documentation/en/man/common'
         nvhpc:
           environment:
             set:
@@ -298,22 +313,21 @@ spack:
           environment:
             set:
               NCAR_EXCLUDE_ASNEEDED: '1'
-              NCAR_WRAPPER_MPI: '{prefix.bin}/mpi'
-              CC: cc
-              CXX: CC
-              FC: ftn
-              F77: ftn
-            prepend_path:
-              PATH: '{prefix.bin}/mpi'
+              NCAR_WRAPPER_MPI_PATH: '{prefix}/bin/mpi'
+          template: ncar_wrapper.lua
         netcdf:
-          environment:
-            set:
-              NETCDF: '{prefix}'
           autoload: all
         parallel-netcdf:
           environment:
             set:
               PNETCDF: '{prefix}'
+        cuda:
+          environment:
+            set:
+              CRAY_ACCEL_TARGET: nvidia80
+              CRAY_TCMALLOC_MEMFS_FORCE: '1'
+              CRAYPE_LINK_TYPE: dynamic
+              CRAY_ACCEL_VENDOR: nvidia
         miniconda3:
           filter:
             exclude_env_vars: [PATH, LD_LIBRARY_PATH, NCAR_LDFLAGS_MINICONDA3, NCAR_INC_MINICONDA3,
@@ -353,6 +367,8 @@ spack:
           netcdf: netcdf/{version}
           intel-oneapi-compilers: oneapi/{version}
           intel-oneapi-compilers-classic: intel/{version}
+          intel-oneapi-mpi: impi/{version}
+          intel-oneapi-mkl: mkl/{version}
           miniconda3: conda/latest
           esmf+mpi: esmf-mpi/{version}
         core_compilers:
