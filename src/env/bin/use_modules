@@ -1,0 +1,35 @@
+#!/bin/bash
+#
+#   This script allows you to easily switch to this software stack's
+#   build (default) or public modules
+
+if ! (return 0 2>/dev/null); then
+    >&2 echo "Error: I need to be sourced, not executed"
+    exit 1
+fi
+
+# Perform script setup
+export my_dir="$( cd "$(dirname "${BASH_SOURCE[0]}")" ; pwd )"
+. $my_dir/../main.cfg
+
+# First we clean
+if [[ $(type -t module) == function ]]; then
+    module --force purge
+    unset MODULEPATH MODULEPATH_ROOT
+    unset ${!__LMOD*} ${!LMOD*} ${!_ModuleTable*}
+fi
+
+if [[ ${1:-build} == p* ]]; then
+    echo "Switching to public module tree:"
+    mod_init=$NCAR_SPACK_ENV_PUBLIC/util/localinit.sh
+else
+    echo "Switching to build module tree:"
+    mod_init=$NCAR_SPACK_ENV_BUILD/util/localinit.sh
+fi
+
+if [[ -f $mod_init ]]; then
+    . $mod_init
+    echo -e " -> $MODULEPATH_ROOT\n"
+else
+    echo " X  localinit.sh does not exit; no changes made"
+fi
