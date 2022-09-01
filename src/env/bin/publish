@@ -16,7 +16,7 @@
 #           shell script. So we must activate in the script!
 #
 #   Author:         Brian Vanderwende
-#   Last Revised:   18:38, 30 Aug 2022
+#   Last Revised:   09:35, 01 Sep 2022
 #
 
 function remove_lock {
@@ -110,9 +110,9 @@ exit 1
 fi
 
 tsecho "Testing build environment for unconcretized changes"
-conc_test=$(2>&1 taskset -c 0-7 spack concretize)
+conc_test=$(2>&1 taskset -c 0-7 spack concretize |& grep -v -e "Updating view at" -e "Skipping external" || true)
 
-if [[ -n $conc_test ]] && [[ $conc_test != "==> Updating view at $SPACK_ENV/ncarenv" ]]; then
+if [[ -n $conc_test ]]; then
 >&2 cat << EOF
 $conc_test
 
@@ -280,7 +280,7 @@ fi
 
 if [[ ! -d $NCAR_SPACK_ROOT_PUBLIC/default ]] || [[ $set_as_default == true ]]; then
     tsecho "Setting environment as default public environment"
-    ln -s $NCAR_SPACK_ROOT_DEPLOYMENT $NCAR_SPACK_ROOT_PUBLIC/default
+    ln -sfn $NCAR_SPACK_ROOT_DEPLOYMENT $NCAR_SPACK_ROOT_PUBLIC/default
 fi
 
 tsecho "Committing YAML, lock, util and config changes to Git repo"

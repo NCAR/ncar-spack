@@ -53,3 +53,9 @@ class Netcdf(MakefilePackage):
 
     def install(self, spec, prefix):
         make('install', 'PREFIX=%s' % prefix)
+    
+    def setup_run_environment(self, env):
+        """Adds environment variables to the generated module file.
+        """
+        
+        env.set("NETCDF", self.prefix)

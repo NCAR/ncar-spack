@@ -4,6 +4,7 @@
 # SPDX-License-Identifier: (Apache-2.0 OR MIT)
 
 from spack.package import *
+import os
 
 class Ncarcompilers(MakefilePackage):
     """ncarcompilers provides a wrapper that sits in front of compiler binaries
@@ -28,3 +29,13 @@ class Ncarcompilers(MakefilePackage):
 
     def install(self, spec, prefix):
         make('install', 'PREFIX=%s' % prefix)
+    
+    def setup_run_environment(self, env):
+        """Adds environment variables to the generated module file.
+        from setting CC/CXX/F77/FC
+        """
+
+        env.set("CC", os.path.basename(self.compiler.cc))
+        env.set("CXX", os.path.basename(self.compiler.cxx))
+        env.set("F77", os.path.basename(self.compiler.f77))
+        env.set("FC", os.path.basename(self.compiler.fc))

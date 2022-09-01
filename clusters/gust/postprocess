@@ -5,7 +5,7 @@
 #
 
 # CONFIGURABLES
-compilers="cce gcc nvhpc oneapi"
+compilers="cce gcc nvhpc oneapi intel"
 mpis="cray-mpich"
 skip_list="cce/13.0.2 cce/14.0.1 craype/2.7.14 craype/2.7.16 perftools-base/21.12.0 cray-libsci/22.06.1.3 cray-libsci/21.08.1.2 cray-pals/1.1.8 cray-pals/1.1.5 cray-mpich/8.1.14 cray-mpich/8.1.17 gcc/8.1.0"
 cray_network=ofi
@@ -66,10 +66,6 @@ append-path MODULEPATH [ lindex \$mpi_mod_path 0 ]
 
 # Use openfabrics
 setenv CRAYPE_NETWORK_TARGET $cray_network
-
-# Add GPU settings
-setenv CRAY_ACCEL_TARGET nvidia80
-setenv MPICH_GPU_SUPPORT_ENABLED 1
 EOF
 
 if [[ ${libfabric[$mod_version]+a} ]]; then
@@ -96,12 +92,18 @@ set-alias mpirun mpiexec
 EOF
 fi
 
-# NOT CURRENTLY ACTIVE AS CRAY MPIS DO NOT PROVIDE WRAPPERS!
-# Make sure NCAR wrapper stays forward in the path
-#if { [ is-loaded ncarcompilers ] } {
-#    prepend-path PATH $env(NCAR_WRAPPER_MPI)
-#}
-#EOF
+cat >> $1 << EOF
+
+# If wrapper is loaded, make sure mpi wrappers are removed at unload
+if { [ info exists ::env(NCAR_WRAPPER_MPI_PATH) ] } {
+    remove-path PATH $::env(NCAR_WRAPPER_MPI_PATH)
+}
+
+# If ncarcompilers is loaded, reload it to keep forward
+if {[ is-loaded ncarcompilers ]} {
+    always-load ncarcompilers
+}
+EOF
 }
 
 function modify_craype {
@@ -113,6 +115,11 @@ setenv           CRAY_CPU_TARGET x86-milan
 
 # Make module "sticky" (need to --force to remove/purge)
 add-property lmod sticky
+
+# If ncarcompilers is loaded, reload it to keep forward
+if {[ is-loaded ncarcompilers ]} {
+    always-load ncarcompilers
+}
 EOF
 
 if [[ ${xpmem[$mod_version]+a} ]]; then
@@ -195,7 +202,7 @@ declare -A xpmem=( )
 cd $mod_deployment
 
 for comp in $compilers; do
-    comp_list="$comp_list $(ls -d $comp/* --color=never)"
+    comp_list="$comp_list $(ls -d $comp/* --color=never 2> /dev/null)"
 done
 
 cd - > /dev/null
@@ -226,7 +233,12 @@ cray_mpath=/opt/cray/pe/modulefiles:/opt/cray/modulefiles:/opt/modulefiles:/opt/
 for mm_type in ncarenv crayenv; do
     mkdir -p $mod_root/environment/$mm_type
     mm_src=$NCAR_SPACK_ENV_BUILD/templates/modules/${mm_type}.lua
-    mm_file=$mod_root/environment/$mm_type/${NCAR_SPACK_HOST_VERSION}.lua
+
+    if [[ $mm_type == ncarenv ]]; then
+        mm_file=$mod_root/environment/$mm_type/${NCAR_SPACK_HOST_VERSION}.lua
+    else
+        mm_file=$mod_root/environment/$mm_type/${NCAR_SPACK_CPE_VERSION}.lua
+    fi
 
     if [[ ! -f $mm_file ]]; then
         if [[ $mm_type == ncarenv ]]; then
