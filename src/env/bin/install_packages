@@ -254,7 +254,7 @@ function install_spec {
 }
 
 function check_exclusions {
-    for espec in ${install_exclude/,/ }; do
+    for espec in ${install_exclude//,/ }; do
         if [[ $1 == ${espec}* ]]; then
             return 1
         fi
