@@ -4,7 +4,7 @@
 #   a specified cluster definition. 
 #
 #   Author:         Brian Vanderwende
-#   Last Revised:   14:48, 27 Aug 2022
+#   Last Revised:   10:06, 01 Sep 2022
 #
 
 set -e
@@ -177,7 +177,9 @@ spack env status
 $NCAR_SPACK_ENV_BUILD/bin/add_externals
 
 # Detect available external compilers (e.g., Cray compilers)
-spack compiler find
+if [[ ${NCAR_SPACK_DETECT_COMPILERS:-false} == true ]]; then
+    spack compiler find
+fi
 
 # Create mirror and prepare workshop to generate build_cache (binaries)
 spack config add "config:install_tree:padded_length:${NCAR_SPACK_PAD_LENGTH:-128}"

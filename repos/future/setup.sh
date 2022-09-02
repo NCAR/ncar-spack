@@ -4,6 +4,7 @@
 # the built-in builtin! Use it to selectively add newer versions of package
 # recipes by symbolically linking them into the packages directory.
 
+my_dir="$( cd "$(dirname "${BASH_SOURCE[0]}")" ; pwd )"
 return_dir=$(pwd)
 
 cd $SPACK_ENV/repos
@@ -11,7 +12,7 @@ git clone -c feature.manyFiles=true --sparse --filter blob:none https://github.c
 cd $repo
 git sparse-checkout set var/spack/repos/builtin/packages
 git checkout ${NCAR_SPACK_BUILTIN_VERSION:-$NCAR_SPACK_CLONE_VERSION}
-mkdir packages
+cp -r packages .
 cat > repo.yaml << EOF
 repo:
   namespace: 'future'
