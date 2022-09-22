@@ -12,7 +12,7 @@ git clone -c feature.manyFiles=true --sparse --filter blob:none https://github.c
 cd $repo
 git sparse-checkout set var/spack/repos/builtin/packages
 git checkout ${NCAR_SPACK_BUILTIN_VERSION:-$NCAR_SPACK_CLONE_VERSION}
-cp -r packages .
+cp -r $my_dir/packages .
 cat > repo.yaml << EOF
 repo:
   namespace: 'future'
