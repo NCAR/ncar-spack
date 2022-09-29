@@ -7,8 +7,20 @@
 # CONFIGURABLES
 compilers="cce gcc nvhpc oneapi intel"
 mpis="cray-mpich"
-skip_list="cce/13.0.2 cce/14.0.1 craype/2.7.14 craype/2.7.16 perftools-base/21.12.0 cray-libsci/22.06.1.3 cray-libsci/21.08.1.2 cray-pals/1.1.8 cray-pals/1.1.5 cray-mpich/8.1.14 cray-mpich/8.1.17 gcc/8.1.0"
 cray_network=ofi
+
+# MODULES TO COPY
+core="  craype/2.7.17
+        cce/14.0.2
+        cce/14.0.3
+        gcc/10.3.0
+        gcc/11.2.0
+        gcc/12.1.0
+        perftools-base/22.06.0
+        perftools-base/22.09.0"
+cdep="  cray-libsci/22.08.1.1
+        cray-mpich/8.1.18
+        cray-mpich/8.1.19"
 
 # Perform common script setup including environment checks
 export my_dir="$( cd "$(dirname "$0")" ; pwd )"
@@ -47,10 +59,10 @@ cat >> $1 << EOF
 family compiler
 
 # Add compiler modules to MODULEPATH
-append-path MODULEPATH ${mod_deployment}/$mod_file
+append-path MODULEPATH ${mod_deployment}/$mod
 
 # Set the PE, since this is the only setting from the PrgEnv module that matters
-setenv PE_ENV ${comp_pe[$mod]}
+setenv PE_ENV ${comp_pe[$mod_name]}
 EOF
 }
 
@@ -61,8 +73,7 @@ cat >> $1 << EOF
 family mpi
 
 # Add MPI modules to MODULEPATH
-set mpi_mod_path [ glob -- ${mod_deployment}/${mod_file}*/$comp ]
-append-path MODULEPATH [ lindex \$mpi_mod_path 0 ]
+append-path MODULEPATH ${mod_deployment}/${mod}/$comp
 
 # Use openfabrics
 setenv CRAYPE_NETWORK_TARGET $cray_network
@@ -135,48 +146,40 @@ fi
 }
 
 function copy_mods {
+    mod_list=(${!1})
     for mod in ${mod_list[@]}; do
+        mod_name=${mod%/*}
+        mod_version=${mod#*/}
+
         [[ $log_active == 1 ]] && echo "Package: $mod"
         cd $2
         
         if [[ $1 == cdep ]]; then
             for comp in $comp_list; do
                 mod_path=$mod_deployment/$comp
-                mkdir -p $mod_path/$mod
+                mkdir -p $mod_path/$mod_name
+                cp $mod $mod_path/$mod_name
 
-                for mod_file in $(ls -1 --color=never $mod/*); do
-                    if [[ " $skip_list " != *" $mod_file "* ]]; then
-                        mod_version=${mod_file##*/}
-                        cp $mod_file $mod_path/$mod
-
-                        if [[ " $mpis " == *" $mod "* ]]; then
-                            [[ $log_active == 1 ]] && echo "  - modifying $mod_file for use as MPI library"
-                            modify_mpi $mod_path/$mod_file
-                        fi
-                    fi
-                done
+                if [[ " $mpis " == *" $mod_name "* ]]; then
+                    [[ $log_active == 1 ]] && echo "  - modifying $mod for use as MPI library"
+                    modify_mpi $mod_path/$mod
+                fi
             done
         else
             mod_path=$mod_deployment/Core
-            mkdir -p $mod_path/$mod
+            mkdir -p $mod_path/$mod_name
+            cp $mod $mod_path/$mod_name
 
-            for mod_file in $(ls -1 --color=never $mod/* 2> /dev/null); do
-                if [[ " $skip_list " != *" $mod_file "* ]]; then
-                    mod_version=${mod_file##*/}
-                    cp $mod_file $mod_path/$mod
-
-                    if [[ " $compilers " == *" $mod "* ]]; then
-                        [[ $log_active == 1 ]] && echo "  - modifying $mod_file for use as compiler"
-                        modify_comp $mod_path/$mod_file
-                    else
-                        case $mod in
-                            craype)
-                                modify_craype $mod_path/$mod_file
-                                ;;
-                        esac
-                    fi
-                fi
-            done
+            if [[ " $compilers " == *" $mod_name "* ]]; then
+                [[ $log_active == 1 ]] && echo "  - modifying $mod for use as compiler"
+                modify_comp $mod_path/$mod
+            else
+                case $mod_name in
+                    craype)
+                        modify_craype $mod_path/$mod
+                        ;;
+                esac
+            fi
         fi
         
         cd - > /dev/null
@@ -202,7 +205,7 @@ declare -A xpmem=( )
 cd $mod_deployment
 
 for comp in $compilers; do
-    comp_list="$comp_list $(ls -d $comp/* --color=never 2> /dev/null)"
+    comp_list="$comp_list $(ls -d $comp/* --color=never 2> /dev/null || true)"
 done
 
 cd - > /dev/null
@@ -215,16 +218,7 @@ comp_pe[gcc]=GNU
 comp_pe[nvhpc]=NVIDIA
 comp_pe[intel]=INTEL
 
-mod_list=(  cce
-            gcc
-            craype
-            perftools-base )
-
 copy_mods core /opt/cray/pe/modulefiles
-
-mod_list=(  cray-mpich
-            cray-libsci )
-
 copy_mods cdep /opt/cray/pe/modulefiles
 
 # Make sure the meta-modules exist

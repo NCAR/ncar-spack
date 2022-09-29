@@ -13,14 +13,12 @@ class Ncarcompilers(MakefilePackage):
     modules."""
 
     homepage = "https://github.com/NCAR/ncarcompilers"
-    url      = "/glade/work/csgteam/spack/tarballs/ncarcompilers-0.6.0.tar.gz"
+    url      = "https://github.com/NCAR/ncarcompilers/archive/refs/tags/v0.7.0.tar.gz"
 
     maintainers = ['vanderwb']
 
+    version('0.7.0', sha256='9381f1bf9d04ab6d3b077e9b0866d4d5b50e9dbfc5dbd54c7a7afb88c804af1d')
     version('0.6.2', sha256='657648b82c21f5588ec6efb34bae910f797bbcd54a46b79b75a6cfb34b7e8ea5')
-    version('0.6.1', sha256='fc1f5e3bcbb9575d105560ee070b228f478fa3bffc6b30bac27cb93e83ec7d18')
-    version('0.6.0', sha256='97b625bc9014a4d7b670b5d51d542f4a04819072d59676f29a2dd7f13c119963')
-    version('0.5.2', sha256='a5874785a867e929835d303cef3b1e1578db4a9bd48b41e729d68dbe6e917201')
 
     def setup_build_environment(self, env):
         # Make sure traditional intel compilers are in the path too

@@ -14,10 +14,11 @@ spack:
         all: '{name}/{version}/{compiler.name}/{compiler.version}'
         ^mpi: '{name}/{version}/{compiler.name}/{compiler.version}/{^mpi.name}/{^mpi.version}'
     build_jobs: 8
-    test_stage: %TMPDIR%/spack/tests
+    test_stage: %TMPDIR%/spack/%DEPLOYMENT%/tests
     source_cache: %TMPDIR%/spack/cache
+    misc_cache: %TMPDIR%/spack/%DEPLOYMENT%/misc
     build_stage:
-      - %TMPDIR%/spack/builds
+      - %TMPDIR%/spack/%DEPLOYMENT%/builds
   packages:
     all:
       compiler:: [gcc@7.5.0, gcc, cce, nvhpc, oneapi]
@@ -64,6 +65,42 @@ spack:
         prefix: /opt/cray/pe/mpich/8.1.18/ofi/intel/19.0
         modules:
         - cray-mpich/8.1.18
+        - craype-network-ofi
+        - libfabric/1.15.0.0
+      - spec: cray-mpich@8.1.18 %intel
+        prefix: /opt/cray/pe/mpich/8.1.18/ofi/intel/19.0
+        modules:
+        - cray-mpich/8.1.18
+        - craype-network-ofi
+        - libfabric/1.15.0.0
+      - spec: cray-mpich@8.1.19 %gcc
+        prefix: /opt/cray/pe/mpich/8.1.19/ofi/gnu/9.1
+        modules:
+        - cray-mpich/8.1.19
+        - craype-network-ofi
+        - libfabric/1.15.0.0
+      - spec: cray-mpich@8.1.19 %cce
+        prefix: /opt/cray/pe/mpich/8.1.19/ofi/cray/10.0
+        modules:
+        - cray-mpich/8.1.19
+        - craype-network-ofi
+        - libfabric/1.15.0.0
+      - spec: cray-mpich@8.1.19 %nvhpc
+        prefix: /opt/cray/pe/mpich/8.1.19/ofi/nvidia/20.7
+        modules:
+        - cray-mpich/8.1.19
+        - craype-network-ofi
+        - libfabric/1.15.0.0
+      - spec: cray-mpich@8.1.19 %oneapi
+        prefix: /opt/cray/pe/mpich/8.1.19/ofi/intel/19.0
+        modules:
+        - cray-mpich/8.1.19
+        - craype-network-ofi
+        - libfabric/1.15.0.0
+      - spec: cray-mpich@8.1.19 %intel
+        prefix: /opt/cray/pe/mpich/8.1.19/ofi/intel/19.0
+        modules:
+        - cray-mpich/8.1.19
         - craype-network-ofi
         - libfabric/1.15.0.0
       buildable: false
@@ -272,6 +309,26 @@ spack:
           - /glade/u/apps/common/22.08/opt/lib64
           - /glade/u/apps/common/22.08/opt/lib
     - compiler:
+        spec: cce@14.0.3
+        paths:
+          cc: cc
+          cxx: CC
+          f77: ftn
+          fc: ftn
+        flags: {}
+        operating_system: sles15
+        target: any
+        modules:
+        - PrgEnv-cray/8.3.3
+        - cce/14.0.3
+        environment:
+          prepend_path:
+            CPATH: /glade/u/apps/common/22.08/opt/include
+            LIBRARY_PATH: /glade/u/apps/common/22.08/opt/lib64:/glade/u/apps/common/22.08/opt/lib
+        extra_rpaths:
+        - /glade/u/apps/common/22.08/opt/lib64
+        - /glade/u/apps/common/22.08/opt/lib
+    - compiler:
         spec: gcc@10.3.0
         paths:
           cc: cc
@@ -311,6 +368,26 @@ spack:
         extra_rpaths:
           - /glade/u/apps/common/22.08/opt/lib64
           - /glade/u/apps/common/22.08/opt/lib
+    - compiler:
+        spec: gcc@12.1.0
+        paths:
+          cc: cc
+          cxx: CC
+          f77: ftn
+          fc: ftn
+        flags: {}
+        operating_system: sles15
+        target: any
+        modules:
+        - PrgEnv-gnu/8.3.3
+        - gcc/12.1.0
+        environment:
+          prepend_path:
+            CPATH: /glade/u/apps/common/22.08/opt/include
+            LIBRARY_PATH: /glade/u/apps/common/22.08/opt/lib64:/glade/u/apps/common/22.08/opt/lib
+        extra_rpaths:
+        - /glade/u/apps/common/22.08/opt/lib64
+        - /glade/u/apps/common/22.08/opt/lib
   modules:
     default::
       roots:
@@ -394,6 +471,10 @@ spack:
               CRAY_NVIDIA_VERSION: '{version}'
             prepend_path:
               LD_LIBRARY_PATH: '{prefix}/Linux_x86_64/{version}/compilers/lib'
+        nvhpc@21.3:
+          environment:
+            set:
+              CRAY_CPU_TARGET: x86-rome
         ncarcompilers:
           environment:
             set:
@@ -409,10 +490,18 @@ spack:
         cuda:
           environment:
             set:
+              NVHPC_CUDA_HOME: '{prefix}'
               CRAY_ACCEL_TARGET: nvidia80
               CRAY_TCMALLOC_MEMFS_FORCE: '1'
               CRAYPE_LINK_TYPE: dynamic
               CRAY_ACCEL_VENDOR: nvidia
+              CRAY_CUDATOOLKIT_VERSION: '{version}'
+              CRAY_CUDATOOLKIT_PREFIX: '{prefix}'
+              CRAY_CUDATOOLKIT_DIR: '{prefix}'
+              CUDATOOLKIT_HOME: '{prefix}'
+            prepend_path:
+              LD_LIBRARY_PATH: '{prefix}/lib64:{prefix}/nvvm/lib64:{prefix}/extras/CUPTI/lib64:{prefix}/extras/Debugger/lib64'
+              CRAY_LD_LIBRARY_PATH: '{prefix}/lib64'
         miniconda3:
           filter:
             exclude_env_vars: [PATH, LD_LIBRARY_PATH, NCAR_LDFLAGS_MINICONDA3, NCAR_INC_MINICONDA3,

@@ -4,7 +4,7 @@
 #   a specified cluster definition. 
 #
 #   Author:         Brian Vanderwende
-#   Last Revised:   10:06, 01 Sep 2022
+#   Last Revised:   19:08, 28 Sep 2022
 #
 
 set -e
@@ -164,6 +164,7 @@ if [[ -f clusters/$NCAR_SYS/postprocess ]]; then
 fi
 
 # Add relevant paths to spack.yaml
+sed -i "s|%DEPLOYMENT%|${NCAR_SPACK_HOST}/$NCAR_SPACK_HOST_VERSION|" $NCAR_SPACK_ENV_BUILD/spack.yaml
 sed -i "s|%INSTALLROOT%|${NCAR_SPACK_ENV_BUILD}/opt|" $NCAR_SPACK_ENV_BUILD/spack.yaml
 sed -i "s|%MODULESROOT%|${NCAR_SPACK_ENV_BUILD}/modules/$NCAR_SPACK_HOST_VERSION|" $NCAR_SPACK_ENV_BUILD/spack.yaml
 sed -i "s|%VIEWROOT%|${NCAR_SPACK_ENV_BUILD}/ncarenv|" $NCAR_SPACK_ENV_BUILD/spack.yaml
