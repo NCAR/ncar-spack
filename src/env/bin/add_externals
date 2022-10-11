@@ -9,14 +9,24 @@ mkdir -p $log_dir
 log_file=$log_dir/externals.$start_time
 
 function manual_external {
-pkg_entry=$(grep -n -A1 "$pkg_name:" $1 | grep "externals:" || true)
-if [[ -n $pkg_entry ]]; then
-cat << EOF | sed -i "$(sed 's/^\([0-9]*\).*/\1/' <<< $pkg_entry) r /dev/stdin" $1
+pkg_block=$(sed -n "/^  packages:/,/^  [^ ].*/ {/^    $pkg_name:/,/^    [^ ].*/=}" $1 | xargs | awk '{ print $1","$NF }')
+if [[ $pkg_block != ',' ]]; then
+ext_start=$(sed -n "$pkg_block {/externals:/=}" $1)
+if [[ -n $ext_start ]]; then
+cat << EOF | sed -i "$ext_start r /dev/stdin" $1
       - spec: $pkg_spec
         prefix: $pkg_path
 EOF
 else
-cat << EOF | sed -i '/^[ ]*packages:[ ]*$/ r /dev/stdin' $1
+cat << EOF | sed -i "$(cut -d, -f1 <<< $pkg_block) r /dev/stdin" $1
+      externals:
+      - spec: $pkg_spec
+        prefix: $pkg_path
+      buildable: false
+EOF
+fi
+else
+cat << EOF | sed -i '/^  packages:/ r /dev/stdin' $1
     $pkg_name:
       externals:
       - spec: $pkg_spec
@@ -33,7 +43,6 @@ GCOL="\033[1;32m" BCOL="\033[1;34m" PCOL="\033[1;35m" DCOL="\033[0m"
 known_externals=$(spack config get packages | grep prefix: | awk -F: '{print $2}' | sort | uniq | xargs)
 
 # Add system packages as externals
-
 if [[ -f $SPACK_ENV/externals.cfg ]]; then
     tsecho "Finding specified externals in externals.cfg"
 
@@ -58,6 +67,7 @@ if [[ -f $SPACK_ENV/externals.cfg ]]; then
             pkg_paths=$(echo $(tr -d '[]' <<< $ext_path))
            
             for pkg_path in $pkg_paths; do
+                ls /glade/work/vanderwb/spack/ncar-spack
                 pkg_spec=$(sed "s|$search_expr|\1|; s|/|@|" <<< $pkg_path)
                 
                 if [[ -d $pkg_path ]]; then

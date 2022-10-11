@@ -16,7 +16,7 @@
 #           shell script. So we must activate in the script!
 #
 #   Author:         Brian Vanderwende
-#   Last Revised:   09:35, 01 Sep 2022
+#   Last Revised:   11:21, 11 Oct 2022
 #
 
 function remove_lock {
@@ -59,14 +59,30 @@ git add README.md
 }
 
 function create_manifest {
+spack env deactivate
+spack env activate $NCAR_SPACK_ENV_BUILD
+
 # Create package manifest for new installs
 cat > $1 << EOF
 # New package installs
 # Start time: $start_time
 
 singleton:
-$(echo $new_pkgs | sed 's/- /\n    /g' | tail -n +2)
 EOF
+
+while read spec; do
+    spec_hash=$(spack find --format '{hash}' $spec)
+    use_cache=$(awk -F: -v spec="$spec_hash" '$2 == spec {print $3}' $NCAR_SPACK_ENV_BUILD/.installs)
+
+    if [[ $use_cache == no ]]; then
+        echo "    $spec <cache:no>" >> $1
+    else
+        echo "    $spec" >> $1
+    fi
+done < <(tr -d '-' <<< $new_pkgs)
+
+spack env deactivate
+spack env activate $NCAR_SPACK_ENV_PUBLIC
 }
 
 #
@@ -89,6 +105,11 @@ while [[ $# -gt 0 ]]; do
             ;;
         -f|--force)
             force_commit=true
+            ;;
+        --resume)
+            echo "Danger: You are asking to resume a failed publish."
+            read -e -p "        Are you sure (y/N)? " force_resume
+            force_resume=${force_resume:-N}
             ;;
         *)
             commit_msg="$1"
@@ -159,13 +180,17 @@ if [[ -d $NCAR_SPACK_ENV_PUBLIC ]]; then
     fi
 
     if ! git diff --quiet || ! git diff --cached --quiet; then
-        >&2 echo -e "Error:  Uncommitted changes in Git repo. Resolve and then retry.\n"
-        exit 1
+        if [[ ${force_resume,,} == y* ]]; then
+            tsecho "Uncommited changes in Git repo but proceeding anyway (--resume option enabled)"
+        else
+            >&2 echo -e "Error:  Uncommitted changes in Git repo. Resolve and then retry.\n"
+            exit 1
+        fi
     fi
 
     if cmp $NCAR_SPACK_ENV_BUILD/.prototype/spack.yaml spack.yaml >& /dev/null; then
         if [[ $force_commit == true ]]; then
-            tsecho "No spack.ymal changes but proceeding anyway (--force option enabled)"
+            tsecho "No spack.yaml changes but proceeding anyway (--force option enabled)"
         else
             echo -e "\nNo changes detected from public environment; exiting."
             exit 0
@@ -228,7 +253,7 @@ if [[ -n $rm_pkgs ]]; then
 
     while read -r spec; do
         spack uninstall -y $spec
-    done < <(sed 's/[ ]*- //' <<< $rm_pkgs)
+    done < <(sed 's/[ ]*- //' <<< $rm_pkgs | tac)
 fi
 
 # If there are new packages, install sequentially to ensure determinism
@@ -238,7 +263,7 @@ if [[ -n $new_pkgs ]]; then
     tsecho "Creating manifest and installing cached packages"
     pkg_manifest=$log_dir/manifest.$start_time
     create_manifest $pkg_manifest
-    $my_dir/install_packages --cache-only $pkg_manifest
+    $my_dir/install_packages --prefer-cache $pkg_manifest
 
     # Check that installs completed successfully
     if [[ ${PIPESTATUS[0]} == 1 ]]; then

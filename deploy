@@ -4,7 +4,7 @@
 #   a specified cluster definition. 
 #
 #   Author:         Brian Vanderwende
-#   Last Revised:   19:08, 28 Sep 2022
+#   Last Revised:   13:08, 03 Oct 2022
 #
 
 set -e
@@ -23,7 +23,7 @@ while [[ $# -gt 0 ]]; do
     key="$1"
 
     case $key in
-        --no-pkgs|--nopkgs)
+        -n|--no-pkgs|--nopkgs)
             skip_pkgs=yes
             ;;
         -p|--production)
@@ -40,7 +40,7 @@ done
 if [[ -z $NCAR_SYS ]]; then
 >&2 cat << EOF
 Error:  deployment configuration must be specified!
-Usage:  $0 [--no-pkgs] [-p] CONFIG
+Usage:  $0 [--no-pkgs] [--production] CONFIG
 
 EOF
 exit 1

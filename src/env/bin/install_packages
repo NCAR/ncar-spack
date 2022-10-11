@@ -26,12 +26,11 @@ my_host=$(hostname)
 pkg_manifest=$SPACK_ENV/packages.cfg
 build_jobs=$(spack config get config | sed -n 's/^[ ]*build_jobs: \(.*\)/\1/p')
 header_cmd='tee $log_installs'
-unset cache_label
 
 while [[ $# -gt 0 ]]; do
     case $1 in
-        -c|--cache-only)
-            cache_label=" (cached)"
+        -c|--prefer-cache)
+            prefer_cache=yes
             ;;
         -d|--dry-run|--dryrun)
             header_cmd="cat"
@@ -57,10 +56,6 @@ else
     build_cmd="spack install"
 fi
 
-if [[ -n $cache_label ]]; then
-    build_cmd="$build_cmd --cache-only"
-fi
-
 function prepare_spec {
     declare -g spec="$pkg" comp=${comp:-$install_compiler} mpi=${mpi:-$install_mpi}
 
@@ -83,7 +78,7 @@ function prepare_spec {
                     specs[$opt_body]="$spec"
                 fi
             elif [[ $opt_type == cache ]]; then
-                cache_override=${opt_body/never/no}
+                use_cache=${opt_body/never/no}
             fi
         fi
     done
@@ -151,13 +146,13 @@ function check_spec {
         set +e
 
         if [[ -f $SPACK_ENV/.installs ]]; then
-            spec_hash=$(grep "^${spec}:" $SPACK_ENV/.installs | cut -d: -f2)
+            spec_hash=$(awk -F: -v spec="$spec" '$1 == spec {print $2}' .installs)
 
             if [[ -n $spec_hash ]]; then
                 if [[ " $start_hashes " == *" $spec_hash "* ]]; then
                     skip_spec=true
                 else
-                    sed -i "/.*${spec_hash}/d" $SPACK_ENV/.installs
+                    sed -i "/.*:${spec_hash}.*/d" $SPACK_ENV/.installs
                 fi
             fi
         fi
@@ -169,7 +164,7 @@ function check_spec {
             spec_hash=$(grep -A2 ^Concretized <<< "$spack_spec_out" | tail -n1 | awk '{print $2}')
 
             if [[ " $start_hashes " == *" $spec_hash "* ]]; then
-                echo "${spec}:$spec_hash" >> $SPACK_ENV/.installs
+                echo "${spec}:$spec_hash:${use_cache:-yes}" >> $SPACK_ENV/.installs
                 skip_spec=true
             fi
         fi
@@ -179,7 +174,12 @@ function check_spec {
             hashes["$hash_ref"]=$spec_hash
             unset hash_ref 
         fi
-        
+       
+        # Finalize cache status
+        if [[ ${use_cache:-${prefer_cache:-no}} == yes ]]; then
+            cache_label=" (cached)"
+        fi
+
         if [[ $skip_spec == true ]]; then
             tsecho "Skipping spec   $PCOL$spec$BCOL$type_msg$DCOL (reason: already installed)"
         else
@@ -194,20 +194,23 @@ function check_spec {
                 echo "$spack_spec_out" &>> $log_specs
                 unset spack_spec_out
                 install_spec
-                echo "${spec}:$spec_hash" >> $SPACK_ENV/.installs
+                echo "${spec}:$spec_hash:${use_cache:-yes}" >> $SPACK_ENV/.installs
             fi
 
             if [[ $spec == lmod* ]]; then
                 new_lmod=true
             fi
         fi
+        
+        unset cache_label use_cache
     fi
 }
 
 function install_spec {
-    if [[ $cache_override == no ]]; then
-        spec_build_cmd="${build_cmd/\ --cache-only} --no-cache"
-        unset cache_override
+    if [[ $use_cache == no ]]; then
+        spec_build_cmd="${build_cmd} --no-cache"
+    elif [[ $prefer_cache == yes ]]; then
+        spec_build_cmd="$build_cmd --cache-only"
     else
         spec_build_cmd="$build_cmd"
     fi

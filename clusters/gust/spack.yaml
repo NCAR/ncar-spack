@@ -12,7 +12,7 @@ spack:
         netcdf-c^hdf5+threadsafe: '{name}/{version}-safe/{compiler.name}/{compiler.version}'
         eccodes^hdf5+threadsafe: '{name}/{version}-safe/{compiler.name}/{compiler.version}'
         all: '{name}/{version}/{compiler.name}/{compiler.version}'
-        ^mpi: '{name}/{version}/{compiler.name}/{compiler.version}/{^mpi.name}/{^mpi.version}'
+        ^mpi: '{name}/{version}/{^mpi.name}/{^mpi.version}/{compiler.name}/{compiler.version}'
     build_jobs: 8
     test_stage: %TMPDIR%/spack/%DEPLOYMENT%/tests
     source_cache: %TMPDIR%/spack/cache
@@ -130,8 +130,19 @@ spack:
     gcc:
       compiler: [gcc@7.5.0]
       variants: [+piclibs, 'languages=c,c++,fortran,go']
+    cuda:
+      require: +allow-unsupported-compilers
     openmpi:
-      variants: [+cuda, fabrics=auto, schedulers=tm, +gpfs, +lustre, +thread_multiple]
+      variants: [+cuda, +thread_multiple]
+      require: 'fabrics=cma,knem,ofi schedulers=tm +gpfs +lustre'
+    hwloc:
+      require: '%gcc@7.5.0'
+    numactl:
+      require: '%gcc@7.5.0'
+    knem:
+      require: '%gcc@7.5.0'
+    pmix:
+      require: '%gcc@7.5.0'
     netcdf:
       variants: [+dap, -mpi]
     netcdf-c:
@@ -186,7 +197,7 @@ spack:
         flags: {}
         spec: gcc@7.5.0
     - compiler:
-        spec: intel@2022.1.0
+        spec: intel@2021.6.0
         paths:
           cc: /glade/u/apps/common/22.08/spack/opt/spack/intel-oneapi-compilers/2022.1.0/gcc/7.5.0/compiler/latest/linux/bin/intel64/icc
           cxx: /glade/u/apps/common/22.08/spack/opt/spack/intel-oneapi-compilers/2022.1.0/gcc/7.5.0/compiler/latest/linux/bin/intel64/icpc
@@ -461,6 +472,19 @@ spack:
               PATH: '{^intel-oneapi-compilers.prefix}/compiler/{version}/linux/bin/intel64'
               NLSPATH: '{^intel-oneapi-compilers.prefix}/compiler/{version}/linux/compiler/lib/intel64_lin/locale/%l_%t/%N'
               MANPATH: '{^intel-oneapi-compilers.prefix}/compiler/{version}/documentation/en/man/common'
+        intel-oneapi-mkl:
+          filter:
+            exclude_env_vars: [NCAR_ROOT_INTEL_ONEAPI_MKL, NCAR_LDFLAGS_INTEL_ONEAPI_MKL]
+          environment:
+            set:
+              NCAR_ROOT_ONEAPI: '{prefix}/mkl/{version}'
+              NCAR_LDFLAGS_ONEAPI: '{prefix}/mkl/{version}/lib/intel64'
+        intel-oneapi-mpi:
+          filter:
+            exclude_env_vars: [NCAR_ROOT_INTEL_ONEAPI_MPI]
+          environment:
+            set:
+              NCAR_ROOT_IMPI: '{prefix}'
         nvhpc:
           environment:
             set:
@@ -479,13 +503,15 @@ spack:
           environment:
             set:
               NCAR_EXCLUDE_ASNEEDED: '1'
-              NCAR_WRAPPER_MPI_PATH: '{prefix}/bin/mpi'
           template: ncar_wrapper.lua
         netcdf:
           autoload: all
         parallel-netcdf:
+          filter:
+            exclude_env_vars: [NCAR_ROOT_PARALLEL_NETCDF]
           environment:
             set:
+              NCAR_ROOT_PNETCDF: '{prefix}'
               PNETCDF: '{prefix}'
         cuda:
           environment:
@@ -502,6 +528,10 @@ spack:
             prepend_path:
               LD_LIBRARY_PATH: '{prefix}/lib64:{prefix}/nvvm/lib64:{prefix}/extras/CUPTI/lib64:{prefix}/extras/Debugger/lib64'
               CRAY_LD_LIBRARY_PATH: '{prefix}/lib64'
+        openmpi:
+          environment:
+            set:
+              OMPI_MCA_shmem_mmap_enable_nfs_warning: '0'
         miniconda3:
           filter:
             exclude_env_vars: [PATH, LD_LIBRARY_PATH, NCAR_LDFLAGS_MINICONDA3, NCAR_INC_MINICONDA3,
@@ -513,6 +543,10 @@ spack:
               CONDA_ROOT: '{prefix}'
               CONDA_EXE: '{prefix}/bin/conda'
           template: conda.lua
+        apptainer:
+          environment:
+            prepend_path:
+              PATH: '{^squashfs.prefix}/bin'
         ncarenv:
           template: ncar_env.lua
         netcdf~mpi:

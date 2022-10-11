@@ -13,21 +13,24 @@ class Ncarcompilers(MakefilePackage):
     modules."""
 
     homepage = "https://github.com/NCAR/ncarcompilers"
-    url      = "https://github.com/NCAR/ncarcompilers/archive/refs/tags/v0.7.0.tar.gz"
+    url      = "https://github.com/NCAR/ncarcompilers/archive/refs/tags/v0.7.1.tar.gz"
 
     maintainers = ['vanderwb']
 
-    version('0.7.0', sha256='9381f1bf9d04ab6d3b077e9b0866d4d5b50e9dbfc5dbd54c7a7afb88c804af1d')
-    version('0.6.2', sha256='657648b82c21f5588ec6efb34bae910f797bbcd54a46b79b75a6cfb34b7e8ea5')
+    version('0.7.1', sha256='88f23f89841b6e49a44b66d3a6afb3d8d817f51103cc07f3c8c48864a0215405')
 
     def setup_build_environment(self, env):
         # Make sure traditional intel compilers are in the path too
         with when('%oneapi'):
             env.append_path("PATH", join_path(ancestor(self.compiler.cc), 'intel64'))
 
-    def install(self, spec, prefix):
-        make('install', 'PREFIX=%s' % prefix)
+    def build(self, spec, prefix):
+        make()
+        make('mpi')
     
+    def install(self, spec, prefix):
+        make('install', 'PREFIX={}'.format(prefix))
+
     def setup_run_environment(self, env):
         """Adds environment variables to the generated module file.
         from setting CC/CXX/F77/FC
@@ -37,3 +40,4 @@ class Ncarcompilers(MakefilePackage):
         env.set("CXX", os.path.basename(self.compiler.cxx))
         env.set("F77", os.path.basename(self.compiler.f77))
         env.set("FC", os.path.basename(self.compiler.fc))
+        env.set("NCAR_WRAPPER_MPI_PATH", join_path(self.prefix.bin, 'mpi'))
