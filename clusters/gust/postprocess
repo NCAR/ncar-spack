@@ -57,6 +57,7 @@ family compiler
 
 # Add compiler modules to MODULEPATH
 append-path MODULEPATH ${mod_deployment}/$mod
+append-path MODULEPATH /glade/u/apps/cseg/modules/$mod
 
 # Set the PE, since this is the only setting from the PrgEnv module that matters
 setenv PE_ENV ${comp_pe[$mod_name]}
@@ -71,6 +72,7 @@ family mpi
 
 # Add MPI modules to MODULEPATH
 append-path MODULEPATH ${mod_deployment}/${mod}/$comp
+append-path MODULEPATH /glade/u/apps/cseg/modules/${mod}/$comp
 
 # Use openfabrics
 setenv CRAYPE_NETWORK_TARGET $cray_network
@@ -297,3 +299,64 @@ if [[ $SPACK_ENV == $NCAR_SPACK_ENV_PUBLIC ]]; then
         fi
     done
 fi
+
+# ===== CREATE LMOD AVAIL HOOK =====
+
+# Path to Lmod site hook file
+spfile=$SPACK_ENV/util/SitePackage.lua
+
+cd $mod_deployment
+
+cat > $spfile << EOF
+require("strict")
+local hook = require("Hook")
+
+local mapT =
+{
+   grouped = {
+      ['/environment$'] = "NCAR and Cray Environments",
+      ['/Core$'] = "Compilers and Core Software",
+EOF
+
+for mod_cat in $(find . -mindepth 2 -maxdepth 2 ! -path "*/Core/*" -type d); do
+    if ls $mod_cat/*/*/* >& /dev/null; then
+        mname=$(cut -d/ -f2 <<< $mod_cat)
+        mvers=$(cut -d/ -f3 <<< $mod_cat)
+
+        for mod_sub in $(find $mod_cat -mindepth 2 -maxdepth 2 -type d); do
+            cname=$(cut -d/ -f4 <<< $mod_sub)
+            cvers=$(cut -d/ -f5 <<< $mod_sub)
+
+            echo "      ['modules[/%.%d]*/${mname//-/%-}/${mvers//./%.}/$cname/${cvers//./%.}$'] = 'MPI-dependent Software - [$cname/$cvers + $mname/$mvers]'," >> $spfile
+        done
+    else
+        cname=$(cut -d/ -f2 <<< $mod_cat)
+        cvers=$(cut -d/ -f3 <<< $mod_cat)
+
+        echo "      ['modules[/%.%d]*/$cname/${cvers//./%.}$'] = 'Compiler-dependent Software - [$cname/$cvers]'," >> $spfile
+    fi
+done
+
+cat >> $spfile << EOF
+   },
+}
+
+function avail_hook(t)
+   local availStyle = masterTbl().availStyle
+   local styleT     = mapT[availStyle]
+   if (not availStyle or availStyle == "system" or styleT == nil) then
+      return
+   end
+
+   for k,v in pairs(t) do
+      for pat,label in pairs(styleT) do
+         if (k:find(pat)) then
+            t[k] = label
+            break
+         end
+      end
+   end
+end
+
+hook.register("avail",avail_hook)
+EOF
