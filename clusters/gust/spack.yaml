@@ -445,6 +445,13 @@ spack:
           template: ncar_default.lua
         mpi:
           template: ncar_wrapper_mpi.lua
+          environment:
+            append_path:
+              MODULEPATH: /glade/u/apps/cseg/modules/{name}/{version}/{compiler.name}/{compiler.version}
+        gcc:
+          environment:
+            append_path:
+              MODULEPATH: /glade/u/apps/cseg/modules/{name}/{version}
         intel-oneapi-compilers:
           environment:
             set:
@@ -457,6 +464,8 @@ spack:
               F77: '{prefix}/compiler/{version}/linux/bin/ifx'
             prepend_path:
               LD_LIBRARY_PATH: '{prefix}/compiler/{version}/linux/compiler/lib/intel64'
+            append_path:
+              MODULEPATH: /glade/u/apps/cseg/modules/oneapi/{version}
         intel-oneapi-compilers-classic:
           autoload: none
           filter:
@@ -472,6 +481,8 @@ spack:
               PATH: '{^intel-oneapi-compilers.prefix}/compiler/{version}/linux/bin/intel64'
               NLSPATH: '{^intel-oneapi-compilers.prefix}/compiler/{version}/linux/compiler/lib/intel64_lin/locale/%l_%t/%N'
               MANPATH: '{^intel-oneapi-compilers.prefix}/compiler/{version}/documentation/en/man/common'
+            append_path:
+              MODULEPATH: /glade/u/apps/cseg/modules/intel/{version}
         intel-oneapi-mkl:
           filter:
             exclude_env_vars: [NCAR_ROOT_INTEL_ONEAPI_MKL, NCAR_LDFLAGS_INTEL_ONEAPI_MKL]
@@ -495,6 +506,8 @@ spack:
               CRAY_NVIDIA_VERSION: '{version}'
             prepend_path:
               LD_LIBRARY_PATH: '{prefix}/Linux_x86_64/{version}/compilers/lib'
+            append_path:
+              MODULEPATH: /glade/u/apps/cseg/modules/{name}/{version}
         nvhpc@21.3:
           environment:
             set:
@@ -567,8 +580,6 @@ spack:
           template: conflict-mpi.lua
         projections:
           all: '{name}/{version}'
-          r: 'R/{version}'
-          parallel-netcdf: pnetcdf/{version}
           fftw+mpi: fftw-mpi/{version}
           netcdf+mpi: netcdf-mpi/{version}
           hdf5+mpi: hdf5-mpi/{version}

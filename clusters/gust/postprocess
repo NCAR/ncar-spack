@@ -337,6 +337,21 @@ for mod_cat in $(find . -mindepth 2 -maxdepth 2 ! -path "*/Core/*" -type d); do
     fi
 done
 
+# Add labels for mpi-serial from CSEG tree
+cd /glade/u/apps/cseg/modules
+
+for mod_cat in mpi-serial/*; do
+    mname=mpi-serial
+    mvers=$(cut -d/ -f2 <<< $mod_cat)
+
+    for mod_sub in $(find $mod_cat -mindepth 2 -maxdepth 2 -type d); do
+        cname=$(cut -d/ -f3 <<< $mod_sub)
+        cvers=$(cut -d/ -f4 <<< $mod_sub)
+
+        echo "      ['modules[/%.%d]*/${mname//-/%-}/${mvers//./%.}/$cname/${cvers//./%.}$'] = 'MPI-dependent Software - [$cname/$cvers + $mname/$mvers]'," >> $spfile
+    done
+done
+
 cat >> $spfile << EOF
    },
 }
