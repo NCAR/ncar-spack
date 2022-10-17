@@ -16,7 +16,7 @@
 #           shell script. So we must activate in the script!
 #
 #   Author:         Brian Vanderwende
-#   Last Revised:   11:21, 11 Oct 2022
+#   Last Revised:   22:57, 16 Oct 2022
 #
 
 function remove_lock {
@@ -79,7 +79,7 @@ while read spec; do
     else
         echo "    $spec" >> $1
     fi
-done < <(tr -d '-' <<< $new_pkgs)
+done < <(sed 's/^[ ]*- //' <<< $new_pkgs)
 
 spack env deactivate
 spack env activate $NCAR_SPACK_ENV_PUBLIC
@@ -105,6 +105,7 @@ while [[ $# -gt 0 ]]; do
             ;;
         -f|--force)
             force_commit=true
+            pp_opt=-f
             ;;
         --resume)
             echo "Danger: You are asking to resume a failed publish."
@@ -294,7 +295,7 @@ fi
 
 if [[ -f $NCAR_SPACK_ENV_BUILD/bin/postprocess ]]; then
     tsecho "Running postprocessing script on environment"
-    NCAR_SPACK_ENV_TYPE=public $NCAR_SPACK_ENV_BUILD/bin/postprocess
+    NCAR_SPACK_ENV_TYPE=public $NCAR_SPACK_ENV_BUILD/bin/postprocess $pp_opt
 fi
 
 if [[ ! -e $NCAR_SPACK_ROOT_DEPLOYMENT/util ]]; then

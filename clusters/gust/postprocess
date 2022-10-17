@@ -231,6 +231,8 @@ cd - > /dev/null
 
 [[ $log_active == 1 ]] && echo "Copying modules to $mod_root ..."
 
+tm_file=$SPACK_ENV/.tempmod
+
 declare -A comp_pe
 comp_pe[cce]=CRAY
 comp_pe[gcc]=GNU
@@ -243,26 +245,34 @@ copy_mods cdep /opt/cray/pe/modulefiles
 # Make sure the meta-modules exist
 cray_mpath=/opt/cray/pe/modulefiles:/opt/cray/modulefiles:/opt/modulefiles:/opt/cray/pe/perftools/default/modulefiles:/opt/cray/pe/modulefiles:/opt/cray/pe/craype-targets/default/modulefiles:/opt/cray/modulefiles:/opt/cray/pe/craype/default/modulefiles
 
-for mm_type in ncarenv crayenv; do
-    mkdir -p $mod_root/environment/$mm_type
-    mm_src=$NCAR_SPACK_ENV_BUILD/templates/modules/${mm_type}.lua
+# *This* ncarenv deployment
+mkdir -p $mod_root/environment/ncarenv
+mm_src=$NCAR_SPACK_ENV_BUILD/templates/modules/ncarenv.lua
+mm_file=$mod_root/environment/ncarenv/${NCAR_SPACK_HOST_VERSION}.lua
 
-    if [[ $mm_type == ncarenv ]]; then
-        mm_file=$mod_root/environment/$mm_type/${NCAR_SPACK_HOST_VERSION}.lua
-    else
-        mm_file=$mod_root/environment/$mm_type/${NCAR_SPACK_CPE_VERSION}.lua
-    fi
+if [[ ! -f $mm_file ]] || [[ $force_updates == true ]]; then
+    sed "s|%MODPATH%|${mod_deployment}/Core|g" $mm_src > $tm_file
+    sed -i "s|%VIEWROOT%|${NCAR_SPACK_ROOT_VIEW}|g" $tm_file
+    sed -i "s|%VERSION%|${NCAR_SPACK_HOST_VERSION}|g" $tm_file
+    sed -i "s|%DATE%|$(date)|g" $tm_file
+    sed -i "s|%UTILPATH%|${SPACK_ENV}/util|g" $tm_file
+    sed -i "s|%DEFMODS%|$NCAR_SPACK_DEFMODS_NCAR|g" $tm_file
+    mv $tm_file $mm_file
+fi
 
-    if [[ ! -f $mm_file ]]; then
-        if [[ $mm_type == ncarenv ]]; then
-            sed "s|%MODPATH%|${mod_deployment}/Core|g" $mm_src > $mm_file
-            sed -i "s|%VIEWROOT%|${NCAR_SPACK_ROOT_VIEW}|g" $mm_file
-        else
-            sed "s|%MODPATH%|${cray_mpath}|g" $mm_src > $mm_file
-        fi
+# All crayenv deployments
+mkdir -p $mod_root/environment/crayenv
+mm_src=$NCAR_SPACK_ENV_BUILD/templates/modules/crayenv.lua
 
-        sed -i "s|%VERSION%|${NCAR_SPACK_HOST_VERSION}|g" $mm_file
-        sed -i "s|%DATE%|$(date)|g" $mm_file
+for cpe_version in ${!NCAR_SPACK_DEFMODS_CPE[@]}; do
+    mm_file=$mod_root/environment/crayenv/$cpe_version.lua
+
+    if [[ ! -f $mm_file ]] || [[ $force_updates == true ]]; then
+        sed "s|%MODPATH%|${cray_mpath}|g" $mm_src > $tm_file
+        sed -i "s|%VERSION%|${NCAR_SPACK_HOST_VERSION}|g" $tm_file
+        sed -i "s|%DATE%|$(date)|g" $tm_file
+        sed -i "s|%DEFMODS%|crayenv/${cpe_version}:${NCAR_SPACK_DEFMODS_CPE[$cpe_version]}:craype-x86-milan:craype-network-ofi|g" $tm_file
+        mv $tm_file $mm_file
     fi
 done
 
@@ -284,12 +294,16 @@ skip_clone="gladequota mpitools"
 if [[ $SPACK_ENV == $NCAR_SPACK_ENV_PUBLIC ]]; then
     for util in ${!ncar_utils[@]}; do
         if [[ ! -d ${ncar_utils[$util]} ]]; then
-            if [[ " $skip_clone " != *" ${ncar_utils[$util]} "* ]]; then
-                [[ $log_active == 1 ]] && echo "  - cloning ${ncar_utils[$util]} repo"
-                git clone git@github.com:NCAR/${ncar_utils[$util]}.git
+            if [[ -O $util_root ]]; then
+                if [[ " $skip_clone " != *" ${ncar_utils[$util]} "* ]]; then
+                    [[ $log_active == 1 ]] && echo "  - cloning ${ncar_utils[$util]} repo"
+                    git clone git@github.com:NCAR/${ncar_utils[$util]}.git
+                else
+                    >&2 echo "Error: No github repo for $util. Perform manual install and retry!"
+                    exit 1
+                fi
             else
-                >&2 echo "Error: No github repo for $util. Perform manual install and retry!"
-                exit 1
+                echo "Note: Skipping missing utility ${util}. $(whoami) does not own $util_root ..."
             fi
         fi
 
@@ -302,12 +316,8 @@ fi
 
 # ===== CREATE LMOD AVAIL HOOK =====
 
-# Path to Lmod site hook file
-spfile=$SPACK_ENV/util/SitePackage.lua
-
-cd $mod_deployment
-
-cat > $spfile << EOF
+function create_sp {
+cat > $tm_file << EOF
 require("strict")
 local hook = require("Hook")
 
@@ -318,6 +328,7 @@ local mapT =
       ['/Core$'] = "Compilers and Core Software",
 EOF
 
+cd $mod_deployment
 for mod_cat in $(find . -mindepth 2 -maxdepth 2 ! -path "*/Core/*" -type d); do
     if ls $mod_cat/*/*/* >& /dev/null; then
         mname=$(cut -d/ -f2 <<< $mod_cat)
@@ -327,18 +338,18 @@ for mod_cat in $(find . -mindepth 2 -maxdepth 2 ! -path "*/Core/*" -type d); do
             cname=$(cut -d/ -f4 <<< $mod_sub)
             cvers=$(cut -d/ -f5 <<< $mod_sub)
 
-            echo "      ['modules[/%.%d]*/${mname//-/%-}/${mvers//./%.}/$cname/${cvers//./%.}$'] = 'MPI-dependent Software - [$cname/$cvers + $mname/$mvers]'," >> $spfile
+            echo "      ['modules[/%.%d]*/${mname//-/%-}/${mvers//./%.}/$cname/${cvers//./%.}$'] = 'MPI-dependent Software - [$cname/$cvers + $mname/$mvers]'," >> $tm_file
         done
     else
         cname=$(cut -d/ -f2 <<< $mod_cat)
         cvers=$(cut -d/ -f3 <<< $mod_cat)
 
-        echo "      ['modules[/%.%d]*/$cname/${cvers//./%.}$'] = 'Compiler-dependent Software - [$cname/$cvers]'," >> $spfile
+        echo "      ['modules[/%.%d]*/$cname/${cvers//./%.}$'] = 'Compiler-dependent Software - [$cname/$cvers]'," >> $tm_file
     fi
 done
 
 # Add labels for mpi-serial from CSEG tree
-cd /glade/u/apps/cseg/modules
+cd - > /dev/null; cd /glade/u/apps/cseg/modules
 
 for mod_cat in mpi-serial/*; do
     mname=mpi-serial
@@ -348,11 +359,11 @@ for mod_cat in mpi-serial/*; do
         cname=$(cut -d/ -f3 <<< $mod_sub)
         cvers=$(cut -d/ -f4 <<< $mod_sub)
 
-        echo "      ['modules[/%.%d]*/${mname//-/%-}/${mvers//./%.}/$cname/${cvers//./%.}$'] = 'MPI-dependent Software - [$cname/$cvers + $mname/$mvers]'," >> $spfile
+        echo "      ['modules[/%.%d]*/${mname//-/%-}/${mvers//./%.}/$cname/${cvers//./%.}$'] = 'MPI-dependent Software - [$cname/$cvers + $mname/$mvers]'," >> $tm_file
     done
 done
 
-cat >> $spfile << EOF
+cat >> $tm_file << EOF
    },
 }
 
@@ -375,3 +386,14 @@ end
 
 hook.register("avail",avail_hook)
 EOF
+
+cd - > /dev/null
+}
+
+# Path to Lmod site hook file
+sp_file=$SPACK_ENV/util/SitePackage.lua
+
+if [[ ! -f $sp_file ]] || [[ $force_updates == true ]]; then
+    create_sp
+    mv $tm_file $sp_file
+fi

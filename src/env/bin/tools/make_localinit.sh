@@ -26,8 +26,6 @@ export MODULEPATH_ROOT=$module_root
 export LMOD_SYSTEM_NAME=$NCAR_SPACK_HOST
 export LMOD_SYSTEM_DEFAULT_MODULES="$NCAR_SPACK_DEFAULT_MODULES"
 export MODULEPATH=$module_root/environment
-export LMOD_PACKAGE_PATH=$util_path
-export LMOD_AVAIL_STYLE=grouped:system
 
 # Location of Lmod initialization scripts
 LMOD_ROOT=$lmod_location
@@ -74,8 +72,6 @@ setenv MODULEPATH_ROOT $module_root
 setenv LMOD_SYSTEM_NAME $NCAR_SPACK_HOST
 setenv LMOD_SYSTEM_DEFAULT_MODULES "$NCAR_SPACK_DEFAULT_MODULES"
 setenv MODULEPATH $module_root/environment
-setenv LMOD_PACKAGE_PATH $util_path
-setenv LMOD_AVAIL_STYLE grouped:system
 
 # Get location of Lmod initialization scripts
 setenv LMOD_ROOT $lmod_location
