@@ -113,13 +113,13 @@ cat >> $1 << EOF
 
 # PMI support
 set defDir "/opt/cray/pe/pmi/${pmi[$mod_version]}"
-setenv CRAY_PMI_INCLUDE_OPTS "-I$defDir/include"
-setenv CRAY_PMI_POST_LINK_OPTS "-L$defDir/lib"
-prepend-path PKG_CONFIG_PATH $defDir/lib/pkgconfig
+setenv CRAY_PMI_INCLUDE_OPTS "-I\$defDir/include"
+setenv CRAY_PMI_POST_LINK_OPTS "-L\$defDir/lib"
+prepend-path PKG_CONFIG_PATH \$defDir/lib/pkgconfig
 prepend-path PE_PKGCONFIG_PRODUCTS PE_PMI
 prepend-path PE_PMI_PKGCONFIG_LIBS cray-pmi
-prepend-path MANPATH $defDir/man
-prepend-path CRAY_LD_LIBRARY_PATH $defDir/lib
+prepend-path MANPATH \$defDir/man
+prepend-path CRAY_LD_LIBRARY_PATH \$defDir/lib
 EOF
 else
 >&2 echo "Error: no pmi version set for cray-mpich/$mod_version!"
