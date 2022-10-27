@@ -15,7 +15,16 @@ core="  craype/2.7.17
         gcc/10.3.0
         gcc/11.2.0
         gcc/12.1.0
-        perftools-base/22.09.0"
+        perftools-base/22.09.0
+        atp/3.14.13
+        cray-ccdb/4.12.13
+        cray-cti/2.15.14
+        cray-dyninst/12.1.1
+        cray-stat/4.11.12
+        gdb4hpc/4.14.3
+        papi/6.0.0.16
+        sanitizers4hpc/1.0.1
+        valgrind4hpc/2.12.10"
 cdep="  cray-libsci/22.08.1.1
         cray-mpich/8.1.19"
 
@@ -138,6 +147,9 @@ EOF
 function modify_craype {
 cat >> $1 << EOF
 
+# Add string to modulepath to help Spack
+append-path MODULEPATH opt/cray
+
 # CPU architecture specification 
 prepend-path     PE_PRODUCT_LIST CRAYPE_X86_MILAN
 setenv           CRAY_CPU_TARGET x86-milan
@@ -161,6 +173,10 @@ setenv           CRAY_XPMEM_INCLUDE_OPTS -I/opt/cray/xpmem/${xpmem[$mod_version]
 setenv           CRAY_XPMEM_POST_LINK_OPTS -L/opt/cray/xpmem/${xpmem[$mod_version]}/lib64
 EOF
 fi
+}
+
+function modify_perftools {
+    sed -i 's/module use/module use -a/' $1
 }
 
 function copy_mods {
@@ -195,6 +211,9 @@ function copy_mods {
                 case $mod_name in
                     craype)
                         modify_craype $mod_path/$mod
+                        ;;
+                    perftools-base)
+                        modify_perftools $mod_path/$mod
                         ;;
                 esac
             fi
@@ -349,7 +368,7 @@ for mod_cat in $(find . -mindepth 2 -maxdepth 2 ! -path "*/Core/*" -type d); do
 done
 
 # Add labels for mpi-serial from CSEG tree
-cd - > /dev/null; cd /glade/u/apps/cseg/modules
+cd /glade/u/apps/cseg/modules
 
 for mod_cat in mpi-serial/*; do
     mname=mpi-serial
@@ -361,6 +380,17 @@ for mod_cat in mpi-serial/*; do
 
         echo "      ['modules[/%.%d]*/${mname//-/%-}/${mvers//./%.}/$cname/${cvers//./%.}$'] = 'MPI-dependent Software - [$cname/$cvers + $mname/$mvers]'," >> $tm_file
     done
+done
+
+# Add labels for CrayPAT
+cd /opt/cray/pe/perftools
+
+for mod_cat in */modulefiles; do
+    mvers=$(cut -d/ -f1 <<< $mod_cat)
+
+    if [[ $mvers != default ]]; then
+        echo "      ['perftools/${mvers//./%.}/modulefiles$'] = 'Cray Performance Analysis Tools - [perftools-base/$mvers]'," >> $tm_file
+    fi
 done
 
 cat >> $tm_file << EOF
@@ -386,14 +416,9 @@ end
 
 hook.register("avail",avail_hook)
 EOF
-
-cd - > /dev/null
 }
 
 # Path to Lmod site hook file
 sp_file=$SPACK_ENV/util/SitePackage.lua
-
-if [[ ! -f $sp_file ]] || [[ $force_updates == true ]]; then
-    create_sp
-    mv $tm_file $sp_file
-fi
+create_sp
+mv $tm_file $sp_file
