@@ -171,10 +171,12 @@ spack:
       variants: [+external-libfabric, +ilp64]
     intel-oneapi-mkl:
       variants: [+ilp64]
+    gdb:
+      variants: [+gold, +ld, +lto, +tui, ~python]
   view:
     baseenv:
       root: %VIEWROOT%
-      select: [tmux, ghostscript, emacs]
+      select: [tmux, ghostscript, emacs, gdb]
       link_type: symlink
       link: roots
   compilers:
@@ -436,6 +438,10 @@ spack:
           - cray-mpich
           - cray-libsci
           - cray-fftw
+          - tmux
+          - emacs
+          - gdb
+          - ghostscript
         whitelist:
           - git
         all:
