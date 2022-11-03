@@ -9,10 +9,19 @@ else
 fi
 
 util_path=$SPACK_ENV/util
-lmod_location=$(spack location -i lmod 2> /dev/null || true)
 
-if [[ $? != 0 ]]; then
-tsecho "lmod is not installed; skipping module generation"
+if [[ ${NCAR_SPACK_LMOD_VERSION:-latest} != latest ]]; then
+    lmod_location=$(spack location -i lmod@$NCAR_SPACK_LMOD_VERSION 2> /dev/null || true)
+else
+    lmod_latest=$(spack find --format '{hash}' lmod 2> /dev/null | tail -n 1)
+
+    if [[ -n $lmod_latest ]]; then
+        lmod_location=$(spack location -i /$lmod_latest 2> /dev/null || true)
+    fi
+fi
+
+if [[ -z $lmod_location ]]; then
+tsecho "lmod (${NCAR_SPACK_LMOD_VERSION:-latest}) not installed; skipping module generation"
 else
 mkdir -p $util_path
 tsecho "Generating localinit.sh and localinit.csh"
