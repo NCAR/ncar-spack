@@ -11,8 +11,9 @@ spack:
         all: '{name}/{version}/{compiler.name}/{compiler.version}'
         ^mpi: '{name}/{version}/{compiler.name}/{compiler.version}/{^mpi.name}/{^mpi.version}'
     build_jobs: 8
-    test_stage: %TMPDIR%/spack/tests
+    test_stage: %TMPDIR%/spack/%DEPLOYMENT%/tests
     source_cache: %TMPDIR%/spack/cache
+    misc_cache: %TMPDIR%/spack/%DEPLOYMENT%/misc
     build_stage:
       - %TMPDIR%/spack/builds
   packages:
@@ -30,14 +31,16 @@ spack:
       compiler: [gcc@7.5.0]
       variants: [+piclibs, 'languages=c,c++,fortran,go']
     cuda:
-      variants: [+allow-unsupported-compilers]
+      require: '+allow-unsupported-compilers'
     git:
       variants: [+svn]
     zstd:
       variants: [+programs]
+    arm-forge:
+      require: '+accept-eula'
   view:
     baseenv:
       root: %VIEWROOT%
       exclude: [intel-oneapi-compilers, intel-oneapi-compilers-classic, nvhpc, byacc,
-        jasper@2.0.32, cuda, openssl, cudnn]
+        jasper@2.0.32, cuda, openssl, cudnn, autoconf@2.71, arm-forge]
       link_type: symlink
