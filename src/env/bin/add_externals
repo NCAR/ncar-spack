@@ -67,7 +67,6 @@ if [[ -f $SPACK_ENV/externals.cfg ]]; then
             pkg_paths=$(echo $(tr -d '[]' <<< $ext_path))
            
             for pkg_path in $pkg_paths; do
-                ls /glade/work/vanderwb/spack/ncar-spack
                 pkg_spec=$(sed "s|$search_expr|\1|; s|/|@|" <<< $pkg_path)
                 
                 if [[ -d $pkg_path ]]; then

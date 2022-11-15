@@ -4,7 +4,7 @@
 #   a specified cluster definition. 
 #
 #   Author:         Brian Vanderwende
-#   Last Revised:   09:06, 11 Nov 2022
+#   Last Revised:   15:02, 15 Nov 2022
 #
 
 set -e
@@ -79,17 +79,9 @@ if [[ $NCAR_SPACK_ROOT != $spack_clone_path ]]; then
 
     # Install latest source from GitHub and checkout specified version
     echo "Installing Spack into $spack_clone_path ..."
-    git clone -c feature.manyFiles=true https://github.com/spack/spack.git $spack_clone_path
+    git clone -c feature.manyFiles=true https://github.com/NCAR/csg-spack-fork.git $spack_clone_path
     cd $spack_clone_path
     git checkout $NCAR_SPACK_CLONE_VERSION
-
-    # Apply source code patches as necessary
-    if [[ -d $NCAR_SPACK_DEPLOY_DIR/src/patches/$NCAR_SPACK_CLONE_VERSION ]]; then
-        for src_patch in $NCAR_SPACK_DEPLOY_DIR/src/patches/$NCAR_SPACK_CLONE_VERSION/*; do
-            echo "Applying patch to Spack: $src_patch"
-            git apply $src_patch &> /dev/null
-        done
-    fi
 
     # Copy scripts to Spack install
     cp -r $NCAR_SPACK_DEPLOY_DIR/src/spack/* $spack_clone_path/
