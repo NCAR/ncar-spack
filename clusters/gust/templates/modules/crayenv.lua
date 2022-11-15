@@ -33,3 +33,6 @@ end
 
 -- Loading this module unlocks the CPE module tree
 append_path("MODULEPATH", "%MODPATH%")
+
+-- Add Lmod settings
+pushenv("LMOD_SYSTEM_DEFAULT_MODULES", "%DEFMODS%")

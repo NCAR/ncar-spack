@@ -70,6 +70,13 @@ if [ -n "\$PBS_O_WORKDIR" ] && [ -z "\$NCAR_PBS_JOBINIT" ]; then
 
     export NCAR_PBS_JOBINIT=\$PBS_JOBID
 fi
+
+# Set number of GPUs (analogous to NCPUS)
+if command -v nvidia-smi &> /dev/null; then
+    export NGPUS=\`nvidia-smi -L | wc -l\`
+else
+    export NGPUS=0
+fi
 EOF
 
 cat > $util_path/localinit.csh << EOF
@@ -124,6 +131,13 @@ if ( \$?PBS_O_WORKDIR  && ! \$?NCAR_PBS_JOBINIT ) then
     endif
 
     setenv NCAR_PBS_JOBINIT \$PBS_JOBID
+endif
+
+# Set number of GPUs (analogous to NCPUS)
+if ( \`where nvidia-smi\` != "" ) then
+    setenv NGPUS \`nvidia-smi -L | wc -l\`
+else
+    setenv NGPUS 0
 endif
 EOF
 fi
