@@ -51,9 +51,9 @@ done
 spec_cmd="spack spec -I -N -t -L"
 
 if [[ -n $build_jobs ]]; then
-    build_cmd="spack install -j $build_jobs"
+    build_cmd="spack install --add -j $build_jobs"
 else
-    build_cmd="spack install"
+    build_cmd="spack install --add"
 fi
 
 function prepare_spec {
@@ -267,19 +267,24 @@ function check_exclusions {
 function define_items {
     list_var=my_$1; unset $list_var
     restrict_var=install_$1
+    my_items=${2//,/ }
 
     if [[ -n ${!restrict_var} ]]; then
-        for item in $2; do
-            if [[ $item == ${!restrict_var}* ]]; then
-                if [[ -n $list_var ]]; then
-                    declare -g $list_var="${!list_var} $item"
-                else
-                    declare -g $list_var="$item"
+        my_limits=${!restrict_var//,/ }
+
+        for item in $my_items; do
+            for limit in $my_limits; do
+                if [[ $item == ${limit}* ]]; then
+                    if [[ -n $list_var ]]; then
+                        declare -g $list_var="${!list_var} $item"
+                    else
+                        declare -g $list_var="$item"
+                    fi
                 fi
-            fi
+            done
         done
     else
-        declare -g $list_var="${2# }"
+        declare -g $list_var="${my_items# }"
     fi
 }
 

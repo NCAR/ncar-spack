@@ -36,6 +36,27 @@ EOF
 fi
 }
 
+function manual_upstream {
+pkg_block=$(sed -n "/^  packages:/,/^  [^ ].*/ {/^    $pkg_name:/,/^    [^ ].*/=}" $1 | xargs | awk '{ print $1","$NF }')
+if [[ $pkg_block != ',' ]]; then
+req_start=$(sed -n "$pkg_block {/require:/=}" $1)
+if [[ -n $req_start ]]; then
+if [[ $(sed "$req_start p" $1) != *%* ]]; then
+sed -i "$req_start s/\(.*:[ ]*\)['\"]*\([^'\"]*\)['\"]*/\1 '${ext_meta} \2'/p" $1
+fi
+else
+cat << EOF | sed -i "$(cut -d, -f1 <<< $pkg_block) r /dev/stdin" $1
+      require: '${ext_meta}'
+EOF
+fi
+else
+cat << EOF | sed -i '/^  packages:/ r /dev/stdin' $1
+    $pkg_name:
+      require: '${ext_meta}'
+EOF
+fi
+}
+
 # Pretty colors
 GCOL="\033[1;32m" BCOL="\033[1;34m" PCOL="\033[1;35m" DCOL="\033[0m"
 
@@ -56,7 +77,7 @@ if [[ -f $SPACK_ENV/externals.cfg ]]; then
         if [[ $ext_data == /* ]]; then
             ext_flags="$ext_flags --path"
             ext_path=$(cut -d' ' -f1 <<< $ext_data)
-            ext_method=$(cut -d' ' -f2 <<< $ext_data)
+            ext_meta=$(cut -d' ' -f2 <<< $ext_data)
             
             if [[ $ext_path != *\[*\]* ]]; then
                 2>&1 "Error: spec must be delimited in path by [*]!"
@@ -68,29 +89,34 @@ if [[ -f $SPACK_ENV/externals.cfg ]]; then
            
             for pkg_path in $pkg_paths; do
                 pkg_spec=$(sed "s|$search_expr|\1|; s|/|@|" <<< $pkg_path)
-                
+               
                 if [[ -d $pkg_path ]]; then
                     if [[ " $known_externals " != *" ${pkg_path%%/} "* ]]; then
                         pkg_name=${pkg_spec%@*}
 
-                        if [[ $ext_method != manual ]]; then
-                            auto_result=$(spack external find $ext_flags $pkg_path $pkg_name)
+                        if [[ $ext_type == upstream ]]; then
+                            manual_upstream $NCAR_SPACK_ENV_BUILD/spack.yaml
+                            tsecho "Set requirement   $GCOL$pkg_spec (upstream)$DCOL"
                         else
-                            unset auto_result
-                        fi
+                            if [[ $ext_meta != manual ]]; then
+                                auto_result=$(spack external find $ext_flags $pkg_path $pkg_name)
+                            else
+                                unset auto_result
+                            fi
 
-                        if [[ $auto_result == *spack.yaml* ]]; then
-                            tsecho "Adding external   $GCOL$pkg_spec$DCOL"
-                        else
-                            manual_external $NCAR_SPACK_ENV_BUILD/spack.yaml
-                            tsecho "Adding external   $GCOL$pkg_spec (manual)$DCOL"
-                        fi
+                            if [[ $auto_result == *spack.yaml* ]]; then
+                                tsecho "Adding external   $GCOL$pkg_spec$DCOL"
+                            else
+                                manual_external $NCAR_SPACK_ENV_BUILD/spack.yaml
+                                tsecho "Adding external   $GCOL$pkg_spec (manual)$DCOL"
+                            fi
 
-                        known_externals="$known_externals ${pkg_path%%/}"
+                            known_externals="$known_externals ${pkg_path%%/}"
+                        fi
                     else
                         tsecho "Skipping external $PCOL${pkg_spec} (exists)$DCOL"
                     fi
-                else
+                elif [[ $pkg_path != *sbang ]]; then
                     tsecho "Skipping external $BCOL${pkg_spec} (not found!)$DCOL"
                 fi
             done
@@ -102,6 +128,6 @@ if [[ -f $SPACK_ENV/externals.cfg ]]; then
             fi
         fi
     
-        unset ext_flags auto_result
+        unset ext_flags auto_result ext_meta
     done < $SPACK_ENV/externals.cfg
 fi

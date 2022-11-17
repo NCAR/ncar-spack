@@ -4,7 +4,7 @@
 #   a specified cluster definition. 
 #
 #   Author:         Brian Vanderwende
-#   Last Revised:   15:02, 15 Nov 2022
+#   Last Revised:   17:41, 15 Nov 2022
 #
 
 set -e
@@ -97,7 +97,9 @@ if [[ $NCAR_SPACK_ROOT != $spack_clone_path ]]; then
     fi
 
     # Copy any found licenses to Spack install
-    cp -r $NCAR_SPACK_DEPLOY_DIR/clusters/$NCAR_SYS/licenses $spack_clone_path/etc/spack/
+    if [[ -d $NCAR_SPACK_DEPLOY_DIR/clusters/$NCAR_SYS/licenses ]]; then
+        cp -r $NCAR_SPACK_DEPLOY_DIR/clusters/$NCAR_SYS/licenses $spack_clone_path/etc/spack/
+    fi
 
     # Modify permissions according
     chgrp -R csgteam $spack_clone_path
