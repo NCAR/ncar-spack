@@ -57,7 +57,7 @@ else
 fi
 
 function prepare_spec {
-    declare -g spec="$pkg" comp=${comp:-$install_compiler} mpi=${mpi:-$install_mpi}
+    declare -g spec="$pkg" comp=${comp:-${install_compiler}} mpi=${mpi:-$install_mpi}
 
     while [[ $spec == *:* ]]; do
         spec_opt="$(sed 's|.*<\([^>]*\)>.*|\1|' <<< "$spec")"
@@ -296,6 +296,9 @@ log_dir=$SPACK_ENV/logs
 mkdir -p $log_dir
 log_specs=$log_dir/specs.$start_time
 log_installs=$log_dir/installs.$start_time
+
+# Make sure environment reports current state
+spack concretize -q
 
 # Detect version of system GCC
 sys_gcc=$(gcc -v |& grep "gcc version" | cut -d' ' -f3)
