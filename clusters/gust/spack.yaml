@@ -168,6 +168,32 @@ spack:
           prepend_path:
             LD_LIBRARY_PATH: /glade/u/apps/common/22.08/spack/opt/spack/intel-oneapi-compilers/2022.1.0/gcc/7.5.0/compiler/latest/linux/compiler/lib/intel64
     - compiler:
+        spec: intel@2021.7.1
+        paths:
+          cc: /glade/u/apps/common/22.12/spack/opt/spack/intel-oneapi-compilers/2022.2.1/compiler/latest/linux/bin/intel64/icc
+          cxx: /glade/u/apps/common/22.12/spack/opt/spack/intel-oneapi-compilers/2022.2.1/compiler/latest/linux/bin/intel64/icpc
+          f77: /glade/u/apps/common/22.12/spack/opt/spack/intel-oneapi-compilers/2022.2.1/compiler/latest/linux/bin/intel64/ifort
+          fc: /glade/u/apps/common/22.12/spack/opt/spack/intel-oneapi-compilers/2022.2.1/compiler/latest/linux/bin/intel64/ifort
+        operating_system: sles15
+        target: x86_64
+        modules: []
+        environment:
+          prepend_path:
+            LD_LIBRARY_PATH: /glade/u/apps/common/22.12/spack/opt/spack/intel-oneapi-compilers/2022.2.1/compiler/latest/linux/compiler/lib/intel64
+    - compiler:
+        spec: oneapi@2022.2.1
+        paths:
+          cc: /glade/u/apps/common/22.12/spack/opt/spack/intel-oneapi-compilers/2022.2.1/compiler/latest/linux/bin/icx
+          cxx: /glade/u/apps/common/22.12/spack/opt/spack/intel-oneapi-compilers/2022.2.1/compiler/latest/linux/bin/icpx
+          f77: /glade/u/apps/common/22.12/spack/opt/spack/intel-oneapi-compilers/2022.2.1/compiler/latest/linux/bin/ifx
+          fc: /glade/u/apps/common/22.12/spack/opt/spack/intel-oneapi-compilers/2022.2.1/compiler/latest/linux/bin/ifx
+        operating_system: sles15
+        target: x86_64
+        modules: []
+        environment:
+          prepend_path:
+            LD_LIBRARY_PATH: /glade/u/apps/common/22.12/spack/opt/spack/intel-oneapi-compilers/2022.2.1/compiler/latest/linux/compiler/lib/intel64
+    - compiler:
         spec: nvhpc@21.3
         paths:
           cc: /glade/u/apps/common/22.08/spack/opt/spack/nvhpc/21.3/gcc/7.5.0/Linux_x86_64/21.3/compilers/bin/nvc
@@ -206,6 +232,19 @@ spack:
         environment:
           prepend_path:
             LD_LIBRARY_PATH: /glade/u/apps/common/22.08/spack/opt/spack/nvhpc/22.7/gcc/7.5.0/Linux_x86_64/22.7/compilers/lib
+    - compiler:
+        spec: nvhpc@22.11
+        paths:
+          cc: /glade/u/apps/common/22.12/spack/opt/spack/nvhpc/22.11/Linux_x86_64/22.11/compilers/bin/nvc
+          cxx: /glade/u/apps/common/22.12/spack/opt/spack/nvhpc/22.11/Linux_x86_64/22.11/compilers/bin/nvc++
+          f77: /glade/u/apps/common/22.12/spack/opt/spack/nvhpc/22.11/Linux_x86_64/22.11/compilers/bin/nvfortran
+          fc: /glade/u/apps/common/22.12/spack/opt/spack/nvhpc/22.11/Linux_x86_64/22.11/compilers/bin/nvfortran
+        operating_system: sles15
+        target: x86_64
+        modules: []
+        environment:
+          prepend_path:
+            LD_LIBRARY_PATH: /glade/u/apps/common/22.12/spack/opt/spack/nvhpc/22.11/Linux_x86_64/22.11/compilers/lib
     - compiler:
         spec: cce@14.0.2
         paths:
@@ -445,6 +484,8 @@ spack:
           environment:
             set:
               OMPI_MCA_shmem_mmap_enable_nfs_warning: '0'
+            prepend_path:
+              LD_LIBRARY_PATH: '{prefix}/lib'
         miniconda3:
           filter:
             exclude_env_vars: [PATH, LD_LIBRARY_PATH, NCAR_LDFLAGS_MINICONDA3, NCAR_INC_MINICONDA3,

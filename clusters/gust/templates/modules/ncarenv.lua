@@ -22,7 +22,6 @@ local tmpdir    = os.getenv("TMPDIR")
 local othreads  = os.getenv("OMP_NUM_THREADS")
 
 -- Utility locations
-local commonpath    = "%COMMONROOT%"
 local viewpath      = "%VIEWROOT%"
 
 -- Convenience variables
@@ -61,14 +60,6 @@ setenv("LANG",      "en_US.UTF-8")
 
 -- Loading this module unlocks the NCAR Spack module tree
 append_path("MODULEPATH", "%MODPATH%")
-
--- Add common library to PATHS
-setenv("NCAR_LDFLAGS_COMMON", pathJoin(commonpath, "lib"))
-setenv("NCAR_LDFLAGS_COMMON64", pathJoin(commonpath, "lib64"))
-setenv("NCAR_INC_COMMON", pathJoin(commonpath, "include"))
-
-prepend_path("PKG_CONFIG_PATH", pathJoin(commonpath, "lib/pkgconfig"))
-prepend_path("PKG_CONFIG_PATH", pathJoin(commonpath, "lib64/pkgconfig"))
 
 -- Add view utilities to PATHS
 prepend_path("PATH",    pathJoin(viewpath, "bin"))

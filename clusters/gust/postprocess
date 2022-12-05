@@ -10,31 +10,22 @@ mpis="cray-mpich"
 cray_network=ofi
 
 # MODULES TO COPY
-core="  craype/2.7.17(D)
-        craype/2.7.19
-        cce/14.0.3(D)
-        cce/15.0.0
-        gcc/10.3.0
+core="  craype/2.7.19
+        cce/15.0.0(D)
         gcc/11.2.0(D)
         gcc/12.1.0
         perftools-base/22.09.0
-        atp/3.14.13
         atp/3.14.15
         cray-ccdb/4.12.13
         cray-dyninst/12.1.1
-        cray-stat/4.11.12
         cray-stat/4.11.13
-        gdb4hpc/4.14.3
         gdb4hpc/4.14.5
         cray-mrnet/5.0.4
         papi/6.0.0.16
-        sanitizers4hpc/1.0.1
         sanitizers4hpc/1.0.3
         valgrind4hpc/2.12.10"
-cdep="  cray-libsci/22.08.1.1(D)
-        cray-libsci/22.11.1.2
-        cray-mpich/8.1.19(D)
-        cray-mpich/8.1.21"
+cdep="  cray-libsci/22.11.1.2(D)
+        cray-mpich/8.1.21(D)"
 
 # Perform common script setup including environment checks
 export my_dir="$( cd "$(dirname "$0")" ; pwd )"
