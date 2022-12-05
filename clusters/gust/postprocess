@@ -93,6 +93,9 @@ append-path MODULEPATH /glade/u/apps/cseg/modules/${mod}/$comp
 
 # Use openfabrics
 setenv CRAYPE_NETWORK_TARGET $cray_network
+
+# Add to LD_LIBRARY_PATH for programs like NSight Systems
+prepend-path LD_LIBRARY_PATH \${mpich_dir}/lib
 EOF
 
 if [[ ${libfabric[$mod_version]+a} ]]; then
@@ -293,7 +296,6 @@ mm_file=$mod_root/environment/ncarenv/${NCAR_SPACK_HOST_VERSION}.lua
 
 if [[ ! -f $mm_file ]] || [[ $force_updates == true ]]; then
     sed "s|%MODPATH%|${mod_deployment}/Core|g" $mm_src > $tm_file
-    sed -i "s|%COMMONROOT%|${NCAR_SPACK_COMMON_DEPLOYMENT}/opt|g" $tm_file
     sed -i "s|%VIEWROOT%|${NCAR_SPACK_ROOT_VIEW}|g" $tm_file
     sed -i "s|%VERSION%|${NCAR_SPACK_HOST_VERSION}|g" $tm_file
     sed -i "s|%DATE%|$(date)|g" $tm_file

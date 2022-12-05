@@ -4,7 +4,7 @@
 #   a specified cluster definition. 
 #
 #   Author:         Brian Vanderwende
-#   Last Revised:   17:41, 15 Nov 2022
+#   Last Revised:   09:23, 05 Dec 2022
 #
 
 set -e
@@ -27,7 +27,14 @@ while [[ $# -gt 0 ]]; do
             skip_pkgs=yes
             ;;
         -p|--production)
-            NCAR_SPACK_DEPLOY_TYPE=production
+            my_user=$(whoami)
+
+            if [[ $my_user == csgteam ]]; then
+                NCAR_SPACK_DEPLOY_TYPE=production
+            else
+                >&2 echo "Error: cannot create production deployment as $my_user"
+                exit 1
+            fi
             ;;
         *)
             export NCAR_SYS=$1
@@ -149,7 +156,6 @@ EOF
 
 envsubst '$USER,$NCAR_SYS' < clusters/$NCAR_SYS/main.cfg >> $NCAR_SPACK_ENV_BUILD/main.cfg
 cp clusters/$NCAR_SYS/packages.cfg $NCAR_SPACK_ENV_BUILD
-cp clusters/$NCAR_SYS/externals.cfg $NCAR_SPACK_ENV_BUILD
 cp -r templates $NCAR_SPACK_ENV_BUILD
 
 if [[ -d clusters/$NCAR_SYS/templates ]]; then
@@ -171,27 +177,41 @@ sed -i "s|%TMPDIR%|$NCAR_SPACK_TMPDIR|g" $NCAR_SPACK_ENV_BUILD/spack.yaml
 spack env activate $NCAR_SPACK_ENV_BUILD
 spack env status
 
+# Make sure packages are concretized separately (to allow multiple variants)
+spack config add 'concretizer:unify:false'
+
 # Add externals from initial config file
-$NCAR_SPACK_ENV_BUILD/bin/add_externals
+if [[ -f clusters/$NCAR_SYS/externals.cfg ]]; then
+    cp clusters/$NCAR_SYS/externals.cfg $NCAR_SPACK_ENV_BUILD
+    $NCAR_SPACK_ENV_BUILD/bin/add_externals
+fi
 
 # Detect available external compilers (e.g., Cray compilers)
 if [[ ${NCAR_SPACK_DETECT_COMPILERS:-false} == true ]]; then
     spack compiler find
 fi
 
-# Create mirror and prepare workshop to generate build_cache (binaries)
+# Create mirrors and prepare env to generate build_cache binaries
 spack config add "config:install_tree:padded_length:${NCAR_SPACK_PAD_LENGTH:-128}"
 
-if [[ -d $NCAR_SPACK_MIRROR/build_cache/_pgp ]]; then
-    for gpg_key in $NCAR_SPACK_MIRROR/build_cache/_pgp/*.pub; do
-        spack gpg trust $gpg_key
-    done
-else
-    spack mirror create -d $NCAR_SPACK_MIRROR -a
-    spack gpg publish -d $NCAR_SPACK_MIRROR
-fi
+for mtype in LOCAL GLOBAL; do
+    mirror=NCAR_SPACK_MIRROR_${mtype} add_mirror=yes
 
-spack mirror add $NCAR_SPACK_MIRROR_NAME $NCAR_SPACK_MIRROR
+    if [[ -d ${!mirror}/build_cache/_pgp ]]; then
+        for gpg_key in ${!mirror}/build_cache/_pgp/*.pub; do
+            spack gpg trust $gpg_key
+        done
+    elif [[ $(sed 's/production/GLOBAL/;s/testing/LOCAL/' <<< $NCAR_SPACK_DEPLOY_TYPE) == $mtype ]]; then
+        spack mirror create -d ${!mirror} -a
+        spack gpg publish -d ${!mirror}
+    else
+        add_mirror=no
+    fi
+
+    if [[ $add_mirror == yes ]]; then
+        spack mirror add ncar_mirror_${mtype,,} ${!mirror}
+    fi
+done
 
 # Add custom repos
 if [[ -f clusters/$NCAR_SYS/repos.cfg ]]; then

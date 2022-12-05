@@ -7,40 +7,31 @@ spack:
     install_tree:
       root: %INSTALLROOT%
       projections:
-        gcc: '{name}/{version}'
-        all: '{name}/{version}/{compiler.name}/{compiler.version}'
-        ^mpi: '{name}/{version}/{compiler.name}/{compiler.version}/{^mpi.name}/{^mpi.version}'
+        all: '{name}/{version}'
     build_jobs: 8
     test_stage: %TMPDIR%/spack/%DEPLOYMENT%/tests
     source_cache: %TMPDIR%/spack/cache
     misc_cache: %TMPDIR%/spack/%DEPLOYMENT%/misc
     build_stage:
       - %TMPDIR%/spack/builds
+    shared_linking:
+      type: rpath
+      bind: true
   packages:
     all:
-      compiler:: [gcc@7.5.0, gcc, cce, nvhpc, oneapi]
       target: [x86_64_v3]
       providers:
-        mpi:: [cray-mpich, openmpi]
-        szip:: [libszip]
         pkgconfig:: [pkg-config]
       permissions:
         read: world
         write: user
+      require: '%gcc@7.5.0'
     gcc:
       compiler: [gcc@7.5.0]
       variants: [+piclibs, 'languages=c,c++,fortran,go']
     cuda:
       require: '+allow-unsupported-compilers'
-    git:
-      variants: [+svn]
-    zstd:
-      variants: [+programs]
+      variants: [+dev]
     arm-forge:
       require: '+accept-eula'
-  view:
-    baseenv:
-      root: %VIEWROOT%
-      exclude: [intel-oneapi-compilers, intel-oneapi-compilers-classic, nvhpc, byacc,
-        jasper@2.0.32, cuda, openssl, cudnn, autoconf@2.71, arm-forge]
-      link_type: symlink
+  view: false

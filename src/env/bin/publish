@@ -16,7 +16,7 @@
 #           shell script. So we must activate in the script!
 #
 #   Author:         Brian Vanderwende
-#   Last Revised:   08:41, 23 Nov 2022
+#   Last Revised:   15:04, 05 Dec 2022
 #
 
 function remove_lock {
@@ -321,7 +321,11 @@ fi
 
 tsecho "Committing YAML, lock, util and config changes to Git repo"
 echo
-git add spack.yaml spack.lock util config
+git add spack.yaml spack.lock config
+
+if [[ -d util ]]; then
+    git add util
+fi
 
 if [[ -n $SUDO_USER ]]; then
     commit_msg="${SUDO_USER}: $commit_msg"

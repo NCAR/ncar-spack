@@ -14,7 +14,7 @@ exit
 while [[ $# -gt 0 ]]; do
     case $1 in
         -m|--mirror)
-            mirror_path=$2
+            NCAR_SPACK_MIRROR_PATH=$2
             shift
             ;;
         -h|--help)
@@ -40,14 +40,20 @@ mkdir -p $log_dir
 log_file=$log_dir/cache.$start_time
 cache_cmd="spack buildcache create -a"
 
+if [[ $NCAR_SPACK_DEPLOY_TYPE == production ]]; then
+    NCAR_SPACK_MIRROR_PATH=${NCAR_SPACK_MIRROR_PATH:-$NCAR_SPACK_MIRROR_GLOBAL}
+else
+    NCAR_SPACK_MIRROR_PATH=${NCAR_SPACK_MIRROR_PATH:-$NCAR_SPACK_MIRROR_LOCAL}
+fi
+
 pkglist=$(spack find -L -p | awk -v envpath=${SPACK_ENV}/opt '$3~envpath { print $1 }')
-cachelist=$(ls ${mirror_path:-$NCAR_SPACK_MIRROR}/build_cache/ 2> /dev/null)
+cachelist=$(ls $NCAR_SPACK_MIRROR_PATH/build_cache/ 2> /dev/null || true)
 
 for pkg in $pkglist; do
     if [[ $cachelist != *$pkg* ]]; then
         pkg_label=$(spack find --no-groups -f --show-full-compiler -v /$pkg | tail -n1)
         tsecho "Creating binary package for $pkg_label"
-        log_cmd "$cache_cmd -d ${mirror_path:-$NCAR_SPACK_MIRROR} --only=package /$pkg" >> $log_file
-        $cache_cmd -d ${mirror_path:-$NCAR_SPACK_MIRROR} --only=package /$pkg &>> $log_file
+        log_cmd "$cache_cmd -d $NCAR_SPACK_MIRROR_PATH --only=package /$pkg" >> $log_file
+        $cache_cmd -d $NCAR_SPACK_MIRROR_PATH --only=package /$pkg &>> $log_file
     fi
 done

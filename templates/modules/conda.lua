@@ -16,8 +16,10 @@ prepend_path("INFOPATH",    pathJoin("{{spec.prefix}}", "share/info"))
 -- Add conda alias to allow activation when not init in current shell
 -- This messy method ensures it works in shell scripts too
 if myShellType() == "sh" then
-    execute { cmd = "if type -t conda |& grep -q -v function; then function conda { . " .. ncarpath .. "/init.sh ; }; fi", modeA = { "load" }}
+    execute { cmd = "if type -t conda |& grep -q -v function; then function conda { . " .. ncarpath .. "/conda.sh ; }; fi", modeA = { "load" }}
     execute { cmd = "if type conda |& grep -q " .. ncarpath .. ' || [ -n "${NCAR_CONDA_INIT:+x}" ]; then unset -f conda; unset NCAR_CONDA_INIT; fi', modeA = { "unload" }}
+    execute { cmd = "if type -t mamba |& grep -q -v function; then function mamba { . " .. ncarpath .. "/mamba.sh ; }; fi", modeA = { "load" }}
+    execute { cmd = "if type mamba |& grep -q " .. ncarpath .. ' || [ -n "${NCAR_MAMBA_INIT:+x}" ]; then unset -f mamba; unset NCAR_MAMBA_INIT; fi', modeA = { "unload" }}
 else
     execute { cmd = "alias conda |& grep -q source || alias conda 'source " .. initpath .. "/conda.csh'", modeA = { "load" }}
     execute { cmd = "alias conda |& grep -q " .. initpath .. " && unalias conda", modeA = { "unload" }}

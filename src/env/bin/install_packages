@@ -56,6 +56,26 @@ else
     build_cmd="spack install --add"
 fi
 
+function add_spec_to_view {
+view_block=$(sed -n "/^  view:/,/^  [a-z]*:/=" $1 | xargs | awk '{ print $1","$NF }')
+if [[ $view_block != ',' ]]; then
+select_start=$(sed -n "$view_block {/select:/=}" $1)
+if [[ -z $select_start ]]; then
+cat << EOF | sed -i "$(($(cut -d, -f2 <<< $view_block) - 1)) r /dev/stdin" $1
+      select:
+      - $spec
+EOF
+else
+cat << EOF | sed -i "$select_start r /dev/stdin" $1
+      - $spec
+EOF
+fi
+else
+>&2 echo "Error: no view defined but $spec requests view access"
+exit 1
+fi
+}
+
 function prepare_spec {
     declare -g spec="$pkg" comp=${comp:-${install_compiler}} mpi=${mpi:-$install_mpi}
 
@@ -254,6 +274,17 @@ function install_spec {
             fi
         fi
     fi
+
+    # Modify spack.yaml based on access settings
+    case ${install_access:-module} in
+        view)
+            spack config add "modules:default:lmod:exclude:$spec"
+            add_spec_to_view $SPACK_ENV/spack.yaml
+            ;;
+        none)
+            spack config add "modules:default:lmod:exclude:$spec"
+            ;;
+    esac
 }
 
 function check_exclusions {
@@ -342,7 +373,6 @@ while read pkg; do
     if [[ $pkg == \#* ]]; then
         continue
     elif [[ $pkg != *'<'* ]] && [[ $pkg == *:* ]]; then
-        # If compilers were added, we need to add GCCs to compiler list
         for ivar in ${!install_*}; do
             unset $ivar
         done
