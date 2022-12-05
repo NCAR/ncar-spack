@@ -4,7 +4,7 @@
 #   a specified cluster definition. 
 #
 #   Author:         Brian Vanderwende
-#   Last Revised:   09:23, 05 Dec 2022
+#   Last Revised:   15:35, 05 Dec 2022
 #
 
 set -e
@@ -222,6 +222,7 @@ if [[ -f clusters/$NCAR_SYS/repos.cfg ]]; then
             . $NCAR_SPACK_DEPLOY_DIR/repos/$repo/setup.sh
         else
             cp -r $NCAR_SPACK_DEPLOY_DIR/repos/$repo $SPACK_ENV/repos
+            mkdir -p $SPACK_ENV/repos/$repo/packages
             spack repo add $SPACK_ENV/repos/$repo
         fi
     done < clusters/$NCAR_SYS/repos.cfg
