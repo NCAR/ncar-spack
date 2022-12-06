@@ -45,22 +45,3 @@ for nv_version in $(spack find --format "{version}" nvhpc | grep -v "==>"); do
         done
     done
 done
-
-# Need to fix a symbolic link in the public OpenSSL environment because of Spack issue
-# https://github.com/spack/spack/issues/31401
-[[ $log_active == 1 ]] && echo -e "Checking OpenSSL cert link (Spack issue 31401) ..."
-cert_file=$(spack location -i ca-certificates-mozilla)/share/cacert.pem
-cert_link=$(spack location -i openssl)/etc/openssl/cert.pem
-
-if [[ $(readlink -f $cert_link) != $cert_file ]]; then
-    [[ $log_active == 1 ]] && echo "  - replacing cert link with public path ..."
-    ln -sf $cert_file $cert_link
-fi
-
-# Need to create a symbolic link for libxml in the view
-cd $NCAR_SPACK_ROOT_VIEW/include
-
-if [[ ! -e libxml ]]; then
-    [[ $log_active == 1 ]] && echo -e "Creating symlink in view for libxml ..."
-    ln -sf libxml2/libxml libxml
-fi
