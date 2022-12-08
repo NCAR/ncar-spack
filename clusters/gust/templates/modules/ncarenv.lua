@@ -24,9 +24,21 @@ local othreads  = os.getenv("OMP_NUM_THREADS")
 -- Utility locations
 local viewpath      = "%VIEWROOT%"
 
--- Convenience variables
+-- System specific settings
 setenv("NCAR_ENV_VERSION",  "%VERSION%")
-setenv("ENV",               "/etc/profile.d/modules.sh")
+setenv("NCAR_HOST",         "gust")
+setenv("QSCACHE_SERVER",    "gust")
+
+-- Loading this module unlocks the NCAR Spack module tree
+append_path("MODULEPATH", "%MODPATH%")
+
+-- Add Lmod settings
+setenv("LMOD_PACKAGE_PATH", "%UTILPATH%")
+setenv("LMOD_AVAIL_STYLE", "grouped:system")
+pushenv("LMOD_SYSTEM_DEFAULT_MODULES", "%DEFMODS%")
+
+-- Ensure modules load in subshells
+setenv("ENV", "/etc/profile.d/modules.sh")
 
 -- Default OpenMP environment
 if not othreads then
@@ -46,10 +58,6 @@ if not tmpdir or not string.match(tmpdir, "^/glade") then
     setenv("TMPDIR", pathJoin("/glade/gust/scratch", user))
 end
 
--- System specific settings
-setenv("NCAR_HOST",         "gust")
-setenv("QSCACHE_SERVER",    "gust")
-
 -- On CSEG's request (jedwards/mvertens@ucar.edu)
 -- setenv("CESMDATAROOT",  "/glade/p/cesmdata/cseg")
 -- setenv("CESMROOT",      "/glade/p/cesm")
@@ -58,15 +66,14 @@ setenv("QSCACHE_SERVER",    "gust")
 setenv("LC_ALL",    "en_US.UTF-8")
 setenv("LANG",      "en_US.UTF-8")
 
--- Loading this module unlocks the NCAR Spack module tree
-append_path("MODULEPATH", "%MODPATH%")
-
 -- Add view utilities to PATHS
-prepend_path("PATH",    pathJoin(viewpath, "bin"))
-prepend_path("MANPATH", pathJoin(viewpath, "man"))
-prepend_path("MANPATH", pathJoin(viewpath, "share/man"))
+prepend_path("PATH",            pathJoin(viewpath, "bin"))
+prepend_path("MANPATH",         pathJoin(viewpath, "man"))
+prepend_path("MANPATH",         pathJoin(viewpath, "share/man"))
 
--- Add Lmod settings
-setenv("LMOD_PACKAGE_PATH", "%UTILPATH%")
-setenv("LMOD_AVAIL_STYLE", "grouped:system")
-pushenv("LMOD_SYSTEM_DEFAULT_MODULES", "%DEFMODS%")
+setenv("NCAR_INC_COMMON",       pathJoin(viewpath, "include"))
+setenv("NCAR_LDFLAGS_COMMON",   pathJoin(viewpath, "lib"))
+setenv("NCAR_LDFLAGS_COMMON64", pathJoin(viewpath, "lib64"))
+
+prepend_path("PKG_CONFIG_PATH", pathJoin(viewpath, "lib/pkgconfig"))
+prepend_path("PKG_CONFIG_PATH", pathJoin(viewpath, "lib64/pkgconfig"))

@@ -65,7 +65,7 @@ cat << EOF | sed -i "$(($(cut -d, -f2 <<< $view_block) - 1)) r /dev/stdin" $1
       select:
       - $spec
 EOF
-else
+elif [[ $(sed -n "$view_block s/[ ]*- ${spec}$/true/p" $1) != true ]]; then
 cat << EOF | sed -i "$select_start r /dev/stdin" $1
       - $spec
 EOF

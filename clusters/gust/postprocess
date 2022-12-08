@@ -35,8 +35,10 @@ log_active=0
 
 if [[ $SPACK_ENV == $NCAR_SPACK_ENV_PUBLIC ]]; then
     mod_root=$NCAR_SPACK_ROOT_MODULES
+    view_root=$NCAR_SPACK_ROOT_VIEW
 else
     mod_root=$SPACK_ENV/modules
+    view_root=$SPACK_ENV/ncarenv
 fi
 
 mod_deployment=${mod_root}/$NCAR_SPACK_HOST_VERSION
@@ -281,19 +283,21 @@ copy_mods cdep /opt/cray/pe/modulefiles
 cray_mpath=/opt/cray/pe/modulefiles:/opt/cray/modulefiles:/opt/modulefiles:/opt/cray/pe/perftools/default/modulefiles:/opt/cray/pe/modulefiles:/opt/cray/pe/craype-targets/default/modulefiles:/opt/cray/modulefiles:/opt/cray/pe/craype/default/modulefiles
 
 # *This* ncarenv deployment
-mkdir -p $mod_root/environment/ncarenv
-mm_src=$NCAR_SPACK_ENV_BUILD/templates/modules/ncarenv.lua
-mm_file=$mod_root/environment/ncarenv/${NCAR_SPACK_HOST_VERSION}.lua
+for mod_type in ncarenv ncarenv-basic; do
+    mkdir -p $mod_root/environment/$mod_type
+    mm_src=$NCAR_SPACK_ENV_BUILD/templates/modules/$mod_type.lua
+    mm_file=$mod_root/environment/$mod_type/${NCAR_SPACK_HOST_VERSION}.lua
 
-if [[ ! -f $mm_file ]] || [[ $force_updates == true ]]; then
-    sed "s|%MODPATH%|${mod_deployment}/Core|g" $mm_src > $tm_file
-    sed -i "s|%VIEWROOT%|${NCAR_SPACK_ROOT_VIEW}|g" $tm_file
-    sed -i "s|%VERSION%|${NCAR_SPACK_HOST_VERSION}|g" $tm_file
-    sed -i "s|%DATE%|$(date)|g" $tm_file
-    sed -i "s|%UTILPATH%|${SPACK_ENV}/util|g" $tm_file
-    sed -i "s|%DEFMODS%|$NCAR_SPACK_DEFMODS_NCAR|g" $tm_file
-    mv $tm_file $mm_file
-fi
+    if [[ ! -f $mm_file ]] || [[ $force_updates == true ]]; then
+        sed "s|%MODPATH%|${mod_deployment}/Core|g" $mm_src > $tm_file
+        sed -i "s|%VIEWROOT%|${view_root}|g" $tm_file
+        sed -i "s|%VERSION%|${NCAR_SPACK_HOST_VERSION}|g" $tm_file
+        sed -i "s|%DATE%|$(date)|g" $tm_file
+        sed -i "s|%UTILPATH%|${SPACK_ENV}/util|g" $tm_file
+        sed -i "s|%DEFMODS%|$NCAR_SPACK_DEFMODS_NCAR|g" $tm_file
+        mv $tm_file $mm_file
+    fi
+done
 
 # All crayenv deployments
 mkdir -p $mod_root/environment/crayenv
