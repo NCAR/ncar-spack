@@ -405,7 +405,7 @@ while read pkg; do
                 done
                 ;;
             cdep)
-                define_items compilers "$compilers"
+                define_items compilers "${install_compiler:-$compilers}"
                 for comp in $my_compilers; do
                     check_exclusions $comp || continue
                     prepare_spec

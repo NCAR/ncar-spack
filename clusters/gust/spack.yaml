@@ -20,11 +20,11 @@ spack:
         all: '{name}/{version}/{compiler.name}/{compiler.version}'
         ^mpi: '{name}/{version}/{^mpi.name}/{^mpi.version}/{compiler.name}/{compiler.version}'
     build_jobs: 8
-    test_stage: %TMPDIR%/spack/%DEPLOYMENT%/tests
-    source_cache: %TMPDIR%/spack/cache
-    misc_cache: %TMPDIR%/spack/%DEPLOYMENT%/misc
+    test_stage: /glade/gust/scratch/$user/temp/spack/%DEPLOYMENT%/tests
+    source_cache: /glade/gust/scratch/$user/temp/spack/cache
+    misc_cache: /glade/gust/scratch/$user/temp/spack/%DEPLOYMENT%/misc
     build_stage:
-      - %TMPDIR%/spack/%DEPLOYMENT%/builds
+      - /glade/gust/scratch/$user/temp/spack/%DEPLOYMENT%/builds
     shared_linking:
       type: rpath
       bind: true
@@ -113,10 +113,10 @@ spack:
       variants: [~suid]
     apptainer:
       variants: [~suid]
-    parallelio:
-      variants: [+pnetcdf]
     esmf:
-      variants: [+external-lapack]
+      variants: [~mpi]
+    ncl:
+      variants: [+gdal, +hdf4]
     intel-oneapi-mpi:
       variants: [+external-libfabric, +ilp64]
     intel-oneapi-mkl:
@@ -125,6 +125,12 @@ spack:
       variants: [+gold, +ld, +lto, +tui, ~python]
     curl:
       variants: [+libidn2]
+    gdal:
+      variants: [+armadillo, +blosc, +curl, +deflate, +expat, +geos, +gif, +grass,
+        +grib, +hdf5, +iconv, +jasper, +jpeg, +libcsf, +liblzma, +lz4, +netcdf, +pcidsk,
+        +png, +qhull, +sqlite3, +zstd]
+    arpack-ng:
+      variants: [~mpi]
   view:
     baseenv:
       root: %VIEWROOT%
@@ -387,25 +393,22 @@ spack:
           template: ncar_wrapper_mpi.lua
           environment:
             append_path:
-              MODULEPATH: /glade/u/apps/cseg/modules/{name}/{version}/{compiler.name}/{compiler.version}
+              MODULEPATH: /glade/u/apps/cseg/modules/%VERSION%/{name}/{version}/{compiler.name}/{compiler.version}
         gcc:
           environment:
             append_path:
-              MODULEPATH: /glade/u/apps/cseg/modules/{name}/{version}
+              MODULEPATH: /glade/u/apps/cseg/modules/%VERSION%/{name}/{version}
         intel-oneapi-compilers:
+          filter:
+            exclude_env_vars: [NCAR_ROOT_INTEL_ONEAPI_COMPILERS]
           environment:
             set:
               PE_ENV: INTEL
               INTEL_VERSION: '{version}'
               INTEL_PATH: '{prefix}'
-              CC: '{prefix}/compiler/{version}/linux/bin/icx'
-              CXX: '{prefix}/compiler/{version}/linux/bin/icpx'
-              FC: '{prefix}/compiler/{version}/linux/bin/ifx'
-              F77: '{prefix}/compiler/{version}/linux/bin/ifx'
-            prepend_path:
-              LD_LIBRARY_PATH: '{prefix}/compiler/{version}/linux/compiler/lib/intel64'
+              NCAR_ROOT_ONEAPI: '{prefix}'
             append_path:
-              MODULEPATH: /glade/u/apps/cseg/modules/oneapi/{version}
+              MODULEPATH: /glade/u/apps/cseg/modules/%VERSION%/oneapi/{version}
         intel-oneapi-compilers-classic:
           autoload: none
           filter:
@@ -416,20 +419,15 @@ spack:
               INTEL_VERSION: '{version}'
               INTEL_PATH: '{^intel-oneapi-compilers.prefix}'
               NCAR_ROOT_INTEL: '{^intel-oneapi-compilers.prefix}'
-            prepend_path:
-              LD_LIBRARY_PATH: '{^intel-oneapi-compilers.prefix}/compiler/{version}/linux/compiler/lib/intel64'
-              PATH: '{^intel-oneapi-compilers.prefix}/compiler/{version}/linux/bin/intel64'
-              NLSPATH: '{^intel-oneapi-compilers.prefix}/compiler/{version}/linux/compiler/lib/intel64_lin/locale/%l_%t/%N'
-              MANPATH: '{^intel-oneapi-compilers.prefix}/compiler/{version}/documentation/en/man/common'
             append_path:
-              MODULEPATH: /glade/u/apps/cseg/modules/intel/{version}
+              MODULEPATH: /glade/u/apps/cseg/modules/%VERSION%/intel/{version}
         intel-oneapi-mkl:
           filter:
             exclude_env_vars: [NCAR_ROOT_INTEL_ONEAPI_MKL, NCAR_LDFLAGS_INTEL_ONEAPI_MKL]
           environment:
             set:
-              NCAR_ROOT_ONEAPI: '{prefix}/mkl/{version}'
-              NCAR_LDFLAGS_ONEAPI: '{prefix}/mkl/{version}/lib/intel64'
+              NCAR_ROOT_MKL: '{prefix}/mkl/{version}'
+              NCAR_LDFLAGS_MKL: '{prefix}/mkl/{version}/lib/intel64'
         intel-oneapi-mpi:
           filter:
             exclude_env_vars: [NCAR_ROOT_INTEL_ONEAPI_MPI]
@@ -446,7 +444,7 @@ spack:
             prepend_path:
               LD_LIBRARY_PATH: '{prefix}/Linux_x86_64/{version}/compilers/lib'
             append_path:
-              MODULEPATH: /glade/u/apps/cseg/modules/{name}/{version}
+              MODULEPATH: /glade/u/apps/cseg/modules/%VERSION%/{name}/{version}
         nvhpc@21.3:
           environment:
             set:
@@ -484,6 +482,7 @@ spack:
           environment:
             set:
               OMPI_MCA_shmem_mmap_enable_nfs_warning: '0'
+              OMPI_MCA_mca_base_env_list: 'TMPDIR,OMP_NUM_THREADS'
             prepend_path:
               LD_LIBRARY_PATH: '{prefix}/lib'
         miniconda3:
@@ -498,6 +497,10 @@ spack:
               CONDA_EXE: '{prefix}/bin/conda'
           template: conda.lua
         apptainer:
+          environment:
+            prepend_path:
+              PATH: '{^squashfs.prefix}/bin'
+        singularityce:
           environment:
             prepend_path:
               PATH: '{^squashfs.prefix}/bin'

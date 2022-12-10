@@ -67,7 +67,7 @@ family compiler
 
 # Add compiler modules to MODULEPATH
 append-path MODULEPATH ${mod_deployment}/$mod
-append-path MODULEPATH /glade/u/apps/cseg/modules/$mod
+append-path MODULEPATH /glade/u/apps/cseg/modules/$NCAR_SPACK_HOST_VERSION/$mod
 
 # Set the PE, since this is the only setting from the PrgEnv module that matters
 setenv PE_ENV ${comp_pe[$mod_name]}
@@ -82,7 +82,7 @@ family mpi
 
 # Add MPI modules to MODULEPATH
 append-path MODULEPATH ${mod_deployment}/${mod}/$comp
-append-path MODULEPATH /glade/u/apps/cseg/modules/${mod}/$comp
+append-path MODULEPATH /glade/u/apps/cseg/modules/$NCAR_SPACK_HOST_VERSION/${mod}/$comp
 
 # Use openfabrics
 setenv CRAYPE_NETWORK_TARGET $cray_network
@@ -388,7 +388,7 @@ for mod_cat in $(find . -mindepth 2 -maxdepth 2 ! -path "*/Core/*" -type d); do
 done
 
 # Add labels for mpi-serial from CSEG tree
-cd /glade/u/apps/cseg/modules
+cd /glade/u/apps/cseg/modules/$NCAR_SPACK_HOST_VERSION
 
 for mod_cat in mpi-serial/*; do
     mname=mpi-serial
