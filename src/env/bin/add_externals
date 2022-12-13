@@ -60,9 +60,6 @@ unset mod_yaml
 fi
 }
 
-# Pretty colors
-GCOL="\033[1;32m" BCOL="\033[1;34m" PCOL="\033[1;35m" DCOL="\033[0m"
-
 # First, let's get the known external prefixes
 known_externals=$(spack config get packages | grep prefix: | awk -F: '{print $2}' | sort | uniq | xargs)
 

@@ -99,6 +99,7 @@ function prepare_spec {
                 fi
             elif [[ $opt_type == cache ]]; then
                 use_cache=${opt_body/never/no}
+                install_cache=$use_cache
             fi
         fi
     done
@@ -184,7 +185,7 @@ function check_spec {
             spec_hash=$(grep -A2 ^Concretized <<< "$spack_spec_out" | tail -n1 | awk '{print $2}')
 
             if [[ " $start_hashes " == *" $spec_hash "* ]]; then
-                echo "${spec}:$spec_hash:${use_cache:-yes}" >> $SPACK_ENV/.installs
+                echo "${spec}:$spec_hash:${install_cache:-yes}" >> $SPACK_ENV/.installs
                 skip_spec=true
             fi
         fi
@@ -214,7 +215,7 @@ function check_spec {
                 echo "$spack_spec_out" &>> $log_specs
                 unset spack_spec_out
                 install_spec
-                echo "${spec}:$spec_hash:${use_cache:-yes}" >> $SPACK_ENV/.installs
+                echo "${spec}:$spec_hash:${install_cache:-yes}" >> $SPACK_ENV/.installs
             fi
 
             if [[ $spec == lmod* ]]; then
@@ -248,7 +249,7 @@ function install_spec {
 
     # Register the hash if requested
     if [[ -n $hash_ref ]]; then
-        hashes["$hash_ref"]=$(tac $log_installs | grep -m1 " Successfully installed " | sed 's/.*-\(.*\)$/\1/')
+        hashes["$hash_ref"]=$spec_hash
         unset hash_ref 
     fi
 
@@ -270,7 +271,18 @@ function install_spec {
                 module_name=$(cut -d' ' -f1 <<< "${spec/@//}")
                 (module purge; module load $module_name; spack compiler find > /dev/null)
             else
-                spack compiler add $(spack location -i $spec) > /dev/null
+                spack compiler add $(spack location -i /$spec_hash) > /dev/null
+            fi
+        else
+            stack_root=${stack_root:-$(sed "s|/${spec%%@*}.*||" <<< $(spack location -i /$spec_hash))}
+            comp_block=$(sed -n "/^  compilers:/,/^  [^- ].*/ {/$comp_spec/,/- compiler/=}"    \
+                            $SPACK_ENV/spack.yaml | xargs | awk '{ print $1","$NF }')
+
+            if [[ $comp_block != ',' ]]; then
+                tsecho "(locating $comp_spec in environment stack)"
+                sed -i "$comp_block s|/placeholder|$stack_root|" $SPACK_ENV/spack.yaml
+            else
+                tsecho "$RCOL(couldn't find $comp_spec in defined compilers)$DCOL"
             fi
         fi
     fi
@@ -318,9 +330,6 @@ function define_items {
         declare -g $list_var="${my_items# }"
     fi
 }
-
-# Pretty colors
-GCOL="\033[1;32m" BCOL="\033[1;34m" PCOL="\033[1;35m" DCOL="\033[0m"
 
 # Ensure log directory exists
 log_dir=$SPACK_ENV/logs

@@ -20,17 +20,17 @@ spack:
         all: '{name}/{version}/{compiler.name}/{compiler.version}'
         ^mpi: '{name}/{version}/{^mpi.name}/{^mpi.version}/{compiler.name}/{compiler.version}'
     build_jobs: 8
-    test_stage: /glade/gust/scratch/$user/temp/spack/%DEPLOYMENT%/tests
-    source_cache: /glade/gust/scratch/$user/temp/spack/cache
-    misc_cache: /glade/gust/scratch/$user/temp/spack/%DEPLOYMENT%/misc
+    test_stage: %TMPROOT%/$user/temp/spack/%DEPLOYMENT%/tests
+    source_cache: %TMPROOT%/$user/temp/spack/cache
+    misc_cache: %TMPROOT%/$user/temp/spack/%DEPLOYMENT%/misc
     build_stage:
-      - /glade/gust/scratch/$user/temp/spack/%DEPLOYMENT%/builds
+      - %TMPROOT%/$user/temp/spack/%DEPLOYMENT%/builds
     shared_linking:
       type: rpath
       bind: true
   packages:
     all:
-      compiler:: [gcc@7.5.0, gcc, cce, nvhpc, oneapi]
+      compiler:: [gcc@7.5.0, gcc, cce, nvhpc, oneapi, intel]
       providers:
         mpi:: [cray-mpich, openmpi]
         szip:: [libszip]
@@ -482,7 +482,6 @@ spack:
           environment:
             set:
               OMPI_MCA_shmem_mmap_enable_nfs_warning: '0'
-              OMPI_MCA_mca_base_env_list: 'TMPDIR,OMP_NUM_THREADS'
             prepend_path:
               LD_LIBRARY_PATH: '{prefix}/lib'
         miniconda3:

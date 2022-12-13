@@ -9,11 +9,11 @@ spack:
       projections:
         all: '{name}/{version}'
     build_jobs: 8
-    test_stage: %TMPDIR%/spack/%DEPLOYMENT%/tests
-    source_cache: %TMPDIR%/spack/cache
-    misc_cache: %TMPDIR%/spack/%DEPLOYMENT%/misc
+    test_stage: %TMPROOT%/${user}/temp/spack/%DEPLOYMENT%/tests
+    source_cache: %TMPROOT%/${user}/temp/spack/cache
+    misc_cache: %TMPROOT%/${user}/temp/spack/%DEPLOYMENT%/misc
     build_stage:
-      - %TMPDIR%/spack/builds
+      - %TMPROOT%/${user}/temp/spack/builds
     shared_linking:
       type: rpath
       bind: true

@@ -35,6 +35,9 @@ elif [[ -z $SPACK_ENV ]]; then
     my_env_type=${NCAR_SPACK_ENV_TYPE:-build}
     export start_time=${NCAR_SPACK_DEPLOY_TIME:-$(date +%y%m%dT%H%M)}
 
+    # Pretty colors
+    GCOL="\033[1;32m" BCOL="\033[1;34m" PCOL="\033[1;35m" RCOL="\033[1;31m" DCOL="\033[0m"
+
     tsecho "Activating Spack $my_env_type environment"
     
     if [[ -f $NCAR_SPACK_ROOT_ENVS/$my_env_type/spack.yaml ]]; then

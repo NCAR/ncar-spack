@@ -51,9 +51,15 @@ cachelist=$(ls $NCAR_SPACK_MIRROR_PATH/build_cache/ 2> /dev/null || true)
 
 for pkg in $pkglist; do
     if [[ $cachelist != *$pkg* ]]; then
-        pkg_label=$(spack find --no-groups -f --show-full-compiler -v /$pkg | tail -n1)
-        tsecho "Creating binary package for $pkg_label"
-        log_cmd "$cache_cmd -d $NCAR_SPACK_MIRROR_PATH --only=package /$pkg" >> $log_file
-        $cache_cmd -d $NCAR_SPACK_MIRROR_PATH --only=package /$pkg &>> $log_file
+        use_cache=$(awk -F: -v spec_hash="$pkg" '$2 == spec_hash {print $3}' .installs)
+
+        if [[ $use_cache != no ]]; then
+            pkg_label=$(spack find --no-groups -f --show-full-compiler -v /$pkg | tail -n1)
+            tsecho "Caching package:  ${GCOL}$pkg_label${DCOL}"
+            log_cmd "$cache_cmd -d $NCAR_SPACK_MIRROR_PATH --only=package /$pkg" >> $log_file
+            $cache_cmd -d $NCAR_SPACK_MIRROR_PATH --only=package /$pkg &>> $log_file
+        else
+            tsecho "Skipping package: ${PCOL}$pkg_label${DCOL} (use_cache=no)"
+        fi
     fi
 done
