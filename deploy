@@ -4,7 +4,7 @@
 #   a specified cluster definition. 
 #
 #   Author:         Brian Vanderwende
-#   Last Revised:   16:24, 12 Dec 2022
+#   Last Revised:   16:46, 13 Dec 2022
 #
 
 set -e
@@ -90,9 +90,8 @@ if [[ $NCAR_SPACK_ROOT != $spack_clone_path ]]; then
     cd $spack_clone_path
     git checkout $NCAR_SPACK_CLONE_VERSION
 
-    # Copy scripts to Spack install
-    cp -r $NCAR_SPACK_DEPLOY_DIR/src/spack/* $spack_clone_path/
-    sed -i "s/%HOST%/$NCAR_SPACK_HOST/g" $spack_clone_path/bin/clean_bash
+    # Set prompt label in clean_bash script
+    sed -i "s/\[clean\]/\[${NCAR_SPACK_HOST}\]/" $spack_clone_path/bin/clean_bash
 
     # Add custom cluster source files if found
     if [[ -d $NCAR_SPACK_DEPLOY_DIR/clusters/$NCAR_SYS/src/spack ]]; then
@@ -146,7 +145,7 @@ echo "Creating env at $NCAR_SPACK_ENV_BUILD ..."
 # All spack needs for an env is a directory with spack.yaml
 mkdir -p $NCAR_SPACK_ENV_BUILD/logs
 cp clusters/$NCAR_SYS/spack.yaml $NCAR_SPACK_ENV_BUILD
-cp -r src/env/* $NCAR_SPACK_ENV_BUILD
+cp -r src/* $NCAR_SPACK_ENV_BUILD
 
 cat > $NCAR_SPACK_ENV_BUILD/main.cfg << EOF
 NCAR_SPACK_DEPLOY_TYPE=$NCAR_SPACK_DEPLOY_TYPE
