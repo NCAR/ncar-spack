@@ -58,8 +58,6 @@ for pkg in $pkglist; do
             tsecho "Caching package:  ${GCOL}$pkg_label${DCOL}"
             log_cmd "$cache_cmd -d $NCAR_SPACK_MIRROR_PATH --only=package /$pkg" >> $log_file
             $cache_cmd -d $NCAR_SPACK_MIRROR_PATH --only=package /$pkg &>> $log_file
-        else
-            tsecho "Skipping package: ${PCOL}$pkg_label${DCOL} (use_cache=no)"
         fi
     fi
 done
