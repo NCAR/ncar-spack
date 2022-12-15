@@ -5,21 +5,36 @@ cat << EOF
 Usage: $0 [-m MIRRORPATH]
 
 Options
+    -j, --jobs      number of concurrent pkgs to cache (default 1)
     -m, --mirror    specify a custom path to a mirror
 
 EOF
 exit
 }
 
+if [[ " $@ " == *" -h "* ]] || [[ " $@ " == *" --help "* ]]; then
+    usage
+fi
+
+# Perform common script setup including environment checks
+export my_dir="$( cd "$(dirname "$0")" ; pwd )"
+. $my_dir/tools/init.sh
+
 while [[ $# -gt 0 ]]; do
     case $1 in
-        -m|--mirror)
-            NCAR_SPACK_MIRROR_PATH=$2
-            shift
+        -j|--jobs)
+            if [[ $1 == *=* ]]; then
+                max_jobs=${1#*=}
+            else
+                max_jobs=$2; shift
+            fi
             ;;
-        -h|--help)
-            usage
-            exit
+        -m|--mirror)
+            if [[ $1 == *=* ]]; then
+                mirror_path=${1#*=}
+            else
+                mirror_path=$2; shift
+            fi
             ;;
         *)
             >&2 echo "Error: unrecognized option $1"
@@ -31,23 +46,34 @@ while [[ $# -gt 0 ]]; do
     shift
 done
 
-# Perform common script setup including environment checks
-export my_dir="$( cd "$(dirname "$0")" ; pwd )"
-. $my_dir/tools/init.sh
-
 log_dir=$SPACK_ENV/logs
 mkdir -p $log_dir
 log_file=$log_dir/cache.$start_time
 cache_cmd="spack buildcache create -a"
 
 if [[ $NCAR_SPACK_DEPLOY_TYPE == production ]]; then
-    NCAR_SPACK_MIRROR_PATH=${NCAR_SPACK_MIRROR_PATH:-$NCAR_SPACK_MIRROR_GLOBAL}
+    mirror_path=${mirror_path:-$NCAR_SPACK_MIRROR_GLOBAL}
 else
-    NCAR_SPACK_MIRROR_PATH=${NCAR_SPACK_MIRROR_PATH:-$NCAR_SPACK_MIRROR_LOCAL}
+    mirror_path=${mirror_path:-$NCAR_SPACK_MIRROR_LOCAL}
 fi
 
+# Job tracking by PIDs
+declare -A job_pids
+
+function wait_for_jobs {
+    while [[ ${#job_pids[@]} -eq $1 ]]; do
+        for jp in ${!job_pids[@]}; do
+            if ! kill -0 $jp 2> /dev/null; then
+                unset job_pids[$jp]
+            fi
+        done
+    done
+}
+
+tsecho "Using up to ${max_jobs:-1} threads to populate cache"
+
 pkglist=$(spack find -L -p | awk -v envpath=${SPACK_ENV}/opt '$3~envpath { print $1 }')
-cachelist=$(ls $NCAR_SPACK_MIRROR_PATH/build_cache/ 2> /dev/null || true)
+cachelist=$(ls $mirror_path/build_cache/ 2> /dev/null || true)
 
 for pkg in $pkglist; do
     if [[ $cachelist != *$pkg* ]]; then
@@ -56,8 +82,13 @@ for pkg in $pkglist; do
         if [[ $use_cache != no ]]; then
             pkg_label=$(spack find --no-groups -f --show-full-compiler -v /$pkg | tail -n1)
             tsecho "Caching package:  ${GCOL}$pkg_label${DCOL}"
-            log_cmd "$cache_cmd -d $NCAR_SPACK_MIRROR_PATH --only=package /$pkg" >> $log_file
-            $cache_cmd -d $NCAR_SPACK_MIRROR_PATH --only=package /$pkg &>> $log_file
+            log_cmd "$cache_cmd -d $mirror_path --only=package /$pkg" >> $log_file
+            $cache_cmd -d $mirror_path --only=package /$pkg &>> $log_file &
+            job_pids[$!]=running
         fi
     fi
+    
+    wait_for_jobs ${max_jobs:-1}
 done
+
+wait_for_jobs 1

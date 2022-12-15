@@ -331,6 +331,7 @@ spack:
               CRAY_CUDATOOLKIT_PREFIX: '{prefix}'
               CRAY_CUDATOOLKIT_DIR: '{prefix}'
               CUDATOOLKIT_HOME: '{prefix}'
+              NCAR_LIBS_CRAYGTL: '-lstdc++'
             prepend_path:
               LD_LIBRARY_PATH: '{prefix}/lib64:{prefix}/nvvm/lib64:{prefix}/extras/CUPTI/lib64:{prefix}/extras/Debugger/lib64'
               CRAY_LD_LIBRARY_PATH: '{prefix}/lib64'

@@ -388,6 +388,7 @@ spack:
           environment:
             set:
               NCAR_ROOT_{name}: '{prefix}'
+              NCAR_SPACK_HASH_{name}: '{hash}'
           template: ncar_default.lua
         mpi:
           template: ncar_wrapper_mpi.lua
@@ -400,40 +401,44 @@ spack:
               MODULEPATH: /glade/u/apps/cseg/modules/%VERSION%/{name}/{version}
         intel-oneapi-compilers:
           filter:
-            exclude_env_vars: [NCAR_ROOT_INTEL_ONEAPI_COMPILERS]
+            exclude_env_vars: [NCAR_ROOT_INTEL_ONEAPI_COMPILERS, NCAR_SPACK_HASH_INTEL_ONEAPI_COMPILERS]
           environment:
             set:
               PE_ENV: INTEL
               INTEL_VERSION: '{version}'
               INTEL_PATH: '{prefix}'
               NCAR_ROOT_ONEAPI: '{prefix}'
+              NcAR_SPACK_HASH_ONEAPI: '{hash}'
             append_path:
               MODULEPATH: /glade/u/apps/cseg/modules/%VERSION%/oneapi/{version}
         intel-oneapi-compilers-classic:
           autoload: none
           filter:
-            exclude_env_vars: [NCAR_ROOT_INTEL_ONEAPI_COMPILERS_CLASSIC, CMAKE_PREFIX_PATH]
+            exclude_env_vars: [NCAR_ROOT_INTEL_ONEAPI_COMPILERS_CLASSIC, CMAKE_PREFIX_PATH, NCAR_SPACK_HASH_INTEL_ONEAPI_COMPILERS_CLASSIC]
           environment:
             set:
               PE_ENV: INTEL
               INTEL_VERSION: '{version}'
               INTEL_PATH: '{^intel-oneapi-compilers.prefix}'
               NCAR_ROOT_INTEL: '{^intel-oneapi-compilers.prefix}'
+              NCAR_SPACK_HASH_INTEL: '{hash}'
             append_path:
               MODULEPATH: /glade/u/apps/cseg/modules/%VERSION%/intel/{version}
         intel-oneapi-mkl:
           filter:
-            exclude_env_vars: [NCAR_ROOT_INTEL_ONEAPI_MKL, NCAR_LDFLAGS_INTEL_ONEAPI_MKL]
+            exclude_env_vars: [NCAR_ROOT_INTEL_ONEAPI_MKL, NCAR_LDFLAGS_INTEL_ONEAPI_MKL, NCAR_SPACK_HASH_INTEL_ONEAPI_MKL]
           environment:
             set:
               NCAR_ROOT_MKL: '{prefix}/mkl/{version}'
               NCAR_LDFLAGS_MKL: '{prefix}/mkl/{version}/lib/intel64'
+              NCAR_SPACK_HASH_MKL: '{hash}'
         intel-oneapi-mpi:
           filter:
-            exclude_env_vars: [NCAR_ROOT_INTEL_ONEAPI_MPI]
+            exclude_env_vars: [NCAR_ROOT_INTEL_ONEAPI_MPI, NCAR_SPACK_HASH_INTEL_ONEAPI_MPI]
           environment:
             set:
               NCAR_ROOT_IMPI: '{prefix}'
+              NCAR_SPACK_HASH_IMPI: '{hash}'
         nvhpc:
           environment:
             set:
@@ -475,6 +480,7 @@ spack:
               CRAY_CUDATOOLKIT_PREFIX: '{prefix}'
               CRAY_CUDATOOLKIT_DIR: '{prefix}'
               CUDATOOLKIT_HOME: '{prefix}'
+              NCAR_LIBS_CRAYGTL: '-lstdc++'
             prepend_path:
               LD_LIBRARY_PATH: '{prefix}/lib64:{prefix}/nvvm/lib64:{prefix}/extras/CUPTI/lib64:{prefix}/extras/Debugger/lib64'
               CRAY_LD_LIBRARY_PATH: '{prefix}/lib64'
