@@ -20,6 +20,9 @@ fi
 export my_dir="$( cd "$(dirname "$0")" ; pwd )"
 . $my_dir/tools/init.sh
 
+# Set defaults
+max_jobs=4
+
 while [[ $# -gt 0 ]]; do
     case $1 in
         -j|--jobs)
@@ -61,7 +64,7 @@ fi
 declare -A job_pids
 
 function wait_for_jobs {
-    while [[ ${#job_pids[@]} -eq $1 ]]; do
+    while [[ ${#job_pids[@]} -ge $1 ]]; do
         for jp in ${!job_pids[@]}; do
             if ! kill -0 $jp 2> /dev/null; then
                 unset job_pids[$jp]
@@ -70,7 +73,7 @@ function wait_for_jobs {
     done
 }
 
-tsecho "Using up to ${max_jobs:-1} threads to populate cache"
+tsecho "Using up to $max_jobs threads to populate cache"
 
 pkglist=$(spack find -L -p | awk -v envpath=${SPACK_ENV}/opt '$3~envpath { print $1 }')
 cachelist=$(ls $mirror_path/build_cache/ 2> /dev/null || true)
@@ -88,7 +91,7 @@ for pkg in $pkglist; do
         fi
     fi
     
-    wait_for_jobs ${max_jobs:-1}
+    wait_for_jobs $max_jobs
 done
 
 wait_for_jobs 1

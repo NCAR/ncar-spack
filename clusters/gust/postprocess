@@ -158,9 +158,6 @@ append-path MODULEPATH opt/cray
 prepend-path     PE_PRODUCT_LIST CRAYPE_X86_MILAN
 setenv           CRAY_CPU_TARGET x86-milan
 
-# Make module "sticky" (need to --force to remove/purge)
-add-property lmod sticky
-
 # If ncarcompilers is loaded, reload it to keep forward
 if {[ is-loaded ncarcompilers ]} {
     always-load ncarcompilers
@@ -184,6 +181,14 @@ fi
 
 function modify_perftools {
     sed -i 's/module use/module use -a/' $1
+}
+
+function set_dependency {
+cat >> $1 << EOF
+
+# Module depends on Cray Compiler Drivers for proper function
+depends-on craype
+EOF
 }
 
 function copy_mods {
@@ -210,6 +215,8 @@ function copy_mods {
                     [[ $log_active == 1 ]] && echo "  - modifying $mod for use as MPI library (comp=$comp)"
                     modify_mpi $mod_path/$mod
                 fi
+                
+                set_dependency $mod_path/$mod
             done
         else
             mod_path=$mod_deployment/Core
@@ -232,6 +239,10 @@ function copy_mods {
                         modify_perftools $mod_path/$mod
                         ;;
                 esac
+            fi
+
+            if [[ " $compilers craype " != *" $mod_name "* ]]; then
+                set_dependency $mod_path/$mod
             fi
         fi
         
