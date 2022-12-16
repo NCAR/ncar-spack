@@ -16,7 +16,7 @@ spack:
       - %TMPROOT%/${user}/temp/spack/builds
     shared_linking:
       type: rpath
-      bind: true
+      bind: false
   packages:
     all:
       target: [x86_64_v3]

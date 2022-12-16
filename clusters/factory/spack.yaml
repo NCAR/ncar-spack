@@ -29,7 +29,7 @@ spack:
       - %TMPROOT%/$user/temp/spack/%DEPLOYMENT%/builds
     shared_linking:
       type: rpath
-      bind: true
+      bind: false
   packages:
     all:
       compiler:: [gcc@7.5.0, gcc, cce, nvhpc, oneapi, intel]
