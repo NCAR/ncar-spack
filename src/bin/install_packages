@@ -223,8 +223,10 @@ function check_spec {
             fi
         fi
         
-        unset cache_label use_cache
+        unset cache_label
     fi
+
+    unset use_cache
 }
 
 function install_spec {
