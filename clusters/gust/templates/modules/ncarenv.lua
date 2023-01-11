@@ -21,6 +21,10 @@ local user      = capture("whoami")
 local tmpdir    = os.getenv("TMPDIR")
 local othreads  = os.getenv("OMP_NUM_THREADS")
 
+local syspath   = os.getenv("NCAR_DEFAULT_PATH")
+local sysman    = os.getenv("NCAR_DEFAULT_MANPATH")
+local sysinfo   = os.getenv("NCAR_DEFAULT_INFOPATH")
+
 -- Utility locations
 local viewpath      = "%VIEWROOT%"
 
@@ -67,9 +71,9 @@ setenv("LC_ALL",    "en_US.UTF-8")
 setenv("LANG",      "en_US.UTF-8")
 
 -- Add view utilities to PATHS
-prepend_path("PATH",            pathJoin(viewpath, "bin"))
-prepend_path("MANPATH",         pathJoin(viewpath, "man"))
-prepend_path("MANPATH",         pathJoin(viewpath, "share/man"))
+append_path("PATH",             pathJoin(viewpath, "bin"))
+append_path("MANPATH",          pathJoin(viewpath, "man"))
+append_path("MANPATH",          pathJoin(viewpath, "share/man"))
 
 setenv("NCAR_INC_COMMON",       pathJoin(viewpath, "include"))
 setenv("NCAR_LDFLAGS_COMMON",   pathJoin(viewpath, "lib"))
@@ -77,3 +81,8 @@ setenv("NCAR_LDFLAGS_COMMON64", pathJoin(viewpath, "lib64"))
 
 prepend_path("PKG_CONFIG_PATH", pathJoin(viewpath, "lib/pkgconfig"))
 prepend_path("PKG_CONFIG_PATH", pathJoin(viewpath, "lib64/pkgconfig"))
+
+-- Make sure system versions come after Spack versions
+append_path("PATH",             syspath)
+append_path("MANPATH",          sysman)
+append_path("INFOPATH",         sysinfo)
