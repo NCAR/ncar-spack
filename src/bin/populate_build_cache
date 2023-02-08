@@ -80,7 +80,9 @@ cachelist=$(ls $mirror_path/build_cache/ 2> /dev/null || true)
 
 for pkg in $pkglist; do
     if [[ $cachelist != *$pkg* ]]; then
-        use_cache=$(awk -F: -v spec_hash="$pkg" '$2 == spec_hash {print $3}' .installs)
+        if [[ -f $NCAR_SPACK_ENV_BUILD/.installs ]]; then
+            use_cache=$(awk -F: -v spec_hash="$pkg" '$2 == spec_hash {print $3}' $NCAR_SPACK_ENV_BUILD/.installs)
+        fi
 
         if [[ $use_cache != no ]]; then
             pkg_label=$(spack find --no-groups -f --show-full-compiler -v /$pkg | tail -n1)

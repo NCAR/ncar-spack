@@ -71,6 +71,7 @@ setenv("LC_ALL",    "en_US.UTF-8")
 setenv("LANG",      "en_US.UTF-8")
 
 -- Add view utilities to PATHS
+prepend_path("PATH",            pathJoin(viewpath, "utils/bin"))
 append_path("PATH",             pathJoin(viewpath, "bin"))
 append_path("MANPATH",          pathJoin(viewpath, "man"))
 append_path("MANPATH",          pathJoin(viewpath, "share/man"))

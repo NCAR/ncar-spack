@@ -37,7 +37,7 @@ export LMOD_SYSTEM_DEFAULT_MODULES="$NCAR_SPACK_DEFMODS_NCAR"
 export MODULEPATH=$module_root/environment
 
 # Location of Lmod initialization scripts
-LMOD_ROOT=$lmod_location
+export LMOD_ROOT=$lmod_location
 
 # Use shell-specific init
 comm=\`/bin/ps -p \$$ -o cmd= |awk '{print \$1}'|sed -e 's/-sh/csh/' -e 's/-csh/tcsh/' -e 's/-//g'\`

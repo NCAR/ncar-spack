@@ -177,6 +177,21 @@ setenv           CRAY_XPMEM_INCLUDE_OPTS -I/opt/cray/xpmem/${xpmem[$mod_version]
 setenv           CRAY_XPMEM_POST_LINK_OPTS -L/opt/cray/xpmem/${xpmem[$mod_version]}/lib64
 EOF
 fi
+
+if [[ ${cti[$mod_version]+a} ]]; then
+cat >> $1 << EOF
+
+# Cray CTI configuration (Forge support)
+setenv  CTI_VERSION         ${cti[$mod_version]}
+setenv  CRAY_CTI_VERSION    ${cti[$mod_version]}
+setenv  CTI_INSTALL_DIR     /opt/cray/pe/cti/${cti[$mod_version]}
+setenv  CRAY_CTI_PREFIX     /opt/cray/pe/cti/${cti[$mod_version]}
+setenv  PE_CTI_MODULE_NAME  cray-cti
+
+prepend-path    MANPATH                 /opt/cray/pe/cti/${cti[$mod_version]}/share/man
+prepend-path    CRAY_LD_LIBRARY_PATH    /opt/cray/pe/cti/${cti[$mod_version]}/lib
+EOF
+fi
 }
 
 function modify_perftools {
@@ -264,6 +279,7 @@ declare -A libfabric=( [8.1.18]=1.15.0.0 [8.1.19]=1.15.0.0 [8.1.21]=1.15.0.0 )
 declare -A pals=( [8.1.18]=1.2.0 [8.1.19]=1.2.2 [8.1.21]=1.2.4 )
 declare -A pmi=( [8.1.18]=6.1.3 [8.1.19]=6.1.5 [8.1.21]=6.1.7 )
 declare -A xpmem=( )
+declare -A cti=( [2.7.17]=2.15.14 [2.7.19]=2.17.0 )
 
 [[ $log_active == 1 ]] && echo "Copying core modules to $mod_root ..."
 
@@ -342,6 +358,8 @@ ncar_utils[get_local_rank]=mpitools
 skip_clone="gladequota mpitools"
 
 if [[ $SPACK_ENV == $NCAR_SPACK_ENV_PUBLIC ]]; then
+    mkdir -p $NCAR_SPACK_ROOT_VIEW/utils/bin
+
     for util in ${!ncar_utils[@]}; do
         if [[ ! -d ${ncar_utils[$util]} ]]; then
             if [[ -O $util_root ]]; then
@@ -357,9 +375,9 @@ if [[ $SPACK_ENV == $NCAR_SPACK_ENV_PUBLIC ]]; then
             fi
         fi
 
-        if [[ ! -e $NCAR_SPACK_ROOT_VIEW/bin/$util ]]; then
+        if [[ ! -e $NCAR_SPACK_ROOT_VIEW/utils/bin/$util ]]; then
             [[ $log_active == 1 ]] && echo "  - adding $util"
-            ln -s $util_root/${ncar_utils[$util]}/bin/$util $NCAR_SPACK_ROOT_VIEW/bin/
+            ln -s $util_root/${ncar_utils[$util]}/bin/$util $NCAR_SPACK_ROOT_VIEW/utils/bin/
         fi
     done
 fi

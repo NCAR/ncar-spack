@@ -17,6 +17,7 @@ class Ncarcompilers(MakefilePackage):
 
     maintainers = ['vanderwb']
 
+    version('0.7.2', sha256='f0a1b7a8bd271e2ec41eebdbb2bf2d0ae91f8e197dba06a9c7b67f671f41e819')
     version('0.7.1', sha256='88f23f89841b6e49a44b66d3a6afb3d8d817f51103cc07f3c8c48864a0215405')
 
     def setup_build_environment(self, env):
