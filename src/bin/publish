@@ -16,7 +16,7 @@
 #           shell script. So we must activate in the script!
 #
 #   Author:         Brian Vanderwende
-#   Last Revised:   20:52, 06 Feb 2023
+#   Last Revised:   15:07, 08 Feb 2023
 #
 
 function remove_lock {
@@ -78,9 +78,7 @@ while read spec; do
         exit 1
     fi
 
-    if [[ -f $NCAR_SPACK_ENV_BUILD/.installs ]]; then
-        use_cache=$(awk -F: -v spec="$spec_hash" '$2 == spec {print $3}' $NCAR_SPACK_ENV_BUILD/.installs)
-    fi
+    use_cache=$(awk -F: -v spec="$spec_hash" '$2 == spec {print $3}' $NCAR_SPACK_ENV_BUILD/.installs)
 
     if [[ $use_cache == no ]]; then
         echo "    $spec <cache:no>" >> $1
@@ -91,6 +89,26 @@ done < <(sed 's/^[ ]*- //' <<< $new_pkgs)
 
 spack env deactivate
 spack env activate $NCAR_SPACK_ENV_PUBLIC
+}
+
+function store_publish_options {
+cat > $NCAR_SPACK_ENV_BUILD/.pubstore << EOF
+commit_date=$(date +%y%m%dT%H%M)
+set_as_default=$set_as_default
+force_commit=$force_commit
+commit_msg=$commit_msg
+EOF
+}
+
+function print_resume_info {
+cat << EOF
+Danger: You are asking to resume a failed publish.
+
+    Commit date:    $commit_date
+    Commit message: $commit_msg
+    Change default: ${set_as_default:-false}
+
+EOF
 }
 
 #
@@ -113,12 +131,22 @@ while [[ $# -gt 0 ]]; do
             ;;
         -f|--force)
             force_commit=true
-            pp_opt=-f
             ;;
         --resume)
-            echo "Danger: You are asking to resume a failed publish."
-            read -e -p "        Are you sure (y/N)? " force_resume
-            force_resume=${force_resume:-N}
+            if [[ -f $NCAR_SPACK_ENV_BUILD/.pubstore ]]; then
+                . $NCAR_SPACK_ENV_BUILD/.pubstore
+                print_resume_info
+                
+                read -e -p "        Are you sure (y/N)? " force_resume
+                force_resume=${force_resume:-N}
+                
+                if [[ ${force_resume^^} == N ]]; then
+                    exit
+                fi
+            else
+                echo >&2 "Error:  Prior publish attempt not found. Cannot resume."
+                exit 1
+            fi
             ;;
         *)
             commit_msg="$1"
@@ -127,6 +155,9 @@ while [[ $# -gt 0 ]]; do
 
     shift
 done
+
+# Store commit for resume functionality
+store_publish_options
 
 if [[ -z $commit_msg ]]; then
 >&2 cat << EOF
@@ -307,7 +338,7 @@ fi
 
 if [[ -f $NCAR_SPACK_ENV_BUILD/bin/postprocess ]]; then
     tsecho "Running postprocessing script on environment"
-    NCAR_SPACK_ENV_TYPE=public $NCAR_SPACK_ENV_BUILD/bin/postprocess $pp_opt
+    NCAR_SPACK_ENV_TYPE=public $NCAR_SPACK_ENV_BUILD/bin/postprocess -f 
 fi
 
 if [[ ! -e $NCAR_SPACK_ROOT_DEPLOYMENT/util ]]; then
@@ -341,3 +372,6 @@ if [[ -n $NCAR_SPACK_GITHUB ]]; then
     echo
     git push -u origin "$NCAR_SPACK_HOST_VERSION"
 fi
+
+# Commit succesful, so remove ability to resume it
+rm -f $NCAR_SPACK_ENV_BUILD/.pubstore

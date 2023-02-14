@@ -60,45 +60,39 @@ while [[ $# -gt 0 ]]; do
 done
 
 function modify_comp {
+sed -i '/--.*Lmod hierarchy/Q; /pend_path[ ("]*MODULEPATH/d' $1
 cat >> $1 << EOF
+-- Add compiler modules to MODULEPATH
+append_path("MODULEPATH", "${mod_deployment}/$mod")
+append_path("MODULEPATH", "/glade/u/apps/cseg/modules/$NCAR_SPACK_HOST_VERSION/$mod")
 
-# Ensure only one is loaded at time
-family compiler
-
-# Add compiler modules to MODULEPATH
-append-path MODULEPATH ${mod_deployment}/$mod
-append-path MODULEPATH /glade/u/apps/cseg/modules/$NCAR_SPACK_HOST_VERSION/$mod
-
-# Set the PE, since this is the only setting from the PrgEnv module that matters
-setenv PE_ENV ${comp_pe[$mod_name]}
+-- Set the PE, since this is the only setting from the PrgEnv module that matters
+setenv("PE_ENV", "${comp_pe[$mod_name]}")
 EOF
 }
 
 function modify_mpi {
+sed -i '/--.*Lmod hierarchy/Q; /pend_path[ ("]*MODULEPATH/d' $1
 cat >> $1 << EOF
+-- Add MPI modules to MODULEPATH
+append_path("MODULEPATH", "${mod_deployment}/${mod}/$comp")
+append_path("MODULEPATH", "/glade/u/apps/cseg/modules/$NCAR_SPACK_HOST_VERSION/${mod}/$comp")
 
-# Ensure only one is loaded at time
-family mpi
+-- Use openfabrics
+setenv("CRAYPE_NETWORK_TARGET", "$cray_network")
 
-# Add MPI modules to MODULEPATH
-append-path MODULEPATH ${mod_deployment}/${mod}/$comp
-append-path MODULEPATH /glade/u/apps/cseg/modules/$NCAR_SPACK_HOST_VERSION/${mod}/$comp
-
-# Use openfabrics
-setenv CRAYPE_NETWORK_TARGET $cray_network
-
-# Add to LD_LIBRARY_PATH for programs like NSight Systems
-prepend-path LD_LIBRARY_PATH \${mpich_dir}/lib
+-- Add to LD_LIBRARY_PATH for programs like NSight Systems
+prepend_path("LD_LIBRARY_PATH", MPICH_DIR .. "/lib")
 EOF
 
 if [[ ${libfabric[$mod_version]+a} ]]; then
 cat >> $1 << EOF
 
-# Libfabric settings
-prepend-path PATH /opt/cray/libfabric/${libfabric[$mod_version]}/bin
-prepend-path LD_LIBRARY_PATH /opt/cray/libfabric/${libfabric[$mod_version]}/lib64
-prepend-path MANPATH /opt/cray/libfabric/${libfabric[$mod_version]}/share/man
-prepend-path PKG_CONFIG_PATH /opt/cray/libfabric/${libfabric[$mod_version]}/lib64/pkgconfig
+-- Libfabric settings
+prepend_path("PATH", "/opt/cray/libfabric/${libfabric[$mod_version]}/bin")
+prepend_path("LD_LIBRARY_PATH", "/opt/cray/libfabric/${libfabric[$mod_version]}/lib64")
+prepend_path("MANPATH", "/opt/cray/libfabric/${libfabric[$mod_version]}/share/man")
+prepend_path("PKG_CONFIG_PATH", "/opt/cray/libfabric/${libfabric[$mod_version]}/lib64/pkgconfig")
 EOF
 else
 >&2 echo "Error: no libfabric version set for cray-mpich/$mod_version!"
@@ -108,13 +102,13 @@ fi
 if [[ ${pals[$mod_version]+a} ]]; then
 cat >> $1 << EOF
 
-# PALS support
-prepend-path PATH /opt/cray/pe/pals/${pals[$mod_version]}/bin
-prepend-path MANPATH /opt/cray/pe/pals/${pals[$mod_version]}/man
-prepend-path PKG_CONFIG_PATH /opt/cray/pe/pals/${pals[$mod_version]}/lib/pkgconfig
-prepend-path PE_PALS_PKGCONFIG_LIBS libpals
-prepend-path PE_PKGCONFIG_PRODUCTS PE_PALS
-set-alias mpirun mpiexec
+-- PALS support
+prepend_path("PATH", "/opt/cray/pe/pals/${pals[$mod_version]}/bin")
+prepend_path("MANPATH", "/opt/cray/pe/pals/${pals[$mod_version]}/man")
+prepend_path("PKG_CONFIG_PATH", "/opt/cray/pe/pals/${pals[$mod_version]}/lib/pkgconfig")
+prepend_path("PE_PALS_PKGCONFIG_LIBS", "libpals")
+prepend_path("PE_PKGCONFIG_PRODUCTS", "PE_PALS")
+set_alias("mpirun", "mpiexec")
 EOF
 else
 >&2 echo "Error: no pals version set for cray-mpich/$mod_version!"
@@ -124,15 +118,15 @@ fi
 if [[ ${pals[$mod_version]+a} ]]; then
 cat >> $1 << EOF
 
-# PMI support
-set defDir "/opt/cray/pe/pmi/${pmi[$mod_version]}"
-setenv CRAY_PMI_INCLUDE_OPTS "-I\$defDir/include"
-setenv CRAY_PMI_POST_LINK_OPTS "-L\$defDir/lib"
-prepend-path PKG_CONFIG_PATH \$defDir/lib/pkgconfig
-prepend-path PE_PKGCONFIG_PRODUCTS PE_PMI
-prepend-path PE_PMI_PKGCONFIG_LIBS cray-pmi
-prepend-path MANPATH \$defDir/man
-prepend-path CRAY_LD_LIBRARY_PATH \$defDir/lib
+-- PMI support
+local PMI_DIR = "/opt/cray/pe/pmi/${pmi[$mod_version]}"
+setenv("CRAY_PMI_INCLUDE_OPTS", "-I" .. PMI_DIR .. "/include")
+setenv("CRAY_PMI_POST_LINK_OPTS", "-L" .. PMI_DIR .. "/lib")
+prepend_path("PKG_CONFIG_PATH", PMI_DIR .. "/lib/pkgconfig")
+prepend_path("PE_PKGCONFIG_PRODUCTS", "PE_PMI")
+prepend_path("PE_PMI_PKGCONFIG_LIBS", "cray-pmi")
+prepend_path("MANPATH", PMI_DIR .. "/man")
+prepend_path("CRAY_LD_LIBRARY_PATH", PMI_DIR .. "/lib")
 EOF
 else
 >&2 echo "Error: no pmi version set for cray-mpich/$mod_version!"
@@ -141,69 +135,68 @@ fi
 
 cat >> $1 << EOF
 
-# If wrapper is loaded, make sure mpi wrappers are removed at unload
-if { [ info exists ::env(NCAR_WRAPPER_MPI_PATH) ] } {
-    prepend-path PATH $::env(NCAR_WRAPPER_MPI_PATH)
-}
+-- If wrapper is loaded, make sure mpi wrappers are removed at unload
+local wrapper_path = os.getenv("NCAR_WRAPPER_MPI_PATH")
+
+if wrapper_path then
+    prepend_path("PATH", wrapper_path)
+end
 EOF
 }
 
 function modify_craype {
 cat >> $1 << EOF
 
-# Add string to modulepath to help Spack
-append-path MODULEPATH opt/cray
+-- CPU architecture specification 
+prepend_path("PE_PRODUCT_LIST", "CRAYPE_X86_MILAN")
+setenv("CRAY_CPU_TARGET", "x86-milan")
 
-# CPU architecture specification 
-prepend-path     PE_PRODUCT_LIST CRAYPE_X86_MILAN
-setenv           CRAY_CPU_TARGET x86-milan
+-- If ncarcompilers is loaded, reload it to keep forward
+if isloaded("ncarcompilers") then
+    always_load("ncarcompilers")
+end
 
-# If ncarcompilers is loaded, reload it to keep forward
-if {[ is-loaded ncarcompilers ]} {
-    always-load ncarcompilers
-}
-
-# Make sure Cray software is RPATH'd to ensure version consistency
-setenv CRAY_ADD_RPATH yes 
+-- Make sure Cray software is RPATH'd to ensure version consistency
+setenv("CRAY_ADD_RPATH", "yes") 
 EOF
 
 if [[ ${xpmem[$mod_version]+a} ]]; then
 cat >> $1 << EOF
 
-# Cray XPMEM configuration
-prepend-path     PE_PKGCONFIG_PRODUCTS PE_XPMEM
-setenv           PE_XPMEM_PKGCONFIG_LIBS cray-xpmem
-setenv           CRAY_XPMEM_INCLUDE_OPTS -I/opt/cray/xpmem/${xpmem[$mod_version]}/include
-setenv           CRAY_XPMEM_POST_LINK_OPTS -L/opt/cray/xpmem/${xpmem[$mod_version]}/lib64
+-- Cray XPMEM configuration
+prepend_path("PE_PKGCONFIG_PRODUCTS", "PE_XPMEM")
+setenv("PE_XPMEM_PKGCONFIG_LIBS", "cray-xpmem")
+setenv("CRAY_XPMEM_INCLUDE_OPTS", "-I/opt/cray/xpmem/${xpmem[$mod_version]}/include")
+setenv("CRAY_XPMEM_POST_LINK_OPTS", "-L/opt/cray/xpmem/${xpmem[$mod_version]}/lib64")
 EOF
 fi
 
 if [[ ${cti[$mod_version]+a} ]]; then
 cat >> $1 << EOF
 
-# Cray CTI configuration (Forge support)
-setenv  CTI_VERSION         ${cti[$mod_version]}
-setenv  CRAY_CTI_VERSION    ${cti[$mod_version]}
-setenv  CTI_INSTALL_DIR     /opt/cray/pe/cti/${cti[$mod_version]}
-setenv  CRAY_CTI_PREFIX     /opt/cray/pe/cti/${cti[$mod_version]}
-setenv  PE_CTI_MODULE_NAME  cray-cti
+-- Cray CTI configuration (Forge support)
+setenv("CTI_VERSION",        "${cti[$mod_version]}")
+setenv("CRAY_CTI_VERSION",   "${cti[$mod_version]}")
+setenv("CTI_INSTALL_DIR",    "/opt/cray/pe/cti/${cti[$mod_version]}")
+setenv("CRAY_CTI_PREFIX",    "/opt/cray/pe/cti/${cti[$mod_version]}")
+setenv("PE_CTI_MODULE_NAME", "cray-cti")
 
-prepend-path    MANPATH                 /opt/cray/pe/cti/${cti[$mod_version]}/share/man
-prepend-path    CRAY_LD_LIBRARY_PATH    /opt/cray/pe/cti/${cti[$mod_version]}/lib
+prepend_path("MANPATH",              "/opt/cray/pe/cti/${cti[$mod_version]}/share/man")
+prepend_path("CRAY_LD_LIBRARY_PATH", "/opt/cray/pe/cti/${cti[$mod_version]}/lib")
 EOF
 fi
-}
-
-function modify_perftools {
-    sed -i 's/module use/module use -a/' $1
 }
 
 function set_dependency {
 cat >> $1 << EOF
 
-# Module depends on Cray Compiler Drivers for proper function
-depends-on craype
+-- Module depends on Cray Compiler Drivers for proper function
+depends_on("craype")
 EOF
+}
+
+function reverse_mods {
+    sed -i '/MODULEPATH/ s/^prepend_path/append_path/' $1
 }
 
 function copy_mods {
@@ -214,54 +207,83 @@ function copy_mods {
         mod_version=${mod#*/}
 
         [[ $log_active == 1 ]] && echo "Package: $mod"
-        cd $2
         
         if [[ $1 == cdep ]]; then
             for comp in $comp_list; do
+                comp_name=${comp%/*}
+                comp_version=${comp#*/}
+
+                if [[ ${comp_dep[$comp_name]} == intel ]]; then
+                    comp_version=19
+                fi
+
+                if [[ -f $cray_core/${mod}.lua ]]; then
+                    src_file=$cray_core/${mod}.lua
+                else
+                    src_dirs="$(echo $(sed "s/%CMP%/${comp_dep[$comp_name]}/" <<< $cray_comnet))"
+
+                    for src_dir in $src_dirs; do
+                        src_compat=$(sed "s|.*${comp_dep[$comp_name]}/\([^./]*\).*|\1|" <<< $src_dir)
+                        
+                        if [[ $src_compat -gt $src_version ]] && [[ $src_compat -le ${comp_version%%.*} ]]; then
+                            src_version=$src_compat
+                            src_file=$src_dir/${mod}.lua
+                        fi
+                    done
+
+                    if [[ -z $src_file ]]; then
+                        >&2 echo "Error: no module file found for ${mod}!"
+                        exit 1
+                    fi
+                fi
+
                 mod_path=$mod_deployment/$comp
                 mkdir -p $mod_path/$mod_name
-                cp $mod $mod_path/$mod_name
+                cp $src_file $mod_path/$mod_name
 
                 if [[ $mod != $mod_entry ]]; then
-                    ln -sf $mod_version $mod_path/$mod_name/default
+                    ln -sf ${mod_version}.lua $mod_path/$mod_name/default
                 fi
 
                 if [[ " $mpis " == *" $mod_name "* ]]; then
-                    [[ $log_active == 1 ]] && echo "  - modifying $mod for use as MPI library (comp=$comp)"
-                    modify_mpi $mod_path/$mod
+                    [[ $log_active == 1 ]] && echo "  - modifying $mod (compat=$src_version) for use as MPI library (comp=$comp)"
+                    modify_mpi $mod_path/${mod}.lua
                 fi
                 
-                set_dependency $mod_path/$mod
+                set_dependency $mod_path/${mod}.lua
+
+                unset src_file src_version
             done
-        else
+        elif [[ -f $cray_core/${mod}.lua ]]; then
             mod_path=$mod_deployment/Core
             mkdir -p $mod_path/$mod_name
-            cp $mod $mod_path/$mod_name
+            cp $cray_core/${mod}.lua $mod_path/$mod_name
 
             if [[ $mod != $mod_entry ]]; then
-                ln -sf $mod_version $mod_path/$mod_name/default
+                ln -sf ${mod_version}.lua $mod_path/$mod_name/default
             fi
 
             if [[ " $compilers " == *" $mod_name "* ]]; then
                 [[ $log_active == 1 ]] && echo "  - modifying $mod for use as compiler"
-                modify_comp $mod_path/$mod
+                modify_comp $mod_path/${mod}.lua
             else
                 case $mod_name in
                     craype)
-                        modify_craype $mod_path/$mod
+                        modify_craype $mod_path/${mod}.lua
                         ;;
                     perftools-base)
-                        modify_perftools $mod_path/$mod
+                        reverse_mods $mod_path/${mod}.lua
                         ;;
                 esac
             fi
 
             if [[ " $compilers craype " != *" $mod_name "* ]]; then
-                set_dependency $mod_path/$mod
+                set_dependency $mod_path/${mod}.lua
             fi
+        else
+            >&2 echo "Error: no module file found at $cray_core/${mod}.lua!"
+            exit 1
         fi
-        
-        cd - > /dev/null
     done
 }
 
@@ -273,6 +295,10 @@ if [[ ! -d $mod_deployment ]] || [[ -n $spack_flags ]]; then
         spack module lmod refresh -y $spack_flags > /dev/null
     fi
 fi
+
+# Cray module paths
+cray_core=/opt/cray/pe/lmod/modulefiles/core
+cray_comnet=/opt/cray/pe/lmod/modulefiles/comnet/%CMP%/*/ofi/1.0
 
 # Version dictionaries
 declare -A libfabric=( [8.1.18]=1.15.0.0 [8.1.19]=1.15.0.0 [8.1.21]=1.15.0.0 )
@@ -291,7 +317,14 @@ comp_pe[gcc]=GNU
 comp_pe[nvhpc]=NVIDIA
 comp_pe[intel]=INTEL
 
-copy_mods core /opt/cray/pe/modulefiles
+declare -A comp_dep
+comp_dep[cce]=crayclang
+comp_dep[gcc]=gnu
+comp_dep[nvhpc]=nvidia
+comp_dep[intel]=intel
+comp_dep[oneapi]=intel
+
+copy_mods core
 
 [[ $log_active == 1 ]] && echo "Searching for installed compilers ..."
 
@@ -304,10 +337,10 @@ done
 cd - > /dev/null
 
 [[ $log_active == 1 ]] && echo "Copying cdep modules to $mod_root ..."
-copy_mods cdep /opt/cray/pe/modulefiles
+copy_mods cdep
 
 # Make sure the meta-modules exist
-cray_mpath=/opt/cray/pe/modulefiles:/opt/cray/modulefiles:/opt/modulefiles:/opt/cray/pe/perftools/default/modulefiles:/opt/cray/pe/modulefiles:/opt/cray/pe/craype-targets/default/modulefiles:/opt/cray/modulefiles:/opt/cray/pe/craype/default/modulefiles
+cray_mpath=/opt/cray/pe/lmod/modulefiles/core:/opt/cray/modulefiles:/opt/cray/pe/lmod/modulefiles/craype-targets/default
 
 # *This* ncarenv deployment
 for mod_type in ncarenv ncarenv-basic; do
@@ -439,6 +472,7 @@ for mod_cat in */modulefiles; do
 
     if [[ $mvers != default ]]; then
         echo "      ['perftools/${mvers//./%.}/modulefiles$'] = 'Cray Performance Analysis Tools - [perftools-base/$mvers]'," >> $tm_file
+        echo "      ['modulefiles/perftools/${mvers//./%.}$'] = 'Cray Performance Analysis Tools - [perftools-base/$mvers]'," >> $tm_file
     fi
 done
 

@@ -152,6 +152,7 @@ function check_spec {
         else
             if [[ $comp_spec == intel-oneapi-compilers-classic* ]]; then
                 comp_spec="${comp_spec/intel-oneapi-compilers-classic/intel}"
+                use_cache=no install_cache=no
             elif [[ $comp_spec == intel-oneapi-compilers* ]]; then
                 comp_spec="${comp_spec/intel-oneapi-compilers/oneapi}"
             fi
