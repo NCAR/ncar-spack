@@ -115,7 +115,7 @@ spack:
     curl:
       variants: [+libidn2]
     gdal:
-      variants: [+armadillo, +blosc, +curl, +deflate, +expat, +geos, +gif, +grass,
+      variants: [+blosc, +curl, +deflate, +expat, +geos, +gif, +grass,
         +grib, +hdf5, +iconv, +jasper, +jpeg, +libcsf, +liblzma, +lz4, +netcdf, +pcidsk,
         +png, +qhull, +sqlite3, +zstd]
     arpack-ng:
@@ -269,7 +269,7 @@ spack:
               NCAR_ID_MPI: '{name}-{version}'
               NCAR_BUILD_ENV_MPI: gust-{compiler.name}-{compiler.version}-{name}-{version}
             append_path:
-              MODULEPATH: /glade/u/apps/cseg/modules/22.12/{name}/{version}/{compiler.name}/{compiler.version}
+              MODULEPATH: /glade/u/apps/cseg/modules/%VERSION%/{name}/{version}/{compiler.name}/{compiler.version}
         gcc:
           environment:
         all:
@@ -285,7 +285,7 @@ spack:
               NCAR_ID_MPI: '{name}-{version}'
               NCAR_BUILD_ENV_MPI: gust-{compiler.name}-{compiler.version}-{name}-{version}
             append_path:
-              MODULEPATH: /glade/u/apps/cseg/modules/22.12/{name}/{version}/{compiler.name}/{compiler.version}
+              MODULEPATH: /glade/u/apps/cseg/modules/%VERSION%/{name}/{version}/{compiler.name}/{compiler.version}
         gcc:
           environment:
             set:
@@ -293,7 +293,7 @@ spack:
               NCAR_BUILD_ENV_COMPILER: gust-{name}-{version}
               NCAR_BUILD_ENV: gust-{name}-{version}
             append_path:
-              MODULEPATH: /glade/u/apps/cseg/modules/22.12/{name}/{version}
+              MODULEPATH: /glade/u/apps/cseg/modules/%VERSION%/{name}/{version}
         intel-oneapi-compilers:
           filter:
             exclude_env_vars: [NCAR_ROOT_INTEL_ONEAPI_COMPILERS, NCAR_SPACK_HASH_INTEL_ONEAPI_COMPILERS]
@@ -309,7 +309,7 @@ spack:
               NCAR_BUILD_ENV_COMPILER: gust-oneapi-{version}
               NCAR_BUILD_ENV: gust-oneapi-{version}
             append_path:
-              MODULEPATH: /glade/u/apps/cseg/modules/22.12/oneapi/{version}
+              MODULEPATH: /glade/u/apps/cseg/modules/%VERSION%/oneapi/{version}
         intel-oneapi-compilers-classic:
           autoload: none
           filter:
@@ -327,7 +327,7 @@ spack:
               NCAR_BUILD_ENV_COMPILER: gust-intel-{version}
               NCAR_BUILD_ENV: gust-intel-{version}
             append_path:
-              MODULEPATH: /glade/u/apps/cseg/modules/22.12/intel/{version}
+              MODULEPATH: /glade/u/apps/cseg/modules/%VERSION%/oneapi/{version}
         intel-oneapi-mkl:
           filter:
             exclude_env_vars: [NCAR_ROOT_INTEL_ONEAPI_MKL, NCAR_LDFLAGS_INTEL_ONEAPI_MKL,
@@ -357,11 +357,7 @@ spack:
             prepend_path:
               LD_LIBRARY_PATH: '{prefix}/Linux_x86_64/{version}/compilers/lib'
             append_path:
-              MODULEPATH: /glade/u/apps/cseg/modules/22.12/{name}/{version}
-        nvhpc@21.3:
-          environment:
-            set:
-              CRAY_CPU_TARGET: x86-rome
+              MODULEPATH: /glade/u/apps/cseg/modules/%VERSION%/{name}/{version}
         ncarcompilers:
           environment:
             set:
@@ -394,7 +390,7 @@ spack:
               CRAY_LD_LIBRARY_PATH: '{prefix}/lib64'
         cudnn:
           environment:
-            set:
+            prepend_path:
               LD_LIBRARY_PATH: '{prefix}/lib'
         openmpi:
           environment:

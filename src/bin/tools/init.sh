@@ -18,6 +18,7 @@ $1
 EOF
 }
 
+my_name=$(basename "$0")
 . $my_dir/../main.cfg
 
 # Make sure nobody else is publishing to public
@@ -34,13 +35,12 @@ if [[ $NCAR_SPACK_CLEAN != true ]]; then
     exit $?
 elif [[ -z $SPACK_ENV ]]; then
     set -e
-    my_name=$(basename "$0")
-    my_host=$(hostname)
-    my_env_type=${NCAR_SPACK_ENV_TYPE:-build}
+    export my_host=$(hostname)
+    export my_env_type=${NCAR_SPACK_ENV_TYPE:-build}
     export start_time=${NCAR_SPACK_DEPLOY_TIME:-$(date +%y%m%dT%H%M)}
 
     # Pretty colors
-    GCOL="\033[1;32m" BCOL="\033[1;34m" PCOL="\033[1;35m" RCOL="\033[1;31m" DCOL="\033[0m"
+    export GCOL="\033[1;32m" BCOL="\033[1;34m" PCOL="\033[1;35m" RCOL="\033[1;31m" DCOL="\033[0m"
 
     tsecho "Activating Spack $my_env_type environment"
     
@@ -53,7 +53,7 @@ elif [[ -z $SPACK_ENV ]]; then
     fi
 
     tsecho "Testing whether user is owner of $my_env_type env"
-    spack_env_user=$(stat -c "%U" $SPACK_ENV)
+    export spack_env_user=$(stat -c "%U" $SPACK_ENV)
 
     if [[ $USER != $spack_env_user ]]; then
         >&2 echo "Error: This script must be run by the owner of the active $my_env_type environment."

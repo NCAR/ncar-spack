@@ -16,7 +16,7 @@
 #           shell script. So we must activate in the script!
 #
 #   Author:         Brian Vanderwende
-#   Last Revised:   21:52, 27 Feb 2023
+#   Last Revised:   13:58, 02 Mar 2023
 #
 
 function remove_lock {
@@ -281,7 +281,7 @@ if [[ -n $rm_pkgs ]]; then
 
     while read -r spec; do
         if [[ $(spack location -i $spec) == ${NCAR_SPACK_ROOT_DEPLOYMENT}* ]]; then
-            spack uninstall --remove -y $spec
+            spack uninstall --dependents --remove -y $spec
         else
             spack remove $spec
         fi
