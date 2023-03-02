@@ -16,6 +16,7 @@ class Netcdf(MakefilePackage):
 
     maintainers = ['vanderwb']
     
+    version('4.9.1', sha256='d45410057b29764ca2ccef79a21f558f9012fbd6686bdd6cc585bfb277241085')
     version('4.9.0', sha256='d45410057b29764ca2ccef79a21f558f9012fbd6686bdd6cc585bfb277241085')
     version('4.8.1', sha256='d45410057b29764ca2ccef79a21f558f9012fbd6686bdd6cc585bfb277241085')
 
@@ -38,6 +39,7 @@ class Netcdf(MakefilePackage):
     depends_on('netcdf-fortran')
     depends_on('netcdf-cxx4')
 
+    depends_on('netcdf-c@4.9.1', when='@4.9.1')
     depends_on('netcdf-c@4.9.0', when='@4.9.0')
     depends_on('netcdf-c@4.8.1', when='@4.8.1')
     depends_on('netcdf-fortran@4.6.0', when='@4.9.0:')

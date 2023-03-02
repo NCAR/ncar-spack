@@ -81,6 +81,9 @@ if command -v nvidia-smi &> /dev/null; then
 else
     export NGPUS=0
 fi
+
+# Add Python import monitoring to environment
+export PYTHONPATH=/glade/u/apps/opt/conda/ncarbin/monitor/site-packages:\$PYTHONPATH
 EOF
 
 cat > $util_path/localinit.csh << EOF
@@ -146,6 +149,13 @@ if ( \`where nvidia-smi\` != "" ) then
     setenv NGPUS \`nvidia-smi -L | wc -l\`
 else
     setenv NGPUS 0
+endif
+
+# Add Python import monitoring to environment
+if ( ! (\$?PYTHONPATH) ) then
+    setenv PYTHONPATH=/glade/u/apps/opt/conda/ncarbin/monitor/site-packages
+else
+    setenv PYTHONPATH=/glade/u/apps/opt/conda/ncarbin/monitor/site-packages:\$PYTHONPATH
 endif
 EOF
 fi

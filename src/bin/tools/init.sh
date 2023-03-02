@@ -1,7 +1,11 @@
 # This helper script should *always* be sourced
 
 function tsecho {
-    echo -e "$(date +%FT%T) - $1 ..."
+    if [[ $1 == Error:* ]]; then
+        >&2 echo -e "$RCOL$1$DCOL"
+    else
+        echo -e "$(date +%FT%T) - $1 ..."
+    fi
 }
 
 function log_cmd {

@@ -13,10 +13,13 @@ class Ncarcompilers(MakefilePackage):
     modules."""
 
     homepage = "https://github.com/NCAR/ncarcompilers"
+    git      = "https://github.com/NCAR/ncarcompilers.git"
     url      = "https://github.com/NCAR/ncarcompilers/archive/refs/tags/v0.7.1.tar.gz"
 
     maintainers = ['vanderwb']
 
+    version('main',  branch='main')
+    version('0.8.0', sha256='f9049ee4d63f52c3c971604b72e41d27a913e87b968b5c7f2cbcb08871affed9')
     version('0.7.2', sha256='f0a1b7a8bd271e2ec41eebdbb2bf2d0ae91f8e197dba06a9c7b67f671f41e819')
     version('0.7.1', sha256='88f23f89841b6e49a44b66d3a6afb3d8d817f51103cc07f3c8c48864a0215405')
 

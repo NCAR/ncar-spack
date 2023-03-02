@@ -241,11 +241,15 @@ function install_spec {
 
     # Install the package and view pertinent log information
     log_cmd "$build_cmd $spec" >> $log_installs
-    $spec_build_cmd $spec |& tee -a $log_installs | stdbuf -oL sed 's/^/   /'    \
+    $spec_build_cmd $spec |& tee -a $log_installs | stdbuf -oL sed 's/^/   /'                   \
             | (grep -e "Executing phase" -e "Successfully installed" -e "already installed"     \
-            -e " Total: " -e " from binary cache" -e " Error: " -e " Warning: " || true)
+            -e " Total: " -e " from binary cache" -e " Error: " -e "^See build log"             \
+            -e "spack-build-out.txt" || true)
 
     if [[ ${PIPESTATUS[0]} -ne 0 ]]; then
+        # Remove spec to avoid uninstalled package in spack.yaml
+        echo
+        spack remove $spec
         >&2 echo -e "\nError: install of package $spec failed! Aborting installs ...\n"
         exit 1
     fi
@@ -341,12 +345,14 @@ log_specs=$log_dir/specs.$start_time
 log_installs=$log_dir/installs.$start_time
 
 # Make sure environment reports current state
+tsecho "Verify current environment concretization"
 spack concretize -q
 
 # Detect version of system GCC
 sys_gcc=$(gcc -v |& grep "gcc version" | cut -d' ' -f3)
 
 # Detect Spack and builtin commits
+tsecho "Detect Spack and repo versions"
 spack_commit=$(cd $NCAR_SPACK_ROOT_DEPLOYMENT/spack; git rev-parse HEAD)
 
 if [[ -d $NCAR_SPACK_ENV_BUILD/repos/builtin ]]; then
@@ -383,7 +389,10 @@ declare -A mpis hashes specs
 
 while read pkg; do
     if [[ $pkg == \#* ]]; then
-        continue
+        if [[ $pkg == \#break ]]; then
+            echo -e "\nUser-requested early stop in manifest"
+            exit
+        fi
     elif [[ $pkg != *'<'* ]] && [[ $pkg == *:* ]]; then
         for ivar in ${!install_*}; do
             unset $ivar

@@ -16,7 +16,7 @@
 #           shell script. So we must activate in the script!
 #
 #   Author:         Brian Vanderwende
-#   Last Revised:   15:07, 08 Feb 2023
+#   Last Revised:   21:52, 27 Feb 2023
 #
 
 function remove_lock {
@@ -74,7 +74,7 @@ while read spec; do
     spec_hash=$(spack find --format '{hash}' $spec 2> /dev/null || true)
 
     if [[ -z $spec_hash ]]; then
-        >&2 echo "Error: package $spec not found in build environment!"
+        tsecho "Error: package $spec not found in build environment!"
         exit 1
     fi
 
@@ -93,22 +93,21 @@ spack env activate $NCAR_SPACK_ENV_PUBLIC
 
 function store_publish_options {
 cat > $NCAR_SPACK_ENV_BUILD/.pubstore << EOF
-commit_date=$(date +%y%m%dT%H%M)
 set_as_default=$set_as_default
 force_commit=$force_commit
-commit_msg=$commit_msg
+commit_msg="$commit_msg"
 EOF
 }
 
-function print_resume_info {
-cat << EOF
-Danger: You are asking to resume a failed publish.
+function commit_error {
+>&2 cat << EOF
+Error:  You must provide a commit message as the only argument to this
+        script. Make sure to put the message in quotes.
 
-    Commit date:    $commit_date
-    Commit message: $commit_msg
-    Change default: ${set_as_default:-false}
+Usage:  publish "new install of very cool modules"
 
 EOF
+exit 1
 }
 
 #
@@ -123,6 +122,7 @@ export my_dir="$( cd "$(dirname "$0")" ; pwd )"
 trap remove_lock EXIT
 export NCAR_SPACK_LOCK_PID=$$
 echo $NCAR_SPACK_LOCK_PID > $NCAR_SPACK_ENV_BUILD/.publock
+force_resume=N
 
 while [[ $# -gt 0 ]]; do
     case $1 in
@@ -133,20 +133,8 @@ while [[ $# -gt 0 ]]; do
             force_commit=true
             ;;
         --resume)
-            if [[ -f $NCAR_SPACK_ENV_BUILD/.pubstore ]]; then
-                . $NCAR_SPACK_ENV_BUILD/.pubstore
-                print_resume_info
-                
-                read -e -p "        Are you sure (y/N)? " force_resume
-                force_resume=${force_resume:-N}
-                
-                if [[ ${force_resume^^} == N ]]; then
-                    exit
-                fi
-            else
-                echo >&2 "Error:  Prior publish attempt not found. Cannot resume."
-                exit 1
-            fi
+            echo "Danger: You are asking to resume a failed publish."
+            read -e -p "        Are you sure (y/N)? " force_resume
             ;;
         *)
             commit_msg="$1"
@@ -156,18 +144,18 @@ while [[ $# -gt 0 ]]; do
     shift
 done
 
-# Store commit for resume functionality
-store_publish_options
-
-if [[ -z $commit_msg ]]; then
->&2 cat << EOF
-Error:  You must provide a commit message as the only argument to this
-        script. Make sure to put the message in quotes.
-
-Usage:  publish "new install of very cool modules"
-
-EOF
-exit 1
+if [[ YES == ${force_resume^^}* ]]; then
+    if [[ -f $NCAR_SPACK_ENV_BUILD/.pubstore ]]; then
+        . $NCAR_SPACK_ENV_BUILD/.pubstore
+        tsecho "Resuming publish of commit $GCOL$commit_msg$DCOL"
+    else
+        tsecho "Error:  Prior publish attempt not found. Cannot resume."
+        exit 1
+    fi
+elif [[ -z $commit_msg ]]; then
+    commit_error
+else
+    store_publish_options
 fi
 
 tsecho "Testing build environment for unconcretized changes"
@@ -215,7 +203,7 @@ if [[ -d $NCAR_SPACK_ENV_PUBLIC ]]; then
     local_branch="$(git rev-parse --abbrev-ref HEAD)"
 
     if [[ $(git rev-parse --abbrev-ref HEAD) != $NCAR_SPACK_HOST_VERSION ]]; then
-        >&2 echo "Error:  Incorrect Git repo branch ($local_branch != $NCAR_SPACK_HOST_VERSION)."
+        tsecho "Error:  Incorrect Git repo branch ($local_branch != $NCAR_SPACK_HOST_VERSION)."
         exit 1
     fi
 
@@ -223,7 +211,7 @@ if [[ -d $NCAR_SPACK_ENV_PUBLIC ]]; then
         if [[ ${force_resume,,} == y* ]]; then
             tsecho "Uncommited changes in Git repo but proceeding anyway (--resume option enabled)"
         else
-            >&2 echo -e "Error:  Uncommitted changes in Git repo. Resolve and then retry.\n"
+            tsecho "Error:  Uncommitted changes in Git repo. Resolve and then retry.\n"
             exit 1
         fi
     fi
@@ -243,7 +231,7 @@ if [[ -d $NCAR_SPACK_ENV_PUBLIC ]]; then
         local_commit=$(git rev-parse HEAD)
         
         if [[ $remote_commit != $local_commit ]]; then
-            >&2 echo "Error:  Remote repo $NCAR_SPACK_GITHUB and local repo are not in sync."
+            tsecho "Error:  Remote repo $NCAR_SPACK_GITHUB and local repo are not in sync."
             >&2 echo "           Remote: $remote_commit"
             >&2 echo -e "           Local:  $local_commit\n"
             exit 1
@@ -311,7 +299,7 @@ if [[ -n $new_pkgs ]]; then
 
     # Check that installs completed successfully
     if [[ ${PIPESTATUS[0]} == 1 ]]; then
-        echo "Error:  Spack installations did not complete successfully."
+        tsecho "Error:  Spack installations did not complete successfully."
         echo "        Resolve errors before committing changes to GitHub manually."
         exit 1
     fi
@@ -338,7 +326,7 @@ fi
 
 if [[ -f $NCAR_SPACK_ENV_BUILD/bin/postprocess ]]; then
     tsecho "Running postprocessing script on environment"
-    NCAR_SPACK_ENV_TYPE=public $NCAR_SPACK_ENV_BUILD/bin/postprocess -f 
+    NCAR_SPACK_ENV_TYPE=public $NCAR_SPACK_ENV_BUILD/bin/postprocess 
 fi
 
 if [[ ! -e $NCAR_SPACK_ROOT_DEPLOYMENT/util ]]; then
