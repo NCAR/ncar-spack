@@ -30,8 +30,10 @@ local viewpath      = "%VIEWROOT%"
 
 -- System specific settings
 setenv("NCAR_ENV_VERSION",  "%VERSION%")
-setenv("NCAR_HOST",         "gust")
-setenv("QSCACHE_SERVER",    "gust")
+setenv("NCAR_HOST",         "%HOST%")
+setenv("QSCACHE_SERVER",    "%HOST%")
+
+
 
 -- Loading this module unlocks the NCAR Spack module tree
 append_path("MODULEPATH", "%MODPATH%")
@@ -59,7 +61,7 @@ setenv("WRFIO_NCD_LARGE_FILE_SUPPORT", "1")
 
 -- Set user's TMPDIR if not already set
 if not tmpdir or not string.match(tmpdir, "^/glade") then
-    setenv("TMPDIR", pathJoin("/glade/gust/scratch", user))
+    setenv("TMPDIR", pathJoin("%TMPROOT%", user))
 end
 
 -- On CSEG's request (jedwards/mvertens@ucar.edu)

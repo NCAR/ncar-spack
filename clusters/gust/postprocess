@@ -391,6 +391,8 @@ for mod_type in ncarenv ncarenv-basic; do
     sed -i "s|%DATE%|$(date)|g" $tm_file
     sed -i "s|%UTILPATH%|${SPACK_ENV}/util|g" $tm_file
     sed -i "s|%DEFMODS%|$NCAR_SPACK_DEFMODS_NCAR|g" $tm_file
+    sed -i "s|%HOST%|$NCAR_SPACK_HOST|g" $tm_file
+    sed -i "s|%TMPROOT%|$NCAR_SPACK_TMPROOT|g" $tm_file
     mv $tm_file $mm_file
 done
 
@@ -405,6 +407,7 @@ for cpe_version in ${!NCAR_SPACK_DEFMODS_CPE[@]}; do
     sed -i "s|%VERSION%|${NCAR_SPACK_HOST_VERSION}|g" $tm_file
     sed -i "s|%DATE%|$(date)|g" $tm_file
     sed -i "s|%DEFMODS%|crayenv/${cpe_version}:${NCAR_SPACK_DEFMODS_CPE[$cpe_version]}:craype-x86-milan:craype-network-ofi|g" $tm_file
+    sed -i "s|%TMPROOT%|$NCAR_SPACK_TMPROOT|g" $tm_file
     mv $tm_file $mm_file
 done
 

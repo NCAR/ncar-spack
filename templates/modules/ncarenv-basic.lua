@@ -19,7 +19,7 @@ add_property("lmod","sticky")
 
 -- System specific settings
 setenv("NCAR_ENV_VERSION",  "%VERSION%")
-setenv("NCAR_HOST",         "gust")
+setenv("NCAR_HOST",         "%HOST%")
 
 -- Loading this module unlocks the NCAR Spack module tree
 append_path("MODULEPATH", "%MODPATH%")
