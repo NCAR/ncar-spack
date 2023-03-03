@@ -33,7 +33,14 @@ setenv("NCAR_ENV_VERSION",  "%VERSION%")
 setenv("NCAR_HOST",         "%HOST%")
 setenv("QSCACHE_SERVER",    "%HOST%")
 
-
+-- Globus collection UUIDS
+setenv("NCAR_GLOBUS_GLADE",     "d33b3614-6d04-11e5-ba46-22000b92c6ec")
+setenv("NCAR_GLOBUS_CAMPAIGN",  "6b5ab960-7bbf-11e8-9450-0a6d4e044368")
+setenv("NCAR_GLOBUS_AWS",       "3a1f3e98-1a93-11e9-9f9f-0a06afd4a22e")
+setenv("NCAR_GLOBUS_QUASAR",    "58bc6c98-8bba-11e9-b808-0a37f382de32")
+setenv("NCAR_GLOBUS_STRATUS",   "b9cf5e6c-9245-11eb-b7a4-f57b2d55370d")
+setenv("NCAR_GLOBUS_DSS",       "dd1ee92a-6d04-11e5-ba46-22000b92c6ec")
+setenv("NCAR_GLOBUS_GDRIVE",    "397f7166-9af5-402f-abfc-c3b184d609ba")
 
 -- Loading this module unlocks the NCAR Spack module tree
 append_path("MODULEPATH", "%MODPATH%")
