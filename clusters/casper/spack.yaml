@@ -30,13 +30,13 @@ spack:
       bind: false
   packages:
     all:
-      compiler:: [gcc@7.5.0, gcc, cce, nvhpc, oneapi, intel]
+      compiler:: [gcc@7.5.0, gcc, nvhpc, oneapi, intel]
       providers:
-        mpi:: [cray-mpich, openmpi]
+        mpi:: [openmpi, impi, mvapich2]
         szip:: [libszip]
         pkgconfig:: [pkg-config]
-        lapack:: [cray-libsci, openblas]
-        blas:: [cray-libsci, openblas]
+        lapack:: [openblas, intel-oneapi-mkl]
+        blas:: [openblas, intel-oneapi-mkl]
       permissions:
         read: world
         write: user
@@ -52,23 +52,6 @@ spack:
       externals:
       - spec: miniconda3@4.12.0
         prefix: /glade/u/apps/opt/conda
-      buildable: false
-    cray-mpich:
-      externals:
-      - spec: cray-mpich@8.1.24 %gcc
-        prefix: /opt/cray/pe/mpich/8.1.24/ofi/gnu/9.1
-      - spec: cray-mpich@8.1.24 %cce
-        prefix: /opt/cray/pe/mpich/8.1.24/ofi/cray/10.0
-      - spec: cray-mpich@8.1.24 %nvhpc
-        prefix: /opt/cray/pe/mpich/8.1.24/ofi/nvidia/20.7
-      - spec: cray-mpich@8.1.24 %oneapi
-        prefix: /opt/cray/pe/mpich/8.1.24/ofi/intel/19.0
-      buildable: false
-    cray-libsci:
-      externals:
-      - spec: cray-libsci@23.02.1.1
-        modules:
-        - cray-libsci/23.02.1.1
       buildable: false
     gcc:
       compiler: [gcc@7.5.0]
@@ -120,6 +103,8 @@ spack:
         +png, +qhull, +sqlite3, +zstd]
     arpack-ng:
       variants: [~mpi]
+    openblas:
+      variants: [+fortran]
   view:
     baseenv:
       root: %VIEWROOT%
@@ -141,82 +126,42 @@ spack:
     - compiler:
         spec: intel@2021.8.0
         paths:
-          cc: /glade/u/apps/common/22.12/spack/opt/spack/intel-oneapi-compilers/2023.0.0/compiler/latest/linux/bin/intel64/icc
-          cxx: /glade/u/apps/common/22.12/spack/opt/spack/intel-oneapi-compilers/2023.0.0/compiler/latest/linux/bin/intel64/icpc
-          f77: /glade/u/apps/common/22.12/spack/opt/spack/intel-oneapi-compilers/2023.0.0/compiler/latest/linux/bin/intel64/ifort
-          fc: /glade/u/apps/common/22.12/spack/opt/spack/intel-oneapi-compilers/2023.0.0/compiler/latest/linux/bin/intel64/ifort
+          cc: /glade/u/apps/common/23.03/spack/opt/spack/intel-oneapi-compilers/2023.0.0/compiler/latest/linux/bin/intel64/icc
+          cxx: /glade/u/apps/common/23.03/spack/opt/spack/intel-oneapi-compilers/2023.0.0/compiler/latest/linux/bin/intel64/icpc
+          f77: /glade/u/apps/common/23.03/spack/opt/spack/intel-oneapi-compilers/2023.0.0/compiler/latest/linux/bin/intel64/ifort
+          fc: /glade/u/apps/common/23.03/spack/opt/spack/intel-oneapi-compilers/2023.0.0/compiler/latest/linux/bin/intel64/ifort
         operating_system: sles15
         target: x86_64
         modules: []
         environment:
           prepend_path:
-            LD_LIBRARY_PATH: /glade/u/apps/common/22.12/spack/opt/spack/intel-oneapi-compilers/2023.0.0/compiler/latest/linux/compiler/lib/intel64
-          append_path:
-            LD_LIBRARY_PATH: /opt/cray/libfabric/1.15.0.0/lib64
+            LD_LIBRARY_PATH: /glade/u/apps/common/23.03/spack/opt/spack/intel-oneapi-compilers/2023.0.0/compiler/latest/linux/compiler/lib/intel64
     - compiler:
         spec: oneapi@2023.0.0
         paths:
-          cc: /glade/u/apps/common/22.12/spack/opt/spack/intel-oneapi-compilers/2023.0.0/compiler/latest/linux/bin/icx
-          cxx: /glade/u/apps/common/22.12/spack/opt/spack/intel-oneapi-compilers/2023.0.0/compiler/latest/linux/bin/icpx
-          f77: /glade/u/apps/common/22.12/spack/opt/spack/intel-oneapi-compilers/2023.0.0/compiler/latest/linux/bin/ifx
-          fc: /glade/u/apps/common/22.12/spack/opt/spack/intel-oneapi-compilers/2023.0.0/compiler/latest/linux/bin/ifx
+          cc: /glade/u/apps/common/23.03/spack/opt/spack/intel-oneapi-compilers/2023.0.0/compiler/latest/linux/bin/icx
+          cxx: /glade/u/apps/common/23.03/spack/opt/spack/intel-oneapi-compilers/2023.0.0/compiler/latest/linux/bin/icpx
+          f77: /glade/u/apps/common/23.03/spack/opt/spack/intel-oneapi-compilers/2023.0.0/compiler/latest/linux/bin/ifx
+          fc: /glade/u/apps/common/23.03/spack/opt/spack/intel-oneapi-compilers/2023.0.0/compiler/latest/linux/bin/ifx
         operating_system: sles15
         target: x86_64
         modules: []
         environment:
           prepend_path:
-            LD_LIBRARY_PATH: /glade/u/apps/common/22.12/spack/opt/spack/intel-oneapi-compilers/2023.0.0/compiler/latest/linux/compiler/lib/intel64
-          append_path:
-            LD_LIBRARY_PATH: /opt/cray/libfabric/1.15.0.0/lib64
+            LD_LIBRARY_PATH: /glade/u/apps/common/23.03/spack/opt/spack/intel-oneapi-compilers/2023.0.0/compiler/latest/linux/compiler/lib/intel64
     - compiler:
         spec: nvhpc@23.1
         paths:
-          cc: /glade/u/apps/common/22.12/spack/opt/spack/nvhpc/23.1/Linux_x86_64/23.1/compilers/bin/nvc
-          cxx: /glade/u/apps/common/22.12/spack/opt/spack/nvhpc/23.1/Linux_x86_64/23.1/compilers/bin/nvc++
-          f77: /glade/u/apps/common/22.12/spack/opt/spack/nvhpc/23.1/Linux_x86_64/23.1/compilers/bin/nvfortran
-          fc: /glade/u/apps/common/22.12/spack/opt/spack/nvhpc/23.1/Linux_x86_64/23.1/compilers/bin/nvfortran
+          cc: /glade/u/apps/common/23.03/spack/opt/spack/nvhpc/23.1/Linux_x86_64/23.1/compilers/bin/nvc
+          cxx: /glade/u/apps/common/23.03/spack/opt/spack/nvhpc/23.1/Linux_x86_64/23.1/compilers/bin/nvc++
+          f77: /glade/u/apps/common/23.03/spack/opt/spack/nvhpc/23.1/Linux_x86_64/23.1/compilers/bin/nvfortran
+          fc: /glade/u/apps/common/23.03/spack/opt/spack/nvhpc/23.1/Linux_x86_64/23.1/compilers/bin/nvfortran
         operating_system: sles15
         target: x86_64
         modules: []
         environment:
           prepend_path:
-            LD_LIBRARY_PATH: /glade/u/apps/common/22.12/spack/opt/spack/nvhpc/23.1/Linux_x86_64/23.1/compilers/lib
-          append_path:
-            LD_LIBRARY_PATH: /opt/cray/libfabric/1.15.0.0/lib64
-    - compiler:
-        spec: cce@15.0.1
-        paths:
-          cc: cc
-          cxx: CC
-          f77: ftn
-          fc: ftn
-        operating_system: sles15
-        target: any
-        modules:
-        - craype
-        - cce/15.0.1
-        environment:
-          set:
-            PE_ENV: CRAY
-          append_path:
-            LD_LIBRARY_PATH: /opt/cray/libfabric/1.15.0.0/lib64
-    - compiler:
-        spec: gcc@12.2.0
-        paths:
-          cc: cc
-          cxx: CC
-          f77: ftn
-          fc: ftn
-        operating_system: sles15
-        target: any
-        modules:
-        - craype
-        - gcc/12.2.0
-        environment:
-          set:
-            PE_ENV: GNU
-          append_path:
-            LD_LIBRARY_PATH: /opt/cray/libfabric/1.15.0.0/lib64
+            LD_LIBRARY_PATH: /glade/u/apps/common/23.03/spack/opt/spack/nvhpc/23.1/Linux_x86_64/23.1/compilers/lib
   modules:
     default::
       roots:
@@ -251,9 +196,6 @@ spack:
           - netcdf-c
           - netcdf-fortran
           - netcdf-cxx4
-          - cray-mpich
-          - cray-libsci
-          - cray-fftw
         include:
           - git
         all:
@@ -267,7 +209,7 @@ spack:
           environment:
             set:
               NCAR_ID_MPI: '{name}-{version}'
-              NCAR_BUILD_ENV_MPI: gust-{compiler.name}-{compiler.version}-{name}-{version}
+              NCAR_BUILD_ENV_MPI: casper-{compiler.name}-{compiler.version}-{name}-{version}
             append_path:
               MODULEPATH: /glade/u/apps/cseg/modules/%VERSION%/{name}/{version}/{compiler.name}/{compiler.version}
         gcc:
@@ -283,15 +225,15 @@ spack:
           environment:
             set:
               NCAR_ID_MPI: '{name}-{version}'
-              NCAR_BUILD_ENV_MPI: gust-{compiler.name}-{compiler.version}-{name}-{version}
+              NCAR_BUILD_ENV_MPI: casper-{compiler.name}-{compiler.version}-{name}-{version}
             append_path:
               MODULEPATH: /glade/u/apps/cseg/modules/%VERSION%/{name}/{version}/{compiler.name}/{compiler.version}
         gcc:
           environment:
             set:
               NCAR_ID_COMPILER: '{name}-{version}'
-              NCAR_BUILD_ENV_COMPILER: gust-{name}-{version}
-              NCAR_BUILD_ENV: gust-{name}-{version}
+              NCAR_BUILD_ENV_COMPILER: casper-{name}-{version}
+              NCAR_BUILD_ENV: casper-{name}-{version}
             append_path:
               MODULEPATH: /glade/u/apps/cseg/modules/%VERSION%/{name}/{version}
         intel-oneapi-compilers:
@@ -306,8 +248,8 @@ spack:
               NCAR_ROOT_ONEAPI: '{prefix}'
               NCAR_SPACK_HASH_ONEAPI: '{hash}'
               NCAR_ID_COMPILER: oneapi-{version}
-              NCAR_BUILD_ENV_COMPILER: gust-oneapi-{version}
-              NCAR_BUILD_ENV: gust-oneapi-{version}
+              NCAR_BUILD_ENV_COMPILER: casper-oneapi-{version}
+              NCAR_BUILD_ENV: casper-oneapi-{version}
             append_path:
               MODULEPATH: /glade/u/apps/cseg/modules/%VERSION%/oneapi/{version}
         intel-oneapi-compilers-classic:
@@ -324,8 +266,8 @@ spack:
               NCAR_ROOT_INTEL: '{^intel-oneapi-compilers.prefix}'
               NCAR_SPACK_HASH_INTEL: '{hash}'
               NCAR_ID_COMPILER: intel-{version}
-              NCAR_BUILD_ENV_COMPILER: gust-intel-{version}
-              NCAR_BUILD_ENV: gust-intel-{version}
+              NCAR_BUILD_ENV_COMPILER: casper-intel-{version}
+              NCAR_BUILD_ENV: casper-intel-{version}
             append_path:
               MODULEPATH: /glade/u/apps/cseg/modules/%VERSION%/oneapi/{version}
         intel-oneapi-mkl:
@@ -350,10 +292,9 @@ spack:
               PE_ENV: NVIDIA
               NVIDIA_VERSION: '{version}'
               NVIDIA_PATH: '{prefix}'
-              CRAY_NVIDIA_VERSION: '{version}'
               NCAR_ID_COMPILER: '{name}-{version}'
-              NCAR_BUILD_ENV_COMPILER: gust-{name}-{version}
-              NCAR_BUILD_ENV: gust-{name}-{version}
+              NCAR_BUILD_ENV_COMPILER: casper-{name}-{version}
+              NCAR_BUILD_ENV: casper-{name}-{version}
             prepend_path:
               LD_LIBRARY_PATH: '{prefix}/Linux_x86_64/{version}/compilers/lib'
             append_path:
@@ -376,18 +317,9 @@ spack:
           environment:
             set:
               NVHPC_CUDA_HOME: '{prefix}'
-              CRAY_ACCEL_TARGET: nvidia80
-              CRAY_TCMALLOC_MEMFS_FORCE: '1'
-              CRAYPE_LINK_TYPE: dynamic
-              CRAY_ACCEL_VENDOR: nvidia
-              CRAY_CUDATOOLKIT_VERSION: '{version}'
-              CRAY_CUDATOOLKIT_PREFIX: '{prefix}'
-              CRAY_CUDATOOLKIT_DIR: '{prefix}'
               CUDATOOLKIT_HOME: '{prefix}'
-              NCAR_LIBS_CRAYGTL: -lstdc++
             prepend_path:
               LD_LIBRARY_PATH: '{prefix}/lib64:{prefix}/nvvm/lib64:{prefix}/extras/CUPTI/lib64:{prefix}/extras/Debugger/lib64'
-              CRAY_LD_LIBRARY_PATH: '{prefix}/lib64'
         cudnn:
           environment:
             prepend_path:
@@ -466,5 +398,5 @@ spack:
         - netcdf@4.9.1
         - parallel-netcdf@1.12.3
         - fftw@3.3.10
-        - openmpi@4.1.4
+        - openmpi@4.1.5
         - nvhpc@23.1
