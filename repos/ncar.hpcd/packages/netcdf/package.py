@@ -4,21 +4,21 @@
 # SPDX-License-Identifier: (Apache-2.0 OR MIT)
 
 from spack.package import *
+import os, shutil, distutils.core
 
-class Netcdf(MakefilePackage):
+class Netcdf(BundlePackage):
     """NetCDF (network Common Data Form) is a set of software libraries and
     machine-independent data formats that support the creation, access, and
     sharing of array-oriented scientific data. This is a "meta" package that
     includes the C, C++, and Fortran distributions."""
 
     homepage = "https://www.unidata.ucar.edu/software/netcdf"
-    url      = "/glade/work/csgteam/spack/tarballs/netcdf-4.8.1.tar.gz"
 
     maintainers = ['vanderwb']
     
-    version('4.9.1', sha256='d45410057b29764ca2ccef79a21f558f9012fbd6686bdd6cc585bfb277241085')
-    version('4.9.0', sha256='d45410057b29764ca2ccef79a21f558f9012fbd6686bdd6cc585bfb277241085')
-    version('4.8.1', sha256='d45410057b29764ca2ccef79a21f558f9012fbd6686bdd6cc585bfb277241085')
+    version('4.9.1')
+    version('4.9.0')
+    version('4.8.1')
 
     # Inherit relevant variants from netcdf-c package
     variant('mpi', default=True,
@@ -46,15 +46,20 @@ class Netcdf(MakefilePackage):
     depends_on('netcdf-fortran@4.5.3', when='@4.8.1')
     depends_on('netcdf-cxx4@4.3.1', when='@4.8.1:')
 
-    def build(self, spec, prefix):
-        ncroot      = self.spec['netcdf-c'].prefix
-        nfroot      = self.spec['netcdf-fortran'].prefix
-        ncxxroot    = self.spec['netcdf-cxx4'].prefix
-        
-        make('NC_ROOT=%s' % ncroot, 'NF_ROOT=%s' % nfroot, 'NCXX_ROOT=%s' % ncxxroot)
-
     def install(self, spec, prefix):
-        make('install', 'PREFIX=%s' % prefix)
+        for dep in ['netcdf-c', 'netcdf-fortran', 'netcdf-cxx4']:
+            dep_prefix = self.spec[dep].prefix
+            
+            for subdir in os.listdir(dep_prefix):
+                # Avoid copying Spack metadata - will corrupt database
+                if not subdir.startswith('.'):
+                    dep_sub = join_path(dep_prefix, subdir)
+                    my_sub  = join_path(prefix, subdir)
+
+                    try:
+                        distutils.dir_util.copy_tree(dep_sub, my_sub)
+                    except:
+                        shutil.copytree(dep_sub, my_sub, dirs_exist_ok = True)
     
     def setup_run_environment(self, env):
         """Adds environment variables to the generated module file.
