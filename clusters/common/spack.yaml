@@ -19,13 +19,12 @@ spack:
       bind: false
   packages:
     all:
-      target: [x86_64_v3]
+      target: [x86_64]
       providers:
         pkgconfig:: [pkg-config]
       permissions:
         read: world
         write: user
-      require: '%gcc@7.5.0'
     gcc:
       compiler: [gcc@7.5.0]
       variants: [+piclibs, 'languages=c,c++,fortran,go']

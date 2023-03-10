@@ -111,7 +111,7 @@ spack:
     intel-oneapi-mkl:
       variants: [+ilp64]
     gdb:
-      variants: [+gold, +ld, +lto, +tui, ~python]
+      variants: [+gold, +ld, +lto, +tui, ~python, ~debuginfod]
     curl:
       variants: [+libidn2]
     gdal:
