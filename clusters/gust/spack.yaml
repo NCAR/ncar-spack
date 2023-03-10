@@ -30,7 +30,7 @@ spack:
       bind: false
   packages:
     all:
-      compiler:: [gcc@7.5.0, gcc, cce, nvhpc, oneapi, intel]
+      compiler:: [gcc@10.4.0, gcc, cce, nvhpc, oneapi, intel]
       providers:
         mpi:: [cray-mpich, openmpi]
         szip:: [libszip]
@@ -71,7 +71,6 @@ spack:
         - cray-libsci/23.02.1.1
       buildable: false
     gcc:
-      compiler: [gcc@7.5.0]
       variants: [+piclibs, 'languages=c,c++,fortran,go']
     cuda:
       require: +allow-unsupported-compilers
@@ -452,7 +451,7 @@ spack:
           miniconda3: conda/latest
           esmf+mpi: esmf-mpi/{version}
         core_compilers:
-        - gcc@7.5.0
+        - gcc@10.4.0
         core_specs:
         - cuda
         - r
