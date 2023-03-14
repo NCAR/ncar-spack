@@ -214,7 +214,7 @@ spack:
           environment:
             set:
               NCAR_ID_MPI: '{name}-{version}'
-              NCAR_BUILD_ENV_MPI: casper-{compiler.name}-{compiler.version}-{name}-{version}
+              NCAR_BUILD_ENV_MPI: %HOST%-{compiler.name}-{compiler.version}-{name}-{version}
             append_path:
               MODULEPATH: /glade/u/apps/cseg/modules/%VERSION%/{name}/{version}/{compiler.name}/{compiler.version}
         gcc:
@@ -230,15 +230,15 @@ spack:
           environment:
             set:
               NCAR_ID_MPI: '{name}-{version}'
-              NCAR_BUILD_ENV_MPI: casper-{compiler.name}-{compiler.version}-{name}-{version}
+              NCAR_BUILD_ENV_MPI: %HOST%-{compiler.name}-{compiler.version}-{name}-{version}
             append_path:
               MODULEPATH: /glade/u/apps/cseg/modules/%VERSION%/{name}/{version}/{compiler.name}/{compiler.version}
         gcc:
           environment:
             set:
               NCAR_ID_COMPILER: '{name}-{version}'
-              NCAR_BUILD_ENV_COMPILER: casper-{name}-{version}
-              NCAR_BUILD_ENV: casper-{name}-{version}
+              NCAR_BUILD_ENV_COMPILER: %HOST%-{name}-{version}
+              NCAR_BUILD_ENV: %HOST%-{name}-{version}
             append_path:
               MODULEPATH: /glade/u/apps/cseg/modules/%VERSION%/{name}/{version}
         intel-oneapi-compilers:
@@ -253,8 +253,8 @@ spack:
               NCAR_ROOT_ONEAPI: '{prefix}'
               NCAR_SPACK_HASH_ONEAPI: '{hash}'
               NCAR_ID_COMPILER: oneapi-{version}
-              NCAR_BUILD_ENV_COMPILER: casper-oneapi-{version}
-              NCAR_BUILD_ENV: casper-oneapi-{version}
+              NCAR_BUILD_ENV_COMPILER: %HOST%-oneapi-{version}
+              NCAR_BUILD_ENV: %HOST%-oneapi-{version}
             append_path:
               MODULEPATH: /glade/u/apps/cseg/modules/%VERSION%/oneapi/{version}
         intel-oneapi-compilers-classic:
@@ -271,8 +271,8 @@ spack:
               NCAR_ROOT_INTEL: '{^intel-oneapi-compilers.prefix}'
               NCAR_SPACK_HASH_INTEL: '{hash}'
               NCAR_ID_COMPILER: intel-{version}
-              NCAR_BUILD_ENV_COMPILER: casper-intel-{version}
-              NCAR_BUILD_ENV: casper-intel-{version}
+              NCAR_BUILD_ENV_COMPILER: %HOST%-intel-{version}
+              NCAR_BUILD_ENV: %HOST%-intel-{version}
             append_path:
               MODULEPATH: /glade/u/apps/cseg/modules/%VERSION%/oneapi/{version}
         intel-oneapi-mkl:
@@ -298,8 +298,8 @@ spack:
               NVIDIA_VERSION: '{version}'
               NVIDIA_PATH: '{prefix}'
               NCAR_ID_COMPILER: '{name}-{version}'
-              NCAR_BUILD_ENV_COMPILER: casper-{name}-{version}
-              NCAR_BUILD_ENV: casper-{name}-{version}
+              NCAR_BUILD_ENV_COMPILER: %HOST%-{name}-{version}
+              NCAR_BUILD_ENV: %HOST%-{name}-{version}
             prepend_path:
               LD_LIBRARY_PATH: '{prefix}/Linux_x86_64/{version}/compilers/lib'
             append_path:
