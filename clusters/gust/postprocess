@@ -457,12 +457,18 @@ if [[ $SPACK_ENV == $NCAR_SPACK_ENV_PUBLIC ]]; then
                 fi
             else
                 echo "Note: Skipping missing utility ${util}. $(whoami) does not own $util_root ..."
+                continue
             fi
         fi
 
         if [[ ! -e $NCAR_SPACK_ROOT_VIEW/utils/bin/$util ]]; then
-            tsecho "    adding $GCOL$util$DCOL"
-            ln -s $util_root/${ncar_utils[$util]}/bin/$util $NCAR_SPACK_ROOT_VIEW/utils/bin/
+            if [[ -e $util_root/${ncar_utils[$util]}/bin/$util ]]; then
+                tsecho "    adding $GCOL$util$DCOL"
+                ln -s $util_root/${ncar_utils[$util]}/bin/$util $NCAR_SPACK_ROOT_VIEW/utils/bin/
+            else
+                tsecho "Error: Expected binary not found ($util_root/${ncar_utils[$util]}/bin/$util)!"
+                exit 1
+            fi
         fi
     done
 fi

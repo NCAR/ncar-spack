@@ -60,4 +60,10 @@ elif [[ -z $SPACK_ENV ]]; then
         >&2 echo -e "       $SPACK_ENV -> owned by $spack_env_user"
         exit 1
     fi
+
+    tsecho "Ensure specs list is flow-style YAML"
+
+    if grep -q -E '^ +specs: +\[' $SPACK_ENV/spack.yaml; then
+        spack python $my_dir/tools/fix_specs.py
+    fi
 fi

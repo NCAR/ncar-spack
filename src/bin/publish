@@ -16,7 +16,7 @@
 #           shell script. So we must activate in the script!
 #
 #   Author:         Brian Vanderwende
-#   Last Revised:   13:58, 02 Mar 2023
+#   Last Revised:   17:12, 13 Mar 2023
 #
 
 function remove_lock {
@@ -307,6 +307,11 @@ fi
 
 tsecho "Concretizing other environment changes"
 2>&1 taskset -c 0-7 spack concretize > $log_dir/concretize.$start_time
+
+tsecho "Ensure specs list is flow-style YAML"
+if grep -q -E '^ +specs: +\[' $SPACK_ENV/spack.yaml; then
+    spack python $my_dir/tools/fix_specs.py
+fi
 
 tsecho "Refreshing module init scripts"
 . $my_dir/tools/make_localinit.sh public

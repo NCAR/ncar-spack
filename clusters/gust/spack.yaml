@@ -88,6 +88,7 @@ spack:
     hdf:
       variants: [+fortran, +szip]
     hdf5:
+      require: '@:1.12'
       variants: [+hl, +szip, +fortran, +cxx, ~mpi]
     netcdf-cxx4:
       variants: [~doxygen]

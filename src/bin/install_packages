@@ -146,17 +146,21 @@ function check_spec {
     elif [[ $install_type == compiler ]]; then
         comp_spec="${spec//[[:blank:]]/}"
 
-        if [[ $comp_spec == gcc* ]]; then
-            compilers="$comp_spec $compilers"
-        else
-            if [[ $comp_spec == intel-oneapi-compilers-classic* ]]; then
-                comp_spec="${comp_spec/intel-oneapi-compilers-classic/intel}"
-                use_cache=no
-            elif [[ $comp_spec == intel-oneapi-compilers* ]]; then
-                comp_spec="${comp_spec/intel-oneapi-compilers/oneapi}"
-            fi
+        if [[ $comp_spec == intel-oneapi-compilers-classic* ]]; then
+            comp_spec="${comp_spec/intel-oneapi-compilers-classic/intel}"
+            use_cache=no
+        elif [[ $comp_spec == intel-oneapi-compilers* ]]; then
+            comp_spec="${comp_spec/intel-oneapi-compilers/oneapi}"
+        fi
 
-            compilers="$compilers $comp_spec"
+        if [[ $install_register != core ]]; then
+            if [[ $comp_spec == gcc* ]]; then
+                compilers="$comp_spec $compilers"
+            else
+                compilers="$compilers $comp_spec"
+            fi
+        else
+            spack config add "modules:default:lmod:exclude:$spec"
         fi
     fi
     
@@ -197,7 +201,7 @@ function check_spec {
         fi
        
         # Finalize cache status
-	use_cache=${use_cache:-$install_cache}
+        use_cache=${use_cache:-$install_cache}
 
         if [[ ${use_cache:-${prefer_cache:-no}} == yes ]]; then
             cache_label=" (cached)"

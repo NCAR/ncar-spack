@@ -19,6 +19,8 @@ add_property("lmod","sticky")
 -- Detect environment settings
 local user      = capture("whoami")
 local tmpdir    = os.getenv("TMPDIR")
+local mywork    = os.getenv("WORK")
+local myscratch = os.getenv("SCRATCH")
 local othreads  = os.getenv("OMP_NUM_THREADS")
 
 local syspath   = os.getenv("NCAR_DEFAULT_PATH")
@@ -69,6 +71,20 @@ setenv("WRFIO_NCD_LARGE_FILE_SUPPORT", "1")
 -- Set user's TMPDIR if not already set
 if not tmpdir or not string.match(tmpdir, "^/glade") then
     setenv("TMPDIR", pathJoin("%TMPROOT%", user))
+end
+
+-- Set file-system variables (but do not clobber common ones)
+setenv("CHEYENNE_SCRATCH",  pathJoin("/glade/scratch", user))
+setenv("LARAMIE_SCRATCH",   pathJoin("/picnic/scratch", user))
+setenv("DERECHO_SCRATCH",   pathJoin("/glade/derecho/scratch", user))
+setenv("GUST_SCRATCH",      pathJoin("/glade/gust/scratch", user))
+
+if not mywork then
+    setenv("WORK", pathJoin("/glade/work", user))
+end
+
+if not myscratch then
+    setenv("SCRATCH", pathJoin("%TMPROOT%", user))
 end
 
 -- On CSEG's request (jedwards/mvertens@ucar.edu)
