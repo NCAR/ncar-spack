@@ -18,9 +18,6 @@ add_property("lmod","sticky")
 
 -- Detect environment settings
 local user      = capture("whoami")
-local tmpdir    = os.getenv("TMPDIR")
-local mywork    = os.getenv("WORK")
-local myscratch = os.getenv("SCRATCH")
 local othreads  = os.getenv("OMP_NUM_THREADS")
 
 local syspath   = os.getenv("NCAR_DEFAULT_PATH")
@@ -69,8 +66,17 @@ setenv("OMP_STACKSIZE", "64000K")
 setenv("WRFIO_NCD_LARGE_FILE_SUPPORT", "1")
 
 -- Set user's TMPDIR if not already set
-if not tmpdir or not string.match(tmpdir, "^/glade") then
-    setenv("TMPDIR", pathJoin("%TMPROOT%", user))
+local is_set    = os.getenv("TMPDIR")
+local was_set   = os.getenv("__NCARENV_TMPDIR")
+
+if was_set or not is_set or not string.match(is_set, "^/glade") then
+    local tmpdir = pathJoin("%TMPROOT%", user, "tmp")
+    setenv("TMPDIR", tmpdir)
+    setenv("__NCARENV_TMPDIR", 1)
+
+    if not isDir(tmpdir) then
+        execute { cmd = "mkdir -p " .. tmpdir, modeA = { "load" } }
+    end
 end
 
 -- Set file-system variables (but do not clobber common ones)
@@ -79,12 +85,20 @@ setenv("LARAMIE_SCRATCH",   pathJoin("/picnic/scratch", user))
 setenv("DERECHO_SCRATCH",   pathJoin("/glade/derecho/scratch", user))
 setenv("GUST_SCRATCH",      pathJoin("/glade/gust/scratch", user))
 
-if not mywork then
+local is_set    = os.getenv("WORK")
+local was_set   = os.getenv("__NCARENV_WORK")
+
+if was_set or not is_set then
     setenv("WORK", pathJoin("/glade/work", user))
+    setenv("__NCARENV_WORK", 1)
 end
 
-if not myscratch then
+local is_set    = os.getenv("SCRATCH")
+local was_set   = os.getenv("__NCARENV_SCRATCH")
+
+if was_set or not is_set then
     setenv("SCRATCH", pathJoin("%TMPROOT%", user))
+    setenv("__NCARENV_SCRATCH", 1)
 end
 
 -- On CSEG's request (jedwards/mvertens@ucar.edu)
