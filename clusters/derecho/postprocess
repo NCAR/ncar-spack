@@ -1,0 +1,567 @@
+#!/bin/bash
+#
+#   This script copies relevant modules from the crayenv
+#   container environment into a curated tree
+#
+
+# CONFIGURABLES
+compilers="cce gcc nvhpc oneapi intel"
+mpis="cray-mpich"
+cray_network=ofi
+
+# MODULES TO COPY
+core="  craype/2.7.19
+        cce/15.0.1
+        gcc/12.2.0
+        perftools-base/23.02.0
+        atp/3.14.16(D)
+        cray-ccdb/4.12.13
+        cray-dyninst/12.1.1
+        cray-stat/4.11.13
+        gdb4hpc/4.14.7(D)
+        cray-mrnet/5.0.4
+        papi/7.0.0.1(D)
+        sanitizers4hpc/1.0.4(D)
+        valgrind4hpc/2.12.11(D)"
+cdep="  cray-libsci/23.02.1.1
+        cray-mpich/8.1.24"
+
+# Perform common script setup including environment checks
+export my_dir="$( cd "$(dirname "$0")" ; pwd )"
+. $my_dir/tools/init.sh
+
+log_active=0
+
+if [[ $SPACK_ENV == $NCAR_SPACK_ENV_PUBLIC ]]; then
+    mod_root=$NCAR_SPACK_ROOT_MODULES
+    view_root=$NCAR_SPACK_ROOT_VIEW
+else
+    mod_root=$SPACK_ENV/modules
+    view_root=$SPACK_ENV/ncarenv
+fi
+
+mod_deployment=${mod_root}/$NCAR_SPACK_HOST_VERSION
+
+while [[ $# -gt 0 ]]; do
+    case $1 in
+        -c|--clean)
+            spack_flags=--delete-tree
+            ;;
+    esac
+
+    shift
+done
+
+function modify_comp {
+sed -i '/--.*Lmod hierarchy/Q; /pend_path[ ("]*MODULEPATH/d' $1
+cat >> $1 << EOF
+-- Add compiler modules to MODULEPATH
+append_path("MODULEPATH", "${mod_deployment}/$mod")
+append_path("MODULEPATH", "/glade/u/apps/cseg/modules/$NCAR_SPACK_HOST_VERSION/$mod")
+
+-- Set the PE, since this is the only setting from the PrgEnv module that matters
+setenv("PE_ENV", "${comp_pe[$mod_name]}")
+
+-- Set NCAR build environment variables
+local my_ncar_id    = "$mod_name-$mod_version"
+local my_ncar_env   = "$NCAR_SPACK_HOST-" .. my_ncar_id
+
+setenv("NCAR_ID_COMPILER",          my_ncar_id)
+setenv("NCAR_BUILD_ENV_COMPILER",   my_ncar_env)
+setenv("NCAR_BUILD_ENV",            my_ncar_env)
+EOF
+}
+
+function modify_mpi {
+sed -i '/--.*Lmod hierarchy/Q; /pend_path[ ("]*MODULEPATH/d' $1
+cat >> $1 << EOF
+-- Add MPI modules to MODULEPATH
+append_path("MODULEPATH", "${mod_deployment}/${mod}/$comp")
+append_path("MODULEPATH", "/glade/u/apps/cseg/modules/$NCAR_SPACK_HOST_VERSION/${mod}/$comp")
+
+-- Use openfabrics
+setenv("CRAYPE_NETWORK_TARGET", "$cray_network")
+
+-- Add to LD_LIBRARY_PATH for programs like NSight Systems
+prepend_path("LD_LIBRARY_PATH", MPICH_DIR .. "/lib")
+EOF
+
+if [[ ${libfabric[$mod_version]+a} ]]; then
+cat >> $1 << EOF
+
+-- Libfabric settings
+prepend_path("PATH", "/opt/cray/libfabric/${libfabric[$mod_version]}/bin")
+prepend_path("LD_LIBRARY_PATH", "/opt/cray/libfabric/${libfabric[$mod_version]}/lib64")
+prepend_path("MANPATH", "/opt/cray/libfabric/${libfabric[$mod_version]}/share/man")
+prepend_path("PKG_CONFIG_PATH", "/opt/cray/libfabric/${libfabric[$mod_version]}/lib64/pkgconfig")
+EOF
+else
+>&2 echo "Error: no libfabric version set for cray-mpich/$mod_version!"
+exit 1
+fi
+
+if [[ ${pals[$mod_version]+a} ]]; then
+cat >> $1 << EOF
+
+-- PALS support
+prepend_path("PATH", "/opt/cray/pe/pals/${pals[$mod_version]}/bin")
+prepend_path("MANPATH", "/opt/cray/pe/pals/${pals[$mod_version]}/man")
+prepend_path("PKG_CONFIG_PATH", "/opt/cray/pe/pals/${pals[$mod_version]}/lib/pkgconfig")
+prepend_path("PE_PALS_PKGCONFIG_LIBS", "libpals")
+prepend_path("PE_PKGCONFIG_PRODUCTS", "PE_PALS")
+set_alias("mpirun", "mpiexec")
+EOF
+else
+>&2 echo "Error: no pals version set for cray-mpich/$mod_version!"
+exit 1
+fi
+
+if [[ ${pals[$mod_version]+a} ]]; then
+cat >> $1 << EOF
+
+-- PMI support
+local PMI_DIR = "/opt/cray/pe/pmi/${pmi[$mod_version]}"
+setenv("CRAY_PMI_INCLUDE_OPTS", "-I" .. PMI_DIR .. "/include")
+setenv("CRAY_PMI_POST_LINK_OPTS", "-L" .. PMI_DIR .. "/lib")
+prepend_path("PKG_CONFIG_PATH", PMI_DIR .. "/lib/pkgconfig")
+prepend_path("PE_PKGCONFIG_PRODUCTS", "PE_PMI")
+prepend_path("PE_PMI_PKGCONFIG_LIBS", "cray-pmi")
+prepend_path("MANPATH", PMI_DIR .. "/man")
+prepend_path("CRAY_LD_LIBRARY_PATH", PMI_DIR .. "/lib")
+EOF
+else
+>&2 echo "Error: no pmi version set for cray-mpich/$mod_version!"
+exit 1
+fi
+
+cat >> $1 << EOF
+
+-- If wrapper is loaded, make sure mpi wrappers are removed at unload
+local wrapper_path = os.getenv("NCAR_WRAPPER_MPI_PATH")
+
+if wrapper_path then
+    prepend_path("PATH", wrapper_path)
+end
+
+-- Set NCAR build environment variables
+local my_ncar_id    = "$mod_name-$mod_version"
+local my_ncar_env   = "$NCAR_SPACK_HOST-$comp_name-$comp_version-" .. my_ncar_id
+
+setenv("NCAR_ID_MPI",           my_ncar_id)
+setenv("NCAR_BUILD_ENV_MPI",    my_ncar_env)
+pushenv("NCAR_BUILD_ENV",       my_ncar_env)
+EOF
+}
+
+function modify_craype {
+cat >> $1 << EOF
+
+-- CPU architecture specification 
+prepend_path("PE_PRODUCT_LIST", "CRAYPE_X86_MILAN")
+setenv("CRAY_CPU_TARGET", "x86-milan")
+
+-- If ncarcompilers is loaded, reload it to keep forward
+if isloaded("ncarcompilers") then
+    always_load("ncarcompilers")
+end
+
+-- Make sure Cray software is RPATH'd to ensure version consistency
+setenv("CRAY_ADD_RPATH", "yes") 
+EOF
+
+if [[ ${xpmem[$mod_version]+a} ]]; then
+cat >> $1 << EOF
+
+-- Cray XPMEM configuration
+prepend_path("PE_PKGCONFIG_PRODUCTS", "PE_XPMEM")
+setenv("PE_XPMEM_PKGCONFIG_LIBS", "cray-xpmem")
+setenv("CRAY_XPMEM_INCLUDE_OPTS", "-I/opt/cray/xpmem/${xpmem[$mod_version]}/include")
+setenv("CRAY_XPMEM_POST_LINK_OPTS", "-L/opt/cray/xpmem/${xpmem[$mod_version]}/lib64")
+EOF
+fi
+
+if [[ ${cti[$mod_version]+a} ]]; then
+cat >> $1 << EOF
+
+-- Cray CTI configuration (Forge support)
+setenv("CTI_VERSION",        "${cti[$mod_version]}")
+setenv("CRAY_CTI_VERSION",   "${cti[$mod_version]}")
+setenv("CTI_INSTALL_DIR",    "/opt/cray/pe/cti/${cti[$mod_version]}")
+setenv("CRAY_CTI_PREFIX",    "/opt/cray/pe/cti/${cti[$mod_version]}")
+setenv("PE_CTI_MODULE_NAME", "cray-cti")
+
+prepend_path("MANPATH",              "/opt/cray/pe/cti/${cti[$mod_version]}/share/man")
+prepend_path("CRAY_LD_LIBRARY_PATH", "/opt/cray/pe/cti/${cti[$mod_version]}/lib")
+EOF
+fi
+}
+
+function set_dependency {
+    pr_line=$(grep -nh -B1 craype $1 | grep 'prereq.*(' | awk -F[:-] '{print $1}')
+
+    if [[ -n $pr_line ]]; then
+        sed -i "$pr_line s/prereq/depends_on/" $1
+    else
+        add_dependency $1
+    fi
+
+    unset pr_line
+}
+
+function add_dependency {
+cat >> $1 << EOF
+
+-- Module depends on Cray Compiler Drivers for proper function
+depends_on("craype")
+EOF
+}
+
+function reverse_mods {
+    sed -i '/MODULEPATH/ s/^prepend_path/append_path/' $1
+}
+
+function copy_mods {
+    mod_list=(${!1})
+    for mod_entry in ${mod_list[@]}; do
+        mod=${mod_entry/(D)}
+        mod_name=${mod%/*}
+        mod_version=${mod#*/}
+
+        tsecho "Package: $GCOL$mod$DCOL"
+        
+        if [[ $1 == cdep ]]; then
+            for comp in $comp_list; do
+                comp_name=${comp%/*}
+                comp_version=${comp#*/}
+
+                if [[ ${comp_dep[$comp_name]} == intel ]]; then
+                    comp_version=19
+                fi
+
+                if [[ -f $cray_core/${mod}.lua ]]; then
+                    src_file=$cray_core/${mod}.lua
+                else
+                    src_dirs="$(echo $(sed "s/%CMP%/${comp_dep[$comp_name]}/" <<< $cray_comnet))"
+
+                    for src_dir in $src_dirs; do
+                        src_compat=$(sed "s|.*${comp_dep[$comp_name]}/\([^./]*\).*|\1|" <<< $src_dir)
+                        
+                        if [[ $src_compat -gt $src_version ]] && [[ $src_compat -le ${comp_version%%.*} ]]; then
+                            src_version=$src_compat
+                            src_file=$src_dir/${mod}.lua
+                        fi
+                    done
+
+                    if [[ -z $src_file ]]; then
+                        tsecho "Error: no module file found for ${mod}!"
+                        exit 1
+                    fi
+                fi
+
+                if [[ $mod_name == cray-mpich ]]; then
+                    if [[ ! -d $mod_deployment/$mod/$comp ]]; then
+                        rm -f $mod_deployment/$comp/${mod}.lua
+                        continue
+                    fi
+                fi
+
+                if [[ -n ${comp_skip[$comp]} ]] && [[ " ${comp_skip[$comp]} " == *" $mod "* ]]; then
+                    rm -f $mod_deployment/$comp/${mod}.lua
+                    continue
+                elif [[ -n ${comp_skip[$comp_name]} ]] && [[ " ${comp_skip[$comp_name]} " == *" $mod "* ]]; then
+                    rm -f $mod_deployment/$comp/${mod}.lua
+                    continue
+                fi
+
+                mod_path=$mod_deployment/$comp
+                mkdir -p $mod_path/$mod_name
+                cp $src_file $mod_path/$mod_name
+
+                if [[ $mod != $mod_entry ]]; then
+                    ln -sf ${mod_version}.lua $mod_path/$mod_name/default
+                fi
+
+                if [[ " $mpis " == *" $mod_name "* ]]; then
+                    tsecho "    modifying $GCOL$mod$DCOL (${PCOL}compat=$src_version$DCOL) for use as MPI library (${PCOL}comp=$comp$DCOL)"
+                    modify_mpi $mod_path/${mod}.lua
+                fi
+                
+                set_dependency $mod_path/${mod}.lua
+
+                unset src_file src_version
+            done
+        elif [[ -f $cray_core/${mod}.lua ]]; then
+            mod_path=$mod_deployment/Core
+            mkdir -p $mod_path/$mod_name
+            cp $cray_core/${mod}.lua $mod_path/$mod_name
+
+            if [[ $mod != $mod_entry ]]; then
+                ln -sf ${mod_version}.lua $mod_path/$mod_name/default
+            fi
+
+            if [[ " $compilers " == *" $mod_name "* ]]; then
+                tsecho "    modifying $GCOL$mod$DCOL for use as compiler"
+                modify_comp $mod_path/${mod}.lua
+            else
+                case $mod_name in
+                    craype)
+                        modify_craype $mod_path/${mod}.lua
+                        ;;
+                    perftools-base)
+                        reverse_mods $mod_path/${mod}.lua
+                        ;;
+                esac
+            fi
+
+            if [[ " $compilers craype " != *" $mod_name "* ]]; then
+                set_dependency $mod_path/${mod}.lua
+            fi
+        else
+            tsecho "Error: no module file found at $cray_core/${mod}.lua!"
+            exit 1
+        fi
+    done
+}
+
+# First, let's make sure module tree exists
+if [[ ! -d $mod_deployment ]] || [[ -n $spack_flags ]]; then
+    spack module lmod refresh -y $spack_flags
+fi
+
+# Cray module paths
+cray_core=/opt/cray/pe/lmod/modulefiles/core
+cray_comnet=/opt/cray/pe/lmod/modulefiles/comnet/%CMP%/*/ofi/1.0
+
+# Version dictionaries
+declare -A libfabric=( [8.1.18]=1.15.0.0 [8.1.19]=1.15.0.0 [8.1.21]=1.15.0.0 [8.1.24]=1.15.0.0 )
+declare -A pals=( [8.1.18]=1.2.0 [8.1.19]=1.2.2 [8.1.21]=1.2.4 [8.1.24]=1.2.9 )
+declare -A pmi=( [8.1.18]=6.1.3 [8.1.19]=6.1.5 [8.1.21]=6.1.7 [8.1.24]=6.1.9 )
+declare -A xpmem=( )
+declare -A cti=( [2.7.17]=2.15.14 [2.7.19]=2.17.2 )
+
+tsecho "Copying core modules to $mod_root"
+
+tm_file=$SPACK_ENV/.tempmod
+
+declare -A comp_pe
+comp_pe[cce]=CRAY
+comp_pe[gcc]=GNU
+comp_pe[nvhpc]=NVIDIA
+comp_pe[intel]=INTEL
+
+declare -A comp_dep
+comp_dep[cce]=crayclang
+comp_dep[gcc]=gnu
+comp_dep[nvhpc]=nvidia
+comp_dep[intel]=intel
+comp_dep[oneapi]=intel
+
+declare -A comp_skip
+comp_skip[intel/2021.7.1]=cray-libsci/22.11.1.2
+comp_skip[intel]=cray-libsci/23.02.1.1
+
+copy_mods core
+
+tsecho "Searching for installed compilers"
+
+cd $mod_deployment
+
+for comp in $compilers; do
+    comp_list="$comp_list $(ls -d $comp/* --color=never 2> /dev/null || true)"
+done
+
+tsecho "Copying cdep modules to $mod_root"
+copy_mods cdep
+
+tsecho "Populating Intel compiler module set"
+
+if [[ -d Core/intel-oneapi ]]; then
+    mkdir -p Core/intel
+
+    for icver in $(find Core/intel-oneapi/ -type f); do
+        sed '/INTEL_COMPILER_TYPE/ s/ONEAPI/RECOMMENDED/' $icver > ${icver/-oneapi}
+    done
+fi
+
+if [[ -d Core/intel-classic ]]; then
+    for icver in $(find Core/intel-classic/ -type f); do
+        ccver=$(sed -n '/INTEL_VERSION/ s|.*"\(.*\)".*|\1|p' $icver)
+        onever=$(sed 's|.*/\(.*\)\.lua|\1|' <<< $icver)
+
+        sed -i "0,/MODULEPATH/ s|intel/${ccver}|oneapi/${onever}|" $icver
+    done
+fi
+
+# Make sure the meta-modules exist
+cray_mpath=/opt/cray/pe/lmod/modulefiles/core:/opt/cray/modulefiles:/opt/cray/pe/lmod/modulefiles/craype-targets/default
+
+# *This* ncarenv deployment
+for mod_type in ncarenv ncarenv-basic; do
+    mkdir -p $mod_root/environment/$mod_type
+    mm_src=$NCAR_SPACK_ENV_BUILD/templates/modules/$mod_type.lua
+    mm_file=$mod_root/environment/$mod_type/${NCAR_SPACK_HOST_VERSION}.lua
+
+    sed "s|%MODPATH%|${mod_deployment}/Core|g" $mm_src > $tm_file
+    sed -i "s|%VIEWROOT%|${view_root}|g" $tm_file
+    sed -i "s|%VERSION%|${NCAR_SPACK_HOST_VERSION}|g" $tm_file
+    sed -i "s|%DATE%|$(date)|g" $tm_file
+    sed -i "s|%UTILPATH%|${SPACK_ENV}/util|g" $tm_file
+    sed -i "s|%DEFMODS%|$NCAR_SPACK_DEFMODS_NCAR|g" $tm_file
+    sed -i "s|%HOST%|$NCAR_SPACK_HOST|g" $tm_file
+    sed -i "s|%TMPROOT%|$NCAR_SPACK_TMPROOT|g" $tm_file
+    mv $tm_file $mm_file
+done
+
+# All crayenv deployments
+mkdir -p $mod_root/environment/crayenv
+mm_src=$NCAR_SPACK_ENV_BUILD/templates/modules/crayenv.lua
+
+for cpe_version in ${!NCAR_SPACK_DEFMODS_CPE[@]}; do
+    mm_file=$mod_root/environment/crayenv/$cpe_version.lua
+
+    sed "s|%MODPATH%|${cray_mpath}|g" $mm_src > $tm_file
+    sed -i "s|%VERSION%|${NCAR_SPACK_HOST_VERSION}|g" $tm_file
+    sed -i "s|%DATE%|$(date)|g" $tm_file
+    sed -i "s|%DEFMODS%|crayenv/${cpe_version}:${NCAR_SPACK_DEFMODS_CPE[$cpe_version]}:craype-x86-milan:craype-network-ofi|g" $tm_file
+    sed -i "s|%TMPROOT%|$NCAR_SPACK_TMPROOT|g" $tm_file
+    mv $tm_file $mm_file
+done
+
+tsecho "Adding external utilities to the view"
+
+# Add utilities to the view if missing
+util_root=/glade/u/apps/opt; cd $util_root
+
+declare -A ncar_utils
+ncar_utils[qstat]=qstat-cache
+ncar_utils[qinteractive]=pbstools
+ncar_utils[qcmd]=pbstools
+ncar_utils[qhist]=qhist
+ncar_utils[gladequota]=gladequota
+ncar_utils[get_local_rank]=mpitools
+
+skip_clone="gladequota mpitools"
+
+if [[ $SPACK_ENV == $NCAR_SPACK_ENV_PUBLIC ]]; then
+    mkdir -p $NCAR_SPACK_ROOT_VIEW/utils/bin
+
+    for util in ${!ncar_utils[@]}; do
+        if [[ ! -d ${ncar_utils[$util]} ]]; then
+            if [[ -O $util_root ]]; then
+                if [[ " $skip_clone " != *" ${ncar_utils[$util]} "* ]]; then
+                    tsecho "    cloning $GCOL${ncar_utils[$util]}$DCOL repo"
+                    git clone git@github.com:NCAR/${ncar_utils[$util]}.git
+                else
+                    tsecho "Error: No github repo for $util. Perform manual install and retry!"
+                    exit 1
+                fi
+            else
+                echo "Note: Skipping missing utility ${util}. $(whoami) does not own $util_root ..."
+                continue
+            fi
+        fi
+
+        if [[ ! -e $NCAR_SPACK_ROOT_VIEW/utils/bin/$util ]]; then
+            if [[ -e $util_root/${ncar_utils[$util]}/bin/$util ]]; then
+                tsecho "    adding $GCOL$util$DCOL"
+                ln -s $util_root/${ncar_utils[$util]}/bin/$util $NCAR_SPACK_ROOT_VIEW/utils/bin/
+            else
+                tsecho "Error: Expected binary not found ($util_root/${ncar_utils[$util]}/bin/$util)!"
+                exit 1
+            fi
+        fi
+    done
+fi
+
+# ===== CREATE LMOD AVAIL HOOK =====
+
+function create_sp {
+cat > $tm_file << EOF
+require("strict")
+local hook = require("Hook")
+
+local mapT =
+{
+   grouped = {
+      ['/environment$'] = "NCAR and Cray Environments",
+      ['/Core$'] = "Compilers and Core Software",
+EOF
+
+cd $mod_deployment
+for mod_cat in $(find . -mindepth 2 -maxdepth 2 ! -path "*/Core/*" -type d); do
+    if ls $mod_cat/*/*/* >& /dev/null; then
+        mname=$(cut -d/ -f2 <<< $mod_cat)
+        mvers=$(cut -d/ -f3 <<< $mod_cat)
+
+        for mod_sub in $(find $mod_cat -mindepth 2 -maxdepth 2 -type d); do
+            cname=$(cut -d/ -f4 <<< $mod_sub)
+            cvers=$(cut -d/ -f5 <<< $mod_sub)
+
+            echo "      ['modules[/%.%d]*/${mname//-/%-}/${mvers//./%.}/$cname/${cvers//./%.}$'] = 'MPI-dependent Software - [$cname/$cvers + $mname/$mvers]'," >> $tm_file
+        done
+    else
+        cname=$(cut -d/ -f2 <<< $mod_cat)
+        cvers=$(cut -d/ -f3 <<< $mod_cat)
+
+        echo "      ['modules[/%.%d]*/$cname/${cvers//./%.}$'] = 'Compiler-dependent Software - [$cname/$cvers]'," >> $tm_file
+    fi
+done
+
+# Add labels for mpi-serial from CSEG tree
+if [[ -d /glade/u/apps/cseg/modules/$NCAR_SPACK_HOST_VERSION ]]; then
+    cd /glade/u/apps/cseg/modules/$NCAR_SPACK_HOST_VERSION
+
+    for mod_cat in mpi-serial/*; do
+        mname=mpi-serial
+        mvers=$(cut -d/ -f2 <<< $mod_cat)
+
+        for mod_sub in $(find $mod_cat -mindepth 2 -maxdepth 2 -type d); do
+            cname=$(cut -d/ -f3 <<< $mod_sub)
+            cvers=$(cut -d/ -f4 <<< $mod_sub)
+
+            echo "      ['modules[/%.%d]*/${mname//-/%-}/${mvers//./%.}/$cname/${cvers//./%.}$'] = 'MPI-dependent Software - [$cname/$cvers + $mname/$mvers]'," >> $tm_file
+        done
+    done
+fi
+
+# Add labels for CrayPAT
+cd /opt/cray/pe/perftools
+
+for mod_cat in */modulefiles; do
+    mvers=$(cut -d/ -f1 <<< $mod_cat)
+
+    if [[ $mvers != default ]]; then
+        echo "      ['perftools/${mvers//./%.}/modulefiles$'] = 'Cray Performance Analysis Tools - [perftools-base/$mvers]'," >> $tm_file
+        echo "      ['modulefiles/perftools/${mvers//./%.}$'] = 'Cray Performance Analysis Tools - [perftools-base/$mvers]'," >> $tm_file
+    fi
+done
+
+cat >> $tm_file << EOF
+   },
+}
+
+function avail_hook(t)
+   local availStyle = masterTbl().availStyle
+   local styleT     = mapT[availStyle]
+   if (not availStyle or availStyle == "system" or styleT == nil) then
+      return
+   end
+
+   for k,v in pairs(t) do
+      for pat,label in pairs(styleT) do
+         if (k:find(pat)) then
+            t[k] = label
+            break
+         end
+      end
+   end
+end
+
+hook.register("avail",avail_hook)
+EOF
+}
+
+# Path to Lmod site hook file
+sp_file=$SPACK_ENV/util/SitePackage.lua
+create_sp
+mv $tm_file $sp_file
