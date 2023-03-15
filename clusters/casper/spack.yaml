@@ -40,7 +40,7 @@ spack:
       permissions:
         read: world
         write: user
-      target: [skylake]
+      target: [x86_64_v3]
     libfuse:
       require: ~utils
     openpbs:
