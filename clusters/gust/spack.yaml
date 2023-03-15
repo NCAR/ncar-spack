@@ -323,9 +323,9 @@ spack:
               INTEL_COMPILER_TYPE: CLASSIC
               NCAR_ROOT_INTEL: '{^intel-oneapi-compilers.prefix}'
               NCAR_SPACK_HASH_INTEL: '{hash}'
-              NCAR_ID_COMPILER: intel-{version}
-              NCAR_BUILD_ENV_COMPILER: %HOST%-intel-{version}
-              NCAR_BUILD_ENV: %HOST%-intel-{version}
+              NCAR_ID_COMPILER: intel-{^intel-oneapi-compilers.version}
+              NCAR_BUILD_ENV_COMPILER: %HOST%-intel-{^intel-oneapi-compilers.version}
+              NCAR_BUILD_ENV: %HOST%-intel-{^intel-oneapi-compilers.version}
             append_path:
               MODULEPATH: /glade/u/apps/cseg/modules/%VERSION%/oneapi/{version}
         intel-oneapi-mkl:
@@ -446,7 +446,7 @@ spack:
           hdf5+mpi: hdf5-mpi/{version}
           netcdf: netcdf/{version}
           intel-oneapi-compilers: intel-oneapi/{version}
-          intel-oneapi-compilers-classic: intel-classic/{version}
+          intel-oneapi-compilers-classic: intel-classic/{^intel-oneapi-compilers.version}
           intel-oneapi-mpi: impi/{version}
           intel-oneapi-mkl: mkl/{version}
           miniconda3: conda/latest
