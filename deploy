@@ -4,7 +4,7 @@
 #   a specified cluster definition. 
 #
 #   Author:         Brian Vanderwende
-#   Last Revised:   22:46, 13 Mar 2023
+#   Last Revised:   13:16, 17 Mar 2023
 #
 
 set -e
@@ -172,7 +172,7 @@ if [[ -d clusters/$NCAR_SYS/templates ]]; then
 fi
 
 if [[ -f clusters/$NCAR_SYS/postprocess ]]; then
-    cp clusters/$NCAR_SYS/postprocess $NCAR_SPACK_ENV_BUILD/bin
+    cp -L clusters/$NCAR_SYS/postprocess $NCAR_SPACK_ENV_BUILD/bin
 fi
 
 # Make cluster-specific substitutions in spack.yaml

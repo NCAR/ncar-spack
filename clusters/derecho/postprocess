@@ -128,6 +128,7 @@ prepend_path("PE_PKGCONFIG_PRODUCTS", "PE_PMI")
 prepend_path("PE_PMI_PKGCONFIG_LIBS", "cray-pmi")
 prepend_path("MANPATH", PMI_DIR .. "/man")
 prepend_path("CRAY_LD_LIBRARY_PATH", PMI_DIR .. "/lib")
+prepend_path("LD_LIBRARY_PATH",      PMI_DIR .. "/lib")
 EOF
 else
 >&2 echo "Error: no pmi version set for cray-mpich/$mod_version!"
@@ -192,6 +193,7 @@ setenv("PE_CTI_MODULE_NAME", "cray-cti")
 
 prepend_path("MANPATH",              "/opt/cray/pe/cti/${cti[$mod_version]}/share/man")
 prepend_path("CRAY_LD_LIBRARY_PATH", "/opt/cray/pe/cti/${cti[$mod_version]}/lib")
+prepend_path("LD_LIBRARY_PATH",      "/opt/cray/pe/cti/${cti[$mod_version]}/lib")
 EOF
 fi
 }
