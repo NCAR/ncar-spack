@@ -255,6 +255,15 @@ spack:
               NCAR_ID_COMPILER: oneapi-{version}
               NCAR_BUILD_ENV_COMPILER: %HOST%-oneapi-{version}
               NCAR_BUILD_ENV: %HOST%-oneapi-{version}
+              OMPI_CC: icx
+              OMPI_CXX: icpx
+              OMPI_FC: ifx
+              OMPI_F77: ifx
+              I_MPI_CC: icx
+              I_MPI_CXX: icpx
+              I_MPI_FC: ifx
+              I_MPI_F90: ifx
+              I_MPI_F77: ifx
             append_path:
               MODULEPATH: /glade/u/apps/cseg/modules/%VERSION%/oneapi/{version}
         intel-oneapi-compilers-classic:
@@ -273,6 +282,15 @@ spack:
               NCAR_ID_COMPILER: intel-{^intel-oneapi-compilers.version}
               NCAR_BUILD_ENV_COMPILER: %HOST%-intel-{^intel-oneapi-compilers.version}
               NCAR_BUILD_ENV: %HOST%-intel-{^intel-oneapi-compilers.version}
+              OMPI_CC: icc
+              OMPI_CXX: icpc
+              OMPI_FC: ifort
+              OMPI_F77: ifort
+              I_MPI_CC: icc
+              I_MPI_CXX: icpc
+              I_MPI_FC: ifort
+              I_MPI_F90: ifort
+              I_MPI_F77: ifort
             append_path:
               MODULEPATH: /glade/u/apps/cseg/modules/%VERSION%/oneapi/{version}
         intel-oneapi-mkl:

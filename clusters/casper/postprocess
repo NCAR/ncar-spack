@@ -47,7 +47,7 @@ if [[ -d Core/intel-oneapi ]]; then
 
     for icver in $(find Core/intel-oneapi/ -type f); do
         sed '/INTEL_COMPILER_TYPE/ s/ONEAPI/RECOMMENDED/' $icver > ${icver/-oneapi}
-        sed -i 's|/ifx|/ifort|' ${icver/-oneapi}
+        sed -i 's|\([/"]\)ifx|\1ifort|' ${icver/-oneapi}
     done
 fi
 

@@ -8,6 +8,7 @@
 compilers="cce gcc nvhpc oneapi intel"
 mpis="cray-mpich"
 cray_network=ofi
+ofi_version=1.15.0.0
 
 # MODULES TO COPY
 core="  craype/2.7.19
@@ -52,6 +53,34 @@ while [[ $# -gt 0 ]]; do
     shift
 done
 
+function get_cpe_version {
+    for cpe in $cpe_versions; do
+        def_file=/opt/cray/pe/cpe/${cpe}/set_default_release_${cpe}.sh
+
+        for my_name in $1 ${1#cray-}; do 
+            if grep -q default_${my_name}_${2}$ $def_file; then
+                echo $cpe
+                return
+            fi
+        done
+    done
+
+    tsecho "Error: version $2 of $1 not found in any CPE release"
+    exit 1
+}
+
+function get_package_version {
+    def_file=/opt/cray/pe/cpe/${1}/set_default_release_${1}.sh
+    my_version=$(sed -n "s/.*${2}_\([0-9.]*\)$/\1/p" $def_file)
+
+    if [[ -n $my_version ]]; then
+        echo $my_version
+    else
+        tsecho "Error: package $2 not found in CPE ${1}"
+        exit 1
+    fi
+}
+
 function modify_comp {
 sed -i '/--.*Lmod hierarchy/Q; /pend_path[ ("]*MODULEPATH/d' $1
 cat >> $1 << EOF
@@ -73,6 +102,16 @@ EOF
 }
 
 function modify_mpi {
+mpich_cpe=$(get_cpe_version $mod_name $mod_version)
+pals_version=$(get_package_version $mpich_cpe pals)
+pmi_version=$(get_package_version $mpich_cpe pmi)
+cti_version=$(get_package_version $mpich_cpe cti)
+
+if [[ $log_me != no ]]; then
+tsecho "    using CPE=$mpich_cpe, PALS=$pals_version, PMI=$pmi_version, CTI=$cti_version"
+log_me=no
+fi
+
 sed -i '/--.*Lmod hierarchy/Q; /pend_path[ ("]*MODULEPATH/d' $1
 cat >> $1 << EOF
 -- Add MPI modules to MODULEPATH
@@ -84,43 +123,25 @@ setenv("CRAYPE_NETWORK_TARGET", "$cray_network")
 
 -- Add to LD_LIBRARY_PATH for programs like NSight Systems
 prepend_path("LD_LIBRARY_PATH", MPICH_DIR .. "/lib")
-EOF
-
-if [[ ${libfabric[$mod_version]+a} ]]; then
-cat >> $1 << EOF
 
 -- Libfabric settings
-prepend_path("PATH", "/opt/cray/libfabric/${libfabric[$mod_version]}/bin")
-prepend_path("LD_LIBRARY_PATH", "/opt/cray/libfabric/${libfabric[$mod_version]}/lib64")
-prepend_path("MANPATH", "/opt/cray/libfabric/${libfabric[$mod_version]}/share/man")
-prepend_path("PKG_CONFIG_PATH", "/opt/cray/libfabric/${libfabric[$mod_version]}/lib64/pkgconfig")
-EOF
-else
->&2 echo "Error: no libfabric version set for cray-mpich/$mod_version!"
-exit 1
-fi
-
-if [[ ${pals[$mod_version]+a} ]]; then
-cat >> $1 << EOF
+local OFI_DIR = "/opt/cray/libfabric/${ofi_version}"
+prepend_path("PATH", OFI_DIR .. "/bin")
+prepend_path("LD_LIBRARY_PATH", OFI_DIR .. "/lib64")
+prepend_path("MANPATH", OFI_DIR .. "/share/man")
+prepend_path("PKG_CONFIG_PATH", OFI_DIR .. "/lib64/pkgconfig")
 
 -- PALS support
-prepend_path("PATH", "/opt/cray/pe/pals/${pals[$mod_version]}/bin")
-prepend_path("MANPATH", "/opt/cray/pe/pals/${pals[$mod_version]}/man")
-prepend_path("PKG_CONFIG_PATH", "/opt/cray/pe/pals/${pals[$mod_version]}/lib/pkgconfig")
+local PALS_DIR = "/opt/cray/pe/pals/${pals_version}"
+prepend_path("PATH", PALS_DIR .. "/bin")
+prepend_path("MANPATH", PALS_DIR .. "/man")
+prepend_path("PKG_CONFIG_PATH", PALS_DIR .. "/lib/pkgconfig")
 prepend_path("PE_PALS_PKGCONFIG_LIBS", "libpals")
 prepend_path("PE_PKGCONFIG_PRODUCTS", "PE_PALS")
 set_alias("mpirun", "mpiexec")
-EOF
-else
->&2 echo "Error: no pals version set for cray-mpich/$mod_version!"
-exit 1
-fi
-
-if [[ ${pals[$mod_version]+a} ]]; then
-cat >> $1 << EOF
 
 -- PMI support
-local PMI_DIR = "/opt/cray/pe/pmi/${pmi[$mod_version]}"
+local PMI_DIR = "/opt/cray/pe/pmi/${pmi_version}"
 setenv("CRAY_PMI_INCLUDE_OPTS", "-I" .. PMI_DIR .. "/include")
 setenv("CRAY_PMI_POST_LINK_OPTS", "-L" .. PMI_DIR .. "/lib")
 prepend_path("PKG_CONFIG_PATH", PMI_DIR .. "/lib/pkgconfig")
@@ -129,13 +150,18 @@ prepend_path("PE_PMI_PKGCONFIG_LIBS", "cray-pmi")
 prepend_path("MANPATH", PMI_DIR .. "/man")
 prepend_path("CRAY_LD_LIBRARY_PATH", PMI_DIR .. "/lib")
 prepend_path("LD_LIBRARY_PATH",      PMI_DIR .. "/lib")
-EOF
-else
->&2 echo "Error: no pmi version set for cray-mpich/$mod_version!"
-exit 1
-fi
 
-cat >> $1 << EOF
+-- Cray CTI configuration (Forge support)
+local CTI_DIR = "/opt/cray/pe/cti/${cti_version}"
+setenv("CTI_VERSION",        "${cti_version}")
+setenv("CRAY_CTI_VERSION",   "${cti_version}")
+setenv("CTI_INSTALL_DIR",    CTI_DIR)
+setenv("CRAY_CTI_PREFIX",    CTI_DIR)
+setenv("PE_CTI_MODULE_NAME", "cray-cti")
+
+prepend_path("MANPATH",              CTI_DIR .. "/share/man")
+prepend_path("CRAY_LD_LIBRARY_PATH", CTI_DIR .. "/lib")
+prepend_path("LD_LIBRARY_PATH",      CTI_DIR .. "/lib")
 
 -- If wrapper is loaded, make sure mpi wrappers are removed at unload
 local wrapper_path = os.getenv("NCAR_WRAPPER_MPI_PATH")
@@ -169,33 +195,6 @@ end
 -- Make sure Cray software is RPATH'd to ensure version consistency
 setenv("CRAY_ADD_RPATH", "yes") 
 EOF
-
-if [[ ${xpmem[$mod_version]+a} ]]; then
-cat >> $1 << EOF
-
--- Cray XPMEM configuration
-prepend_path("PE_PKGCONFIG_PRODUCTS", "PE_XPMEM")
-setenv("PE_XPMEM_PKGCONFIG_LIBS", "cray-xpmem")
-setenv("CRAY_XPMEM_INCLUDE_OPTS", "-I/opt/cray/xpmem/${xpmem[$mod_version]}/include")
-setenv("CRAY_XPMEM_POST_LINK_OPTS", "-L/opt/cray/xpmem/${xpmem[$mod_version]}/lib64")
-EOF
-fi
-
-if [[ ${cti[$mod_version]+a} ]]; then
-cat >> $1 << EOF
-
--- Cray CTI configuration (Forge support)
-setenv("CTI_VERSION",        "${cti[$mod_version]}")
-setenv("CRAY_CTI_VERSION",   "${cti[$mod_version]}")
-setenv("CTI_INSTALL_DIR",    "/opt/cray/pe/cti/${cti[$mod_version]}")
-setenv("CRAY_CTI_PREFIX",    "/opt/cray/pe/cti/${cti[$mod_version]}")
-setenv("PE_CTI_MODULE_NAME", "cray-cti")
-
-prepend_path("MANPATH",              "/opt/cray/pe/cti/${cti[$mod_version]}/share/man")
-prepend_path("CRAY_LD_LIBRARY_PATH", "/opt/cray/pe/cti/${cti[$mod_version]}/lib")
-prepend_path("LD_LIBRARY_PATH",      "/opt/cray/pe/cti/${cti[$mod_version]}/lib")
-EOF
-fi
 }
 
 function set_dependency {
@@ -225,6 +224,7 @@ function reverse_mods {
 function copy_mods {
     mod_list=(${!1})
     for mod_entry in ${mod_list[@]}; do
+        log_me=yes
         mod=${mod_entry/(D)}
         mod_name=${mod%/*}
         mod_version=${mod#*/}
@@ -284,8 +284,8 @@ function copy_mods {
                 fi
 
                 if [[ " $mpis " == *" $mod_name "* ]]; then
-                    tsecho "    modifying $GCOL$mod$DCOL (${PCOL}compat=$src_version$DCOL) for use as MPI library (${PCOL}comp=$comp$DCOL)"
                     modify_mpi $mod_path/${mod}.lua
+                    tsecho "    modified $GCOL$mod$DCOL (${PCOL}compat=$src_version$DCOL) for use as MPI library (${PCOL}comp=$comp$DCOL)"
                 fi
                 
                 set_dependency $mod_path/${mod}.lua
@@ -302,7 +302,7 @@ function copy_mods {
             fi
 
             if [[ " $compilers " == *" $mod_name "* ]]; then
-                tsecho "    modifying $GCOL$mod$DCOL for use as compiler"
+                tsecho "    modified $GCOL$mod$DCOL for use as compiler"
                 modify_comp $mod_path/${mod}.lua
             else
                 case $mod_name in
@@ -334,12 +334,9 @@ fi
 cray_core=/opt/cray/pe/lmod/modulefiles/core
 cray_comnet=/opt/cray/pe/lmod/modulefiles/comnet/%CMP%/*/ofi/1.0
 
-# Version dictionaries
-declare -A libfabric=( [8.1.18]=1.15.0.0 [8.1.19]=1.15.0.0 [8.1.21]=1.15.0.0 [8.1.24]=1.15.0.0 )
-declare -A pals=( [8.1.18]=1.2.0 [8.1.19]=1.2.2 [8.1.21]=1.2.4 [8.1.24]=1.2.9 )
-declare -A pmi=( [8.1.18]=6.1.3 [8.1.19]=6.1.5 [8.1.21]=6.1.7 [8.1.24]=6.1.9 )
-declare -A xpmem=( )
-declare -A cti=( [2.7.17]=2.15.14 [2.7.19]=2.17.2 )
+# Find CPE versions
+cpe_root=/opt/cray/pe/cpe
+cpe_versions="$(ls --color=never -rd /opt/cray/pe/cpe/*.* | xargs -n1 basename | xargs)"
 
 tsecho "Copying core modules to $mod_root"
 
@@ -382,7 +379,7 @@ if [[ -d Core/intel-oneapi ]]; then
 
     for icver in $(find Core/intel-oneapi/ -type f); do
         sed '/INTEL_COMPILER_TYPE/ s/ONEAPI/RECOMMENDED/' $icver > ${icver/-oneapi}
-        sed -i 's|/ifx|/ifort|' ${icver/-oneapi}
+        sed -i 's|\([/"]\)ifx|\1ifort|' ${icver/-oneapi}
     done
 fi
 
