@@ -60,10 +60,10 @@ spack:
       require: +allow-unsupported-compilers
     openmpi:
       require: 'fabrics=cma,knem,ucx schedulers=tm +gpfs +lustre'
-      variants: [~cuda]
+      variants: [+cuda]
     ucx:
       require: '%gcc@10.4.0'
-      variants: [+cm, +cma, ~cuda, +dc, +dm, ~gdrcopy, +ib_hw_tm, +knem, +mlx5_dv,
+      variants: [+cm, +cma, +cuda, +dc, +dm, +gdrcopy, +ib_hw_tm, +knem, +mlx5_dv,
         +rc, +rdmacm, +thread_multiple, +ud, +verbs, +vfs, +xpmem]
     zstd:
       variants: [+programs]

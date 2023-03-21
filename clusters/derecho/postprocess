@@ -8,9 +8,8 @@
 compilers="cce gcc nvhpc oneapi intel"
 mpis="cray-mpich"
 cray_network=ofi
-ofi_version=1.15.0.0
 
-# MODULES TO COPY
+ofi_version=1.15.0.0
 core="  craype/2.7.19
         cce/15.0.1
         gcc/12.2.0
@@ -26,6 +25,24 @@ core="  craype/2.7.19
         valgrind4hpc/2.12.11(D)"
 cdep="  cray-libsci/23.02.1.1
         cray-mpich/8.1.24"
+
+if [[ $NCAR_SPACK_HOST == gust ]]; then
+    core="  craype/2.7.20
+            cce/15.0.1
+            gcc/12.2.0
+            perftools-base/23.03.0
+            atp/3.14.18
+            cray-ccdb/4.12.13
+            cray-dyninst/12.1.1
+            cray-stat/4.11.13
+            gdb4hpc/4.14.7
+            cray-mrnet/5.0.4
+            papi/7.0.0.1
+            sanitizers4hpc/1.0.4
+            valgrind4hpc/2.12.11"
+    cdep="  cray-libsci/23.02.1.1
+            cray-mpich/8.1.25"
+fi
 
 # Perform common script setup including environment checks
 export my_dir="$( cd "$(dirname "$0")" ; pwd )"

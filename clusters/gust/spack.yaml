@@ -55,14 +55,14 @@ spack:
       buildable: false
     cray-mpich:
       externals:
-      - spec: cray-mpich@8.1.24 %gcc
-        prefix: /opt/cray/pe/mpich/8.1.24/ofi/gnu/9.1
-      - spec: cray-mpich@8.1.24 %cce
-        prefix: /opt/cray/pe/mpich/8.1.24/ofi/cray/10.0
-      - spec: cray-mpich@8.1.24 %nvhpc
-        prefix: /opt/cray/pe/mpich/8.1.24/ofi/nvidia/20.7
-      - spec: cray-mpich@8.1.24 %oneapi
-        prefix: /opt/cray/pe/mpich/8.1.24/ofi/intel/19.0
+      - spec: cray-mpich@8.1.25 %gcc
+        prefix: /opt/cray/pe/mpich/8.1.25/ofi/gnu/9.1
+      - spec: cray-mpich@8.1.25 %cce
+        prefix: /opt/cray/pe/mpich/8.1.25/ofi/cray/10.0
+      - spec: cray-mpich@8.1.25 %nvhpc
+        prefix: /opt/cray/pe/mpich/8.1.25/ofi/nvidia/20.7
+      - spec: cray-mpich@8.1.25 %oneapi
+        prefix: /opt/cray/pe/mpich/8.1.25/ofi/intel/19.0
       buildable: false
     cray-libsci:
       externals:
