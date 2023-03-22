@@ -144,7 +144,7 @@ done
 
 # Make sure RPC is available for WRF
 if [[ ! -e $view_root/include/rpc ]] && [[ -d $view_root/include/tirpc/rpc ]]; then
-    ln -s $view_root/include/tirpc/rpc $view_root/include/rpc
+    ln -s $view_root/include/tirpc/* $view_root/include/
 fi
 
 # ===== CREATE LMOD AVAIL HOOK =====
