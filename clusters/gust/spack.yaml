@@ -74,6 +74,8 @@ spack:
       variants: [+piclibs, 'languages=c,c++,fortran,go']
     cuda:
       require: +allow-unsupported-compilers
+    hwloc:
+      variants: [+cuda]
     openmpi:
       variants: [+cuda]
       require: 'fabrics=cma,ofi schedulers=tm +gpfs +lustre'

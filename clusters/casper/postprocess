@@ -4,13 +4,13 @@
 #   environment on the host system
 #
 
-# CONFIGURABLES
-compilers="gcc nvhpc oneapi intel"
-mpis="openmpi"
-
 # Perform common script setup including environment checks
 export my_dir="$( cd "$(dirname "$0")" ; pwd )"
 . $my_dir/tools/init.sh
+
+# CONFIGURABLES
+compilers="gcc nvhpc oneapi intel"
+mpis="openmpi"
 
 if [[ $SPACK_ENV == $NCAR_SPACK_ENV_PUBLIC ]]; then
     mod_root=$NCAR_SPACK_ROOT_MODULES

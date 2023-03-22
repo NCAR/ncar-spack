@@ -58,6 +58,13 @@ spack:
       variants: [+piclibs, 'languages=c,c++,fortran,go']
     cuda:
       require: +allow-unsupported-compilers
+    gdrcopy:
+      externals:
+      - spec: gdrcopy@2.3
+        prefix: /usr
+      buildable: false
+    hwloc:
+      variants: [+cuda]
     openmpi:
       require: 'fabrics=cma,knem,ucx schedulers=tm +gpfs +lustre'
       variants: [+cuda]

@@ -4,6 +4,10 @@
 #   container environment into a curated tree
 #
 
+# Perform common script setup including environment checks
+export my_dir="$( cd "$(dirname "$0")" ; pwd )"
+. $my_dir/tools/init.sh
+
 # CONFIGURABLES
 compilers="cce gcc nvhpc oneapi intel"
 mpis="cray-mpich"
@@ -43,12 +47,6 @@ if [[ $NCAR_SPACK_HOST == gust ]]; then
     cdep="  cray-libsci/23.02.1.1
             cray-mpich/8.1.25"
 fi
-
-# Perform common script setup including environment checks
-export my_dir="$( cd "$(dirname "$0")" ; pwd )"
-. $my_dir/tools/init.sh
-
-log_active=0
 
 if [[ $SPACK_ENV == $NCAR_SPACK_ENV_PUBLIC ]]; then
     mod_root=$NCAR_SPACK_ROOT_MODULES
