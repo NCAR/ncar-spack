@@ -9,6 +9,7 @@ export my_dir="$( cd "$(dirname "$0")" ; pwd )"
 . $my_dir/tools/init.sh
 
 # CONFIGURABLES
+core_comp=gcc@10.4.0
 compilers="gcc nvhpc oneapi intel"
 mpis="openmpi"
 
@@ -122,6 +123,28 @@ if [[ $SPACK_ENV == $NCAR_SPACK_ENV_PUBLIC ]]; then
             fi
         fi
     done
+fi
+
+tsecho "Adding core compiler to the view"
+cc_dir=$(spack location -i $core_comp)
+
+for cc_file in $(find $cc_dir -not -type d -and -not -path "*.spack*"); do
+    rel_path=${cc_file#$cc_dir}
+    view_file=$view_root/$rel_path
+    view_path=$(dirname $view_file)
+
+    if [[ ! -e $view_file ]]; then
+        if [[ ! -d $view_path ]]; then
+            mkdir -p $view_path
+        fi
+
+        ln -s $cc_file $view_file
+    fi
+done
+
+# Make sure RPC is available for WRF
+if [[ ! -e $view_root/include/rpc ]] && [[ -d $view_root/include/tirpc/rpc ]]; then
+    ln -s $view_root/include/tirpc/rpc $view_root/include/rpc
 fi
 
 # ===== CREATE LMOD AVAIL HOOK =====

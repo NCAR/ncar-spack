@@ -9,6 +9,7 @@ export my_dir="$( cd "$(dirname "$0")" ; pwd )"
 . $my_dir/tools/init.sh
 
 # CONFIGURABLES
+core_comp=gcc@10.4.0
 compilers="cce gcc nvhpc oneapi intel"
 mpis="cray-mpich"
 cray_network=ofi
@@ -488,6 +489,28 @@ if [[ $SPACK_ENV == $NCAR_SPACK_ENV_PUBLIC ]]; then
     done
 fi
 
+tsecho "Adding core compiler to the view"
+cc_dir=$(spack location -i $core_comp)
+
+for cc_file in $(find $cc_dir -not -type d -and -not -path "*.spack*"); do
+    rel_path=${cc_file#$cc_dir}
+    view_file=$view_root/$rel_path
+    view_path=$(dirname $view_file)
+
+    if [[ ! -e $view_file ]]; then
+        if [[ ! -d $view_path ]]; then
+            mkdir -p $view_path
+        fi
+
+        ln -s $cc_file $view_file
+    fi
+done
+
+# Make sure RPC is available for WRF
+if [[ ! -e $view_root/include/rpc ]] && [[ -d $view_root/include/tirpc/rpc ]]; then
+    ln -s $view_root/include/tirpc/rpc $view_root/include/rpc
+fi
+
 # ===== CREATE LMOD AVAIL HOOK =====
 
 function create_sp {
@@ -526,17 +549,19 @@ done
 if [[ -d /glade/u/apps/cseg/modules/$NCAR_SPACK_HOST_VERSION ]]; then
     cd /glade/u/apps/cseg/modules/$NCAR_SPACK_HOST_VERSION
 
-    for mod_cat in mpi-serial/*; do
-        mname=mpi-serial
-        mvers=$(cut -d/ -f2 <<< $mod_cat)
+    if [[ -d mpi-serial ]]; then
+        for mod_cat in mpi-serial/*; do
+            mname=mpi-serial
+            mvers=$(cut -d/ -f2 <<< $mod_cat)
 
-        for mod_sub in $(find $mod_cat -mindepth 2 -maxdepth 2 -type d); do
-            cname=$(cut -d/ -f3 <<< $mod_sub)
-            cvers=$(cut -d/ -f4 <<< $mod_sub)
+            for mod_sub in $(find $mod_cat -mindepth 2 -maxdepth 2 -type d); do
+                cname=$(cut -d/ -f3 <<< $mod_sub)
+                cvers=$(cut -d/ -f4 <<< $mod_sub)
 
-            echo "      ['modules[/%.%d]*/${mname//-/%-}/${mvers//./%.}/$cname/${cvers//./%.}$'] = 'MPI-dependent Software - [$cname/$cvers + $mname/$mvers]'," >> $tm_file
+                echo "      ['modules[/%.%d]*/${mname//-/%-}/${mvers//./%.}/$cname/${cvers//./%.}$'] = 'MPI-dependent Software - [$cname/$cvers + $mname/$mvers]'," >> $tm_file
+            done
         done
-    done
+    fi
 fi
 
 # Add labels for CrayPAT
