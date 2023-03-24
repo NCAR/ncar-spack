@@ -61,6 +61,9 @@ if [[ -d Core/intel-classic ]]; then
     done
 fi
 
+tsecho "Locate the core compiler for ncarenv"
+cc_root=$(spack location -i $core_comp)
+
 # Make sure the meta-modules exist
 
 # *This* ncarenv deployment
@@ -77,6 +80,7 @@ for mod_type in ncarenv ncarenv-basic; do
     sed -i "s|%DEFMODS%|$NCAR_SPACK_DEFMODS_NCAR|g" $tm_file
     sed -i "s|%HOST%|$NCAR_SPACK_HOST|g" $tm_file
     sed -i "s|%TMPROOT%|$NCAR_SPACK_TMPROOT|g" $tm_file
+    sed -i "s|%CCROOT%|${cc_root}|g" $tm_file
     mv $tm_file $mm_file
 done
 
@@ -124,23 +128,6 @@ if [[ $SPACK_ENV == $NCAR_SPACK_ENV_PUBLIC ]]; then
         fi
     done
 fi
-
-tsecho "Adding core compiler to the view"
-cc_dir=$(spack location -i $core_comp)
-
-for cc_file in $(find $cc_dir -not -type d -and -not -path "*.spack*"); do
-    rel_path=${cc_file#$cc_dir}
-    view_file=$view_root/$rel_path
-    view_path=$(dirname $view_file)
-
-    if [[ ! -e $view_file ]]; then
-        if [[ ! -d $view_path ]]; then
-            mkdir -p $view_path
-        fi
-
-        ln -s $cc_file $view_file
-    fi
-done
 
 # Make sure RPC is available for WRF
 if [[ ! -e $view_root/include/rpc ]] && [[ -d $view_root/include/tirpc/rpc ]]; then
