@@ -16,7 +16,7 @@
 #           shell script. So we must activate in the script!
 #
 #   Author:         Brian Vanderwende
-#   Last Revised:   14:57, 15 Mar 2023
+#   Last Revised:   09:54, 27 Mar 2023
 #
 
 function remove_lock {
@@ -211,7 +211,7 @@ if [[ -d $NCAR_SPACK_ENV_PUBLIC ]]; then
         if [[ ${force_resume,,} == y* ]]; then
             tsecho "Uncommited changes in Git repo but proceeding anyway (--resume option enabled)"
         else
-            tsecho "Error:  Uncommitted changes in Git repo. Resolve and then retry.\n"
+            tsecho "Error:  Uncommitted changes in Git repo. Resolve and then retry.\n$(git status)\n"
             exit 1
         fi
     fi

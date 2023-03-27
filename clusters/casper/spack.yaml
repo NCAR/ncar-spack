@@ -240,6 +240,8 @@ spack:
               NCAR_BUILD_ENV_MPI: %HOST%-{compiler.name}-{compiler.version}-{name}-{version}
             append_path:
               MODULEPATH: /glade/u/apps/cseg/modules/%VERSION%/{name}/{version}/{compiler.name}/{compiler.version}
+        mpi:
+          template: ncar_math.lua
         gcc:
           environment:
             set:

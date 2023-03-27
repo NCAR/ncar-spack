@@ -115,6 +115,14 @@ setenv("NCAR_ID_COMPILER",          my_ncar_id)
 setenv("NCAR_BUILD_ENV_COMPILER",   my_ncar_env)
 setenv("NCAR_BUILD_ENV",            my_ncar_env)
 EOF
+
+if [[ $mod_name == cce ]]; then
+cat >> $1 << EOF
+
+-- Always try loading cray-libsci, since crayftn will use it (but not link!)
+depends_on("cray-libsci")
+EOF
+fi
 }
 
 function modify_mpi {
@@ -213,6 +221,14 @@ setenv("CRAY_ADD_RPATH", "yes")
 EOF
 }
 
+function modify_libsci {
+cat >> $1 << EOF
+
+-- Set family to indicate math routines
+family("mathpack")
+EOF
+}
+
 function set_dependency {
     pr_line=$(grep -nh -B1 craype $1 | grep 'prereq.*(' | awk -F[:-] '{print $1}')
 
@@ -302,6 +318,8 @@ function copy_mods {
                 if [[ " $mpis " == *" $mod_name "* ]]; then
                     modify_mpi $mod_path/${mod}.lua
                     tsecho "    modified $GCOL$mod$DCOL (${PCOL}compat=$src_version$DCOL) for use as MPI library (${PCOL}comp=$comp$DCOL)"
+                elif [[ $mod_name == cray-libsci ]]; then
+                    modify_libsci $mod_path/${mod}.lua
                 fi
                 
                 set_dependency $mod_path/${mod}.lua
