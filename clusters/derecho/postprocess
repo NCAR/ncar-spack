@@ -14,7 +14,7 @@ compilers="cce gcc nvhpc oneapi intel"
 mpis="cray-mpich"
 cray_network=ofi
 
-ofi_version=1.15.0.0
+ofi_version=$(ls -d --color=never /opt/cray/libfabric/*)
 core="  craype/2.7.19
         cce/15.0.1
         gcc/12.2.0
