@@ -2,7 +2,7 @@
 # we are working on a clean system or not!
 if [[ -f /etc/bash.bashrc.local ]]; then
     . /etc/bash.bashrc.local
-else
+elif type -t module >& /dev/null; then
     . /etc/profile.d/z00_modules.sh
     module --force purge
     module load crayenv

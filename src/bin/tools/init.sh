@@ -31,6 +31,7 @@ fi
 
 if [[ $NCAR_SPACK_CLEAN != true ]]; then
     tsecho "Sanitizing user environment"
+    export TMPDIR=${NCAR_SPACK_TMPROOT}/$USER/temp; mkdir -p $TMPDIR
     NCAR_SPACK_CLEAN=true $NCAR_SPACK_ROOT_DEPLOYMENT/spack/bin/clean_bash $0 "$@"
     exit $?
 elif [[ -z $SPACK_ENV ]]; then
