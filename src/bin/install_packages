@@ -40,6 +40,9 @@ while [[ $# -gt 0 ]]; do
             build_jobs=$2
             shift
             ;;
+        --skip-checks)
+            skip_checks=true
+            ;;
         *)
             pkg_manifest=$1
             ;;
@@ -393,6 +396,22 @@ echo -e "Processing install manifest ...\n"
 declare -A mpis hashes specs
 
 while read pkg; do
+    if [[ ${skip_checks:-false} == false ]]; then
+        if [[ $new_lmod == true ]] && ! module -v 2> /dev/null; then
+            echo -e "\n====="
+            echo "Notice: module command not in environment but Lmod just installed"
+            echo "        to avoid install failures, halting installs at $pkg"
+            failed_checks=true
+        else
+            unset new_lmod
+        fi
+
+        if [[ $failed_checks == true ]]; then
+            echo -e "       (use --skip-checks option to avoid this stoppage)\n"
+            exit
+        fi
+    fi
+
     if [[ $pkg == \#* ]]; then
         if [[ $pkg == \#break ]]; then
             echo -e "\nUser-requested early stop in manifest"
@@ -455,5 +474,3 @@ done < <(awk 'NF' $pkg_manifest)
 if [[ $dry_run != true ]] && [[ $SPACK_ENV == $NCAR_SPACK_ENV_BUILD ]]; then
     . $my_dir/tools/make_localinit.sh build
 fi
-
-unset new_lmod
