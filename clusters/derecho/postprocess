@@ -15,39 +15,21 @@ mpis="cray-mpich"
 cray_network=ofi
 
 ofi_version=$(ls -d --color=never /opt/cray/libfabric/*)
-core="  craype/2.7.19
+core="  craype/2.7.20
         cce/15.0.1
         gcc/12.2.0
-        perftools-base/23.02.0
-        atp/3.14.16(D)
+        perftools-base/23.03.0
+        atp/3.14.18
         cray-ccdb/4.12.13
         cray-dyninst/12.1.1
         cray-stat/4.11.13
-        gdb4hpc/4.14.7(D)
+        gdb4hpc/4.14.7
         cray-mrnet/5.0.4
-        papi/7.0.0.1(D)
-        sanitizers4hpc/1.0.4(D)
-        valgrind4hpc/2.12.11(D)"
+        papi/7.0.0.1
+        sanitizers4hpc/1.0.4
+        valgrind4hpc/2.12.11"
 cdep="  cray-libsci/23.02.1.1
-        cray-mpich/8.1.24"
-
-if [[ $NCAR_SPACK_HOST == gust ]]; then
-    core="  craype/2.7.20
-            cce/15.0.1
-            gcc/12.2.0
-            perftools-base/23.03.0
-            atp/3.14.18
-            cray-ccdb/4.12.13
-            cray-dyninst/12.1.1
-            cray-stat/4.11.13
-            gdb4hpc/4.14.7
-            cray-mrnet/5.0.4
-            papi/7.0.0.1
-            sanitizers4hpc/1.0.4
-            valgrind4hpc/2.12.11"
-    cdep="  cray-libsci/23.02.1.1
-            cray-mpich/8.1.25"
-fi
+        cray-mpich/8.1.25"
 
 if [[ $SPACK_ENV == $NCAR_SPACK_ENV_PUBLIC ]]; then
     mod_root=$NCAR_SPACK_ROOT_MODULES
@@ -265,6 +247,7 @@ function copy_mods {
         
         if [[ $1 == cdep ]]; then
             for comp in $comp_list; do
+                unset src_file src_version
                 comp_name=${comp%/*}
                 comp_version=${comp#*/}
 
@@ -323,8 +306,6 @@ function copy_mods {
                 fi
                 
                 set_dependency $mod_path/${mod}.lua
-
-                unset src_file src_version
             done
         elif [[ -f $cray_core/${mod}.lua ]]; then
             mod_path=$mod_deployment/Core
