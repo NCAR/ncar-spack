@@ -5,8 +5,7 @@ if [[ -f /etc/bash.bashrc.local ]]; then
 elif [[ -f /etc/profile.d/z00_modules.sh ]]; then
     . /etc/profile.d/z00_modules.sh 2> /dev/null
 
-    if module -v 2> /dev/null; then
-        module --force purge
+    if module --force purge >& /dev/null; then
         module load crayenv
     fi
 fi

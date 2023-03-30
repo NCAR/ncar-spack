@@ -9,7 +9,7 @@ export my_dir="$( cd "$(dirname "$0")" ; pwd )"
 . $my_dir/tools/init.sh
 
 # CONFIGURABLES
-core_comp=gcc@10.4.0
+core_gcc=gcc@7.5.0
 compilers="gcc nvhpc oneapi intel"
 mpis="openmpi"
 
@@ -61,8 +61,12 @@ if [[ -d Core/intel-classic ]]; then
     done
 fi
 
-tsecho "Locate the core compiler for ncarenv"
-cc_root=$(spack location -i $core_comp)
+sys_gcc=gcc@$(gcc -dumpversion)
+
+if [[ $core_gcc != $sys_gcc ]]; then
+    tsecho "Locate the core compiler for ncarenv"
+    cc_root=$(spack location -i $core_gcc)
+fi
 
 # Make sure the meta-modules exist
 

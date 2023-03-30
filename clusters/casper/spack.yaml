@@ -30,7 +30,7 @@ spack:
       bind: false
   packages:
     all:
-      compiler:: [gcc@10.4.0, gcc, nvhpc, oneapi, intel]
+      compiler:: [gcc@7.5.0, gcc, nvhpc, oneapi, intel]
       providers:
         mpi:: [openmpi, impi, mvapich2]
         szip:: [libszip]
@@ -54,7 +54,6 @@ spack:
         prefix: /glade/u/apps/opt/conda
       buildable: false
     gcc:
-      compiler: [gcc@10.4.0]
       variants: [+piclibs, 'languages=c,c++,fortran,go']
     cuda:
       require: +allow-unsupported-compilers
@@ -69,7 +68,6 @@ spack:
       require: 'fabrics=cma,knem,ucx schedulers=tm +gpfs +lustre'
       variants: [+cuda]
     ucx:
-      require: '%gcc@10.4.0'
       variants: [+cm, +cma, +cuda, +dc, +dm, +gdrcopy, +ib_hw_tm, +knem, +mlx5_dv,
         +rc, +rdmacm, +thread_multiple, +ud, +verbs, +vfs, +xpmem]
     zstd:
@@ -414,9 +412,8 @@ spack:
           intel-oneapi-mpi: impi/{version}
           intel-oneapi-mkl: mkl/{version}
           miniconda3: conda/latest
-          esmf+mpi: esmf-mpi/{version}
         core_compilers:
-        - gcc@10.4.0
+        - gcc@7.5.0
         core_specs:
         - cuda
         - r

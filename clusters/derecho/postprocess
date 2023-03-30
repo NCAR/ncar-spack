@@ -9,12 +9,12 @@ export my_dir="$( cd "$(dirname "$0")" ; pwd )"
 . $my_dir/tools/init.sh
 
 # CONFIGURABLES
-core_comp=gcc@10.4.0
+core_gcc=gcc@7.5.0
 compilers="cce gcc nvhpc oneapi intel"
 mpis="cray-mpich"
 cray_network=ofi
 
-ofi_version=$(ls -d --color=never /opt/cray/libfabric/*)
+ofi_version=$(basename $(ls -d --color=never /opt/cray/libfabric/*))
 core="  craype/2.7.20
         cce/15.0.1
         gcc/12.2.0
@@ -407,8 +407,12 @@ if [[ -d Core/intel-classic ]]; then
     done
 fi
 
-tsecho "Locate the core compiler for ncarenv"
-cc_root=$(spack location -i $core_comp)
+sys_gcc=gcc@$(gcc -dumpversion)
+
+if [[ $core_gcc != $sys_gcc ]]; then
+    tsecho "Locate the core compiler for ncarenv"
+    cc_root=$(spack location -i $core_gcc)
+fi
 
 # Make sure the meta-modules exist
 cray_mpath=/opt/cray/pe/lmod/modulefiles/core:/opt/cray/modulefiles:/opt/cray/pe/lmod/modulefiles/craype-targets/default
@@ -435,13 +439,21 @@ done
 mkdir -p $mod_root/environment/crayenv
 mm_src=$NCAR_SPACK_ENV_BUILD/templates/modules/crayenv.lua
 
-for cpe_version in ${!NCAR_SPACK_DEFMODS_CPE[@]}; do
-    mm_file=$mod_root/environment/crayenv/$cpe_version.lua
+cpe_defmods="cray-pals craype cray-dsmml cray-libsci PrgEnv-cray cce cray-mpich cray-pmi"
 
-    sed "s|%MODPATH%|${cray_mpath}|g" $mm_src > $tm_file
-    sed -i "s|%VERSION%|${NCAR_SPACK_HOST_VERSION}|g" $tm_file
+for cpe_version in $(find /opt/cray/pe/cpe -mindepth 1 -maxdepth 1 -type d -exec basename {} \;); do
+    # Create list of default modules
+    my_defmods=libfabric/${ofi_version}:craype-x86-milan:craype-network-ofi
+
+    for mod_name in $cpe_defmods; do
+        my_defmods=${mod_name}/$(get_package_version $cpe_version $mod_name):$my_defmods
+    done
+
+    mm_file=$mod_root/environment/crayenv/$cpe_version.lua
+    sed "s|%MODPATH%|$cray_mpath|g" $mm_src > $tm_file
+    sed -i "s|%VERSION%|$NCAR_SPACK_HOST_VERSION|g" $tm_file
     sed -i "s|%DATE%|$(date)|g" $tm_file
-    sed -i "s|%DEFMODS%|crayenv/${cpe_version}:${NCAR_SPACK_DEFMODS_CPE[$cpe_version]}:craype-x86-milan:craype-network-ofi|g" $tm_file
+    sed -i "s|%DEFMODS%|crayenv/${cpe_version}:$my_defmods|g" $tm_file
     sed -i "s|%TMPROOT%|$NCAR_SPACK_TMPROOT|g" $tm_file
     mv $tm_file $mm_file
 done

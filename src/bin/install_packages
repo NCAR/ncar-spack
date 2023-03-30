@@ -102,6 +102,8 @@ function prepare_spec {
                 fi
             elif [[ $opt_type == cache ]]; then
                 use_cache=${opt_body/never/no}
+            elif [[ $opt_type == trust ]]; then
+                trust_src=${opt_body/always/yes}
             fi
         fi
     done
@@ -235,7 +237,7 @@ function check_spec {
         unset cache_label
     fi
 
-    unset use_cache 
+    unset use_cache trust_src
 }
 
 function install_spec {
@@ -245,6 +247,10 @@ function install_spec {
         spec_build_cmd="$build_cmd --cache-only"
     else
         spec_build_cmd="$build_cmd"
+    fi
+
+    if [[ ${trust_src:-${install_trust:-no}} == yes ]]; then
+        spec_build_cmd="$spec_build_cmd --no-checksum"
     fi
 
     # Install the package and view pertinent log information

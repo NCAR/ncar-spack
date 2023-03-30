@@ -9,9 +9,7 @@ fi
 
 # If modules are present (Cray), make sure none are loaded
 # (Spack will do this for properly configured compilers/externals)
-if [[ -n $(type -t module) ]]; then
-    module purge &> /dev/null
-fi
+module purge &> /dev/null || true
 
 # If left set, will contaminate Spack child shells
 unset BASH_ENV
