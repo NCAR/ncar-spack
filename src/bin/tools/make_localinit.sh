@@ -66,6 +66,9 @@ if [ -z "\$__Init_Default_Modules" -o -z "\$LD_LIBRARY_PATH" ]; then
   module -q restore 
 fi
 
+# Hide specified modules
+export LMOD_MODULERCFILE=$util_path/hidden-modules
+
 # Set PBS workdir if appropriate
 if [ -n "\$PBS_O_WORKDIR" ] && [ -z "\$NCAR_PBS_JOBINIT" ]; then
     if [ -d "\$PBS_O_WORKDIR" ]; then
@@ -134,6 +137,9 @@ if ( ! \$?__Init_Default_Modules || ! \$?LD_LIBRARY_PATH ) then
   setenv __Init_Default_Modules 1
   module -q restore
 endif
+
+# Hide specified modules
+setenv LMOD_MODULERCFILE $util_path/hidden-modules
 
 # Set PBS workdir if appropriate
 if ( \$?PBS_O_WORKDIR  && ! \$?NCAR_PBS_JOBINIT ) then

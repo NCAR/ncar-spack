@@ -33,6 +33,18 @@ while [[ $# -gt 0 ]]; do
     shift
 done
 
+function hide_module {
+    hl_file=$SPACK_ENV/util/hidden-modules
+
+    if [[ -f $hl_file ]]; then
+        if grep -q $1 $hl_file; then
+            return
+        fi
+    fi
+
+    echo "hide-modulefile $1" >> $hl_file
+}
+
 # First, let's make sure module tree exists
 if [[ ! -d $mod_deployment ]] || [[ -n $spack_flags ]]; then
     spack module lmod refresh -y $spack_flags
@@ -86,6 +98,10 @@ for mod_type in ncarenv ncarenv-basic; do
     sed -i "s|%TMPROOT%|$NCAR_SPACK_TMPROOT|g" $tm_file
     sed -i "s|%CCROOT%|${cc_root}|g" $tm_file
     mv $tm_file $mm_file
+
+    if [[ $mod_type != ncarenv ]]; then
+        hide_module $mm_file
+    fi
 done
 
 tsecho "Adding external utilities to the view"
