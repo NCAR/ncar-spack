@@ -16,7 +16,7 @@
 #           shell script. So we must activate in the script!
 #
 #   Author:         Brian Vanderwende
-#   Last Revised:   08:25, 30 Mar 2023
+#   Last Revised:   09:57, 30 Mar 2023
 #
 
 function remove_lock {
@@ -191,12 +191,19 @@ tsecho "Converting build spack.yaml for use in public environment"
 cd $SPACK_ENV; mkdir -p .prototype; spack env deactivate
 cp spack.yaml .prototype
 
-sed -i -r "/${NCAR_SPACK_ENV_BUILD//\//\\/}/ s|^([^/]*).{$pad_length}|\1$SPACK_ROOT/opt/spack/|" .prototype/spack.yaml
+if [[ -n $pad_length ]]; then
+    sed -i -r "/${NCAR_SPACK_ENV_BUILD//\//\\/}/ s|^([^/]*).{$pad_length}|\1$SPACK_ROOT/opt/spack/|" .prototype/spack.yaml
+fi
+
 sed -i "s|\([ ]*lmod: \)/.*|\1$NCAR_SPACK_ROOT_MODULES/$NCAR_SPACK_HOST_VERSION|" .prototype/spack.yaml
 sed -i "/[ ]*view:.*/,/[ ]*root:.*/{s|\([ ]*root: \)/.*|\1$NCAR_SPACK_ROOT_VIEW|}" .prototype/spack.yaml
 
 spack env activate .prototype
-spack config remove 'config:install_tree:padded_length' 
+
+if [[ -n $pad_length ]]; then
+    spack config remove 'config:install_tree:padded_length'
+fi
+
 spack config remove 'config:install_tree:root'
 spack env deactivate
 
