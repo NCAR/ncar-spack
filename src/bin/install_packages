@@ -206,10 +206,14 @@ function check_spec {
         fi
        
         # Finalize cache status
-        use_cache=${use_cache:-$install_cache}
+        if [[ $NCAR_SPACK_PAD_LENGTH != 0 ]]; then
+            use_cache=${use_cache:-$install_cache}
 
-        if [[ ${use_cache:-${prefer_cache:-no}} == yes ]]; then
-            cache_label=" (cached)"
+            if [[ ${use_cache:-${prefer_cache:-no}} == yes ]]; then
+                cache_label=" (cached)"
+            fi
+        else
+            use_cache=no
         fi
 
         if [[ $skip_spec == true ]]; then

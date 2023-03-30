@@ -4,7 +4,7 @@
 #   a specified cluster definition. 
 #
 #   Author:         Brian Vanderwende
-#   Last Revised:   13:16, 17 Mar 2023
+#   Last Revised:   08:27, 30 Mar 2023
 #
 
 set -e
@@ -203,7 +203,9 @@ if [[ ${NCAR_SPACK_DETECT_COMPILERS:-false} == true ]]; then
 fi
 
 # Create mirrors and prepare env to generate build_cache binaries
-spack config add "config:install_tree:padded_length:${NCAR_SPACK_PAD_LENGTH:-128}"
+if [[ $NCAR_SPACK_PAD_LENGTH != 0 ]]; then
+    spack config add "config:install_tree:padded_length:${NCAR_SPACK_PAD_LENGTH:-128}"
+fi
 
 function trust_keys {
     for gpg_key in ${!mirror}/build_cache/_pgp/*.pub; do
@@ -263,8 +265,12 @@ if [[ ${skip_pkgs:-no} != yes ]]; then
     bin/install_packages
 
     # Run script to populate the binary build_cache
-    echo -e "Populating build cache with package binaries ...\n"
-    bin/populate_build_cache
+    if [[ $NCAR_SPACK_PAD_LENGTH != 0 ]]; then
+        echo -e "Populating build cache with package binaries ...\n"
+        bin/populate_build_cache
+    else
+        echo "Skipping build cache due to pad length = 0 ..."
+    fi
 
     # Create modules in build environment
     if [[ -n $NCAR_SPACK_ROOT_MODULES ]]; then

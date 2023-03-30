@@ -16,7 +16,7 @@
 #           shell script. So we must activate in the script!
 #
 #   Author:         Brian Vanderwende
-#   Last Revised:   09:54, 27 Mar 2023
+#   Last Revised:   08:25, 30 Mar 2023
 #
 
 function remove_lock {
@@ -174,8 +174,12 @@ exit 1
 fi
 
 # Make sure build cache is up to date
-tsecho "Updating the spack build cache with latest binaries"
-$SPACK_ENV/bin/populate_build_cache
+if [[ $NCAR_SPACK_PAD_LENGTH != 0 ]]; then
+    tsecho "Updating the spack build cache with latest binaries"
+    $SPACK_ENV/bin/populate_build_cache
+else
+    tsecho "Skipping build cache as caching is off"
+fi
 
 #
 ## ---- INSPECT THE PUBLIC ENVIRONMENT ----
@@ -295,7 +299,7 @@ if [[ -n $new_pkgs ]]; then
     tsecho "Creating manifest and installing cached packages"
     pkg_manifest=$log_dir/manifest.$start_time
     create_manifest $pkg_manifest
-    $my_dir/install_packages --prefer-cache $pkg_manifest
+    $my_dir/install_packages --skip-checks --prefer-cache $pkg_manifest
 
     # Check that installs completed successfully
     if [[ ${PIPESTATUS[0]} == 1 ]]; then
