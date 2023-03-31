@@ -69,14 +69,18 @@ function get_cpe_version {
 
 function get_package_version {
     def_file=/opt/cray/pe/cpe/${1}/set_default_release_${1}.sh
-    my_version=$(sed -n "s/.*${2}_\([0-9.]*\)$/\1/p" $def_file)
 
-    if [[ -n $my_version ]]; then
-        echo $my_version
-    else
-        tsecho "Error: package $2 not found in CPE ${1}"
-        exit 1
-    fi
+    for my_name in $2 ${2#cray-}; do
+        my_version=$(sed -n "s/.*${my_name}_\([0-9.]*\)$/\1/p" $def_file)
+
+        if [[ -n $my_version ]]; then
+            echo $my_version
+            return
+        fi
+    done
+
+    tsecho "Error: package $2 not found in CPE ${1}"
+    exit 1
 }
 
 function modify_comp {
@@ -467,7 +471,7 @@ for cpe_version in $(find /opt/cray/pe/cpe -mindepth 1 -maxdepth 1 -type d -exec
 
     mm_file=$mod_root/environment/crayenv/$cpe_version.lua
     sed "s|%MODPATH%|$cray_mpath|g" $mm_src > $tm_file
-    sed -i "s|%VERSION%|$NCAR_SPACK_HOST_VERSION|g" $tm_file
+    sed -i "s|%VERSION%|$cpe_version|g" $tm_file
     sed -i "s|%DATE%|$(date)|g" $tm_file
     sed -i "s|%DEFMODS%|crayenv/${cpe_version}:$my_defmods|g" $tm_file
     sed -i "s|%TMPROOT%|$NCAR_SPACK_TMPROOT|g" $tm_file

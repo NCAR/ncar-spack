@@ -123,13 +123,6 @@ setenv("NCAR_LDFLAGS_0_COMMON64", pathJoin(viewpath, "lib64"))
 prepend_path("PKG_CONFIG_PATH", pathJoin(viewpath, "lib/pkgconfig"))
 prepend_path("PKG_CONFIG_PATH", pathJoin(viewpath, "lib64/pkgconfig"))
 
--- Add core compiler to the environment
-local ccpath = "%CCROOT%"
-append_path("PATH",             pathJoin(ccpath, "bin"))
-append_path("MANPATH",          pathJoin(ccpath, "share/man"))
-append_path("INFOPATH",         pathJoin(ccpath, "share/info"))
-append_path("LD_LIBRARY_PATH",  pathJoin(ccpath, "lib64"))
-
 -- Make sure system versions come after Spack versions
 append_path("PATH",             syspath)
 append_path("MANPATH",          sysman)
