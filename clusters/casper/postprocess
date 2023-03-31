@@ -73,7 +73,7 @@ if [[ -d Core/intel-classic ]]; then
     done
 fi
 
-sys_gcc=gcc@$(gcc -dumpversion)
+sys_gcc=gcc@$(gcc -dumpfullversion)
 
 if [[ $core_gcc != $sys_gcc ]]; then
     tsecho "Locate the core compiler for ncarenv"

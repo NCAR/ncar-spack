@@ -16,7 +16,7 @@
 #           shell script. So we must activate in the script!
 #
 #   Author:         Brian Vanderwende
-#   Last Revised:   09:57, 30 Mar 2023
+#   Last Revised:   18:00, 30 Mar 2023
 #
 
 function remove_lock {
@@ -333,6 +333,8 @@ mkdir -p $SPACK_ENV/config
 for cfg_file in config packages compilers modules mirrors repos; do
     sed -n "/^  ${cfg_file}:/,/^  [a-z]*:/p" spack.yaml | sed '$d; s/^  //' > $SPACK_ENV/config/${cfg_file}.yaml
 done
+
+sed -i '/[ ]*roots:[ ]*/,+1d' $SPACK_ENV/config/modules.yaml
 
 # Create modules in build environment
 if [[ -n $NCAR_SPACK_ROOT_MODULES ]]; then

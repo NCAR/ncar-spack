@@ -457,10 +457,6 @@ spack:
           template: conflict-serial.lua
         fftw+mpi:
           template: conflict-mpi.lua
-        esmf~mpi:
-          template: conflict-serial.lua
-        esmf+mpi:
-          template: conflict-mpi.lua
         projections:
           all: '{name}/{version}'
           fftw+mpi: fftw-mpi/{version}
