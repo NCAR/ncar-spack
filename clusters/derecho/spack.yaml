@@ -256,8 +256,6 @@ spack:
           - cray-mpich
           - cray-libsci
           - cray-fftw
-        include:
-          - git
         all:
           environment:
             set:
@@ -473,7 +471,6 @@ spack:
         - cuda
         - r
         - cmake
-        - git
         - nco
         - cdo
         - wgrib2
