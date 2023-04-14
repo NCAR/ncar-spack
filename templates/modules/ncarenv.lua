@@ -44,13 +44,23 @@ setenv("NCAR_GLOBUS_GDRIVE",    "397f7166-9af5-402f-abfc-c3b184d609ba")
 -- Enable custom modules from downstreams
 local is_set    = os.getenv("NCAR_USER_MODULEROOT")
 local was_set   = os.getenv("__NCARENV_USER_MODULEROOT")
+local old_value = os.getenv("__NCAR_USER_MODULEROOT")
 
 if was_set or not is_set then
     user_root = pathJoin("/glade/work", user, "spack-downstreams/modules/%VERSION%")
-    setenv("NCAR_USER_MODULEROOT", user_root)
     setenv("__NCARENV_USER_MODULEROOT", 1)
+    
+    -- Only unset if user has not changed value in the interim
+    if (mode() == "load") or (is_set == old_value) then
+        setenv("NCAR_USER_MODULEROOT", user_root)
+    end
 else
     user_root = is_set
+end
+
+-- We need this variable to ensure modulepaths are unset correctly at swap
+if (mode() == "load") then
+    setenv("__NCAR_USER_MODULEROOT", user_root)
 end
 
 -- Loading this module unlocks the NCAR Spack module tree

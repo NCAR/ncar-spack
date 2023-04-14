@@ -87,7 +87,7 @@ function modify_comp {
 sed -i '/--.*Lmod hierarchy/Q; /pend_path[ ("]*MODULEPATH/d' $1
 cat >> $1 << EOF
 -- Add compiler modules to MODULEPATH
-local user_root = os.getenv("NCAR_USER_MODULEROOT")
+local user_root = os.getenv("__NCAR_USER_MODULEROOT")
 append_path("MODULEPATH", "${mod_deployment}/$mod")
 append_path("MODULEPATH", "/glade/u/apps/cseg/modules/$NCAR_SPACK_HOST_VERSION/$mod")
 append_path("MODULEPATH", pathJoin(user_root, "$mod"))
@@ -127,7 +127,7 @@ fi
 sed -i '/--.*Lmod hierarchy/Q; /pend_path[ ("]*MODULEPATH/d' $1
 cat >> $1 << EOF
 -- Add MPI modules to MODULEPATH
-local user_root = os.getenv("NCAR_USER_MODULEROOT")
+local user_root = os.getenv("__NCAR_USER_MODULEROOT")
 append_path("MODULEPATH", "${mod_deployment}/${mod}/$comp")
 append_path("MODULEPATH", "/glade/u/apps/cseg/modules/$NCAR_SPACK_HOST_VERSION/${mod}/$comp")
 append_path("MODULEPATH", pathJoin(user_root, "${mod}/$comp"))
