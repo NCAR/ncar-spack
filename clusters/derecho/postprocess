@@ -454,7 +454,7 @@ for mod_type in ncarenv ncarenv-basic; do
     sed -i "s|%CCROOT%|${cc_root}|g" $tm_file
     mv $tm_file $mm_file
 
-    if [[ $mod_type != ncarenv ]]; then
+    if [[ $mod_type != ncarenv ]] && [[ $NCAR_SPACK_HOST == derecho ]]; then
         hide_module $mm_file
     fi
 done
@@ -481,7 +481,9 @@ for cpe_version in $(find /opt/cray/pe/cpe -mindepth 1 -maxdepth 1 -type d -exec
     sed -i "s|%TMPROOT%|$NCAR_SPACK_TMPROOT|g" $tm_file
     mv $tm_file $mm_file
 
-    hide_module $mm_file
+    if [[ $NCAR_SPACK_HOST == derecho ]]; then
+        hide_module $mm_file
+    fi
 done
 
 tsecho "Adding external utilities to the view"
