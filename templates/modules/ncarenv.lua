@@ -17,7 +17,7 @@ Created on:     %DATE%
 add_property("lmod","sticky")
 
 -- Detect environment settings
-local user      = capture("whoami")
+local user      = capture("whoami"):gsub("\n$","")
 local othreads  = os.getenv("OMP_NUM_THREADS")
 
 local syspath   = os.getenv("NCAR_DEFAULT_PATH")
@@ -41,12 +41,26 @@ setenv("NCAR_GLOBUS_STRATUS",   "b9cf5e6c-9245-11eb-b7a4-f57b2d55370d")
 setenv("NCAR_GLOBUS_DSS",       "dd1ee92a-6d04-11e5-ba46-22000b92c6ec")
 setenv("NCAR_GLOBUS_GDRIVE",    "397f7166-9af5-402f-abfc-c3b184d609ba")
 
+-- Enable custom modules from downstreams
+local is_set    = os.getenv("NCAR_USER_MODULEROOT")
+local was_set   = os.getenv("__NCARENV_USER_MODULEROOT")
+
+if was_set or not is_set then
+    user_root = pathJoin("/glade/work", user, "spack-downstreams/modules/%VERSION%")
+    setenv("NCAR_USER_MODULEROOT", user_root)
+    setenv("__NCARENV_USER_MODULEROOT", 1)
+else
+    user_root = is_set
+end
+
 -- Loading this module unlocks the NCAR Spack module tree
 append_path("MODULEPATH", "%MODPATH%")
+append_path("MODULEPATH", pathJoin(user_root, "/Core"))
 
 -- Add Lmod settings
 setenv("LMOD_PACKAGE_PATH", "%UTILPATH%")
-setenv("LMOD_AVAIL_STYLE", "grouped:system")
+setenv("LMOD_CONFIG_DIR",   "%UTILPATH%")
+setenv("LMOD_AVAIL_STYLE",  "grouped:system")
 pushenv("LMOD_SYSTEM_DEFAULT_MODULES", "%DEFMODS%")
 
 -- Ensure modules load in subshells

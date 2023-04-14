@@ -87,8 +87,10 @@ function modify_comp {
 sed -i '/--.*Lmod hierarchy/Q; /pend_path[ ("]*MODULEPATH/d' $1
 cat >> $1 << EOF
 -- Add compiler modules to MODULEPATH
+local user_root = os.getenv("NCAR_USER_MODULEROOT")
 append_path("MODULEPATH", "${mod_deployment}/$mod")
 append_path("MODULEPATH", "/glade/u/apps/cseg/modules/$NCAR_SPACK_HOST_VERSION/$mod")
+append_path("MODULEPATH", pathJoin(user_root, "$mod"))
 
 -- Set the PE, since this is the only setting from the PrgEnv module that matters
 setenv("PE_ENV", "${comp_pe[$mod_name]}")
@@ -125,8 +127,10 @@ fi
 sed -i '/--.*Lmod hierarchy/Q; /pend_path[ ("]*MODULEPATH/d' $1
 cat >> $1 << EOF
 -- Add MPI modules to MODULEPATH
+local user_root = os.getenv("NCAR_USER_MODULEROOT")
 append_path("MODULEPATH", "${mod_deployment}/${mod}/$comp")
 append_path("MODULEPATH", "/glade/u/apps/cseg/modules/$NCAR_SPACK_HOST_VERSION/${mod}/$comp")
+append_path("MODULEPATH", pathJoin(user_root, "${mod}/$comp"))
 
 -- Use openfabrics
 setenv("CRAYPE_NETWORK_TARGET", "$cray_network")
@@ -541,62 +545,24 @@ local hook = require("Hook")
 local mapT =
 {
    grouped = {
-      ['/environment$'] = "NCAR and Cray Environments",
+      ['/environment$'] = "Module Stack Environments",
       ['/Core$'] = "Compilers and Core Software",
 EOF
 
-cd $mod_deployment
-for mod_cat in $(find . -mindepth 2 -maxdepth 2 ! -path "*/Core/*" -type d); do
-    if ls $mod_cat/*/*/* >& /dev/null; then
-        mname=$(cut -d/ -f2 <<< $mod_cat)
-        mvers=$(cut -d/ -f3 <<< $mod_cat)
+comp_cat_list="aocc arm cce clang gcc intel nag oneapi pgi"
+mpi_cat_list="cray-mpich hpcx-mpi intel-mpi intel-oneapi-mpi mpi-serial mpich mvapich2 mvapich2-gdr openmpi"
 
-        for mod_sub in $(find $mod_cat -mindepth 2 -maxdepth 2 -type d); do
-            cname=$(cut -d/ -f4 <<< $mod_sub)
-            cvers=$(cut -d/ -f5 <<< $mod_sub)
+for comp_cat in $comp_cat_list; do
+    for mpi_cat in $mpi_cat_list; do
+        echo "      ['modules/[^/]+/${mpi_cat//-/%-}/[^/]+/$comp_cat/[^/]*$'] = 'MPI-dependent Software - [$comp_cat + $mpi_cat]'," >> $tm_file
+    done
 
-            echo "      ['modules[/%.%d]*/${mname//-/%-}/${mvers//./%.}/$cname/${cvers//./%.}$'] = 'MPI-dependent Software - [$cname/$cvers + $mname/$mvers]'," >> $tm_file
-        done
-    else
-        cname=$(cut -d/ -f2 <<< $mod_cat)
-        cvers=$(cut -d/ -f3 <<< $mod_cat)
-
-        echo "      ['modules[/%.%d]*/$cname/${cvers//./%.}$'] = 'Compiler-dependent Software - [$cname/$cvers]'," >> $tm_file
-    fi
-done
-
-# Add labels for mpi-serial from CSEG tree
-if [[ -d /glade/u/apps/cseg/modules/$NCAR_SPACK_HOST_VERSION ]]; then
-    cd /glade/u/apps/cseg/modules/$NCAR_SPACK_HOST_VERSION
-
-    if [[ -d mpi-serial ]]; then
-        for mod_cat in mpi-serial/*; do
-            mname=mpi-serial
-            mvers=$(cut -d/ -f2 <<< $mod_cat)
-
-            for mod_sub in $(find $mod_cat -mindepth 2 -maxdepth 2 -type d); do
-                cname=$(cut -d/ -f3 <<< $mod_sub)
-                cvers=$(cut -d/ -f4 <<< $mod_sub)
-
-                echo "      ['modules[/%.%d]*/${mname//-/%-}/${mvers//./%.}/$cname/${cvers//./%.}$'] = 'MPI-dependent Software - [$cname/$cvers + $mname/$mvers]'," >> $tm_file
-            done
-        done
-    fi
-fi
-
-# Add labels for CrayPAT
-cd /opt/cray/pe/perftools
-
-for mod_cat in */modulefiles; do
-    mvers=$(cut -d/ -f1 <<< $mod_cat)
-
-    if [[ $mvers != default ]]; then
-        echo "      ['perftools/${mvers//./%.}/modulefiles$'] = 'Cray Performance Analysis Tools - [perftools-base/$mvers]'," >> $tm_file
-        echo "      ['modulefiles/perftools/${mvers//./%.}$'] = 'Cray Performance Analysis Tools - [perftools-base/$mvers]'," >> $tm_file
-    fi
+    echo "      ['modules/[^/]+/$comp_cat/[^/]*$'] = 'Compiler-dependent Software - [$comp_cat]'," >> $tm_file
 done
 
 cat >> $tm_file << EOF
+      ['perftools/[^/]+/modulefiles$'] = 'Cray Performance Analysis Tools - [perftools-base]',
+      ['modulefiles/perftools/[^/]*$'] = 'Cray Performance Analysis Tools - [perftools-base]',
    },
 }
 
@@ -625,3 +591,42 @@ EOF
 sp_file=$SPACK_ENV/util/SitePackage.lua
 create_sp
 mv $tm_file $sp_file
+
+# ===== CREATE LMOD PROPERTY TABLE =====
+
+# Path to Lmod properties file
+rc_file=$SPACK_ENV/util/lmodrc.lua
+
+cat > $tm_file << EOF
+local i18n = require("i18n")
+propT = {
+   source = {
+      validT = { user = 1 },
+      displayT = {
+         user = { short = "(U)", full_color = false, color = "blue", doc = "User-generated downstream module", }
+      },
+   },
+   state = {
+      validT = { experimental = 1, testing = 1, obsolete = 1 },
+      displayT = {
+         experimental  = { short = "(E)", full_color = false,  color = "blue",  doc = i18n("ExplM"), },
+         testing       = { short = "(T)", full_color = false,  color = "green", doc = i18n("TstM"), },
+         obsolete      = { short = "(O)", full_color = false,  color = "red",   doc = i18n("ObsM"), },
+      },
+   },
+   lmod = {
+      validT = { sticky = 1 },
+      displayT = {
+         sticky = { short = "(S)",  color = "red",    doc = i18n("StickyM"), }
+      },
+   },
+   status = {
+      validT = { active = 1, },
+      displayT = {
+         active = { short = "(L)",  color = "yellow", doc = i18n("LoadedM")},
+     },
+   },
+}
+EOF
+
+mv $tm_file $rc_file
