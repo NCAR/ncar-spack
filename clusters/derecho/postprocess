@@ -497,7 +497,7 @@ ncar_utils[qinteractive]=pbstools
 ncar_utils[qcmd]=pbstools
 ncar_utils[qhist]=qhist
 ncar_utils[gladequota]=gladequota
-ncar_utils[get_local_rank]=mpitools
+ncar_utils[set_gpu_rank]=mpitools
 
 skip_clone="gladequota mpitools"
 
