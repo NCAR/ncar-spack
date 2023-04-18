@@ -191,6 +191,11 @@ local my_ncar_env   = "$NCAR_SPACK_HOST-$comp_name-$comp_version-" .. my_ncar_id
 setenv("NCAR_ID_MPI",           my_ncar_id)
 setenv("NCAR_BUILD_ENV_MPI",    my_ncar_env)
 pushenv("NCAR_BUILD_ENV",       my_ncar_env)
+
+-- If GPUs available, depend on CUDA
+if tonumber(os.getenv("NGPUS")) > 0 then
+    depends_on("cuda")
+end
 EOF
 }
 
