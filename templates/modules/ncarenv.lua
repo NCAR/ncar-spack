@@ -41,31 +41,50 @@ setenv("NCAR_GLOBUS_STRATUS",   "b9cf5e6c-9245-11eb-b7a4-f57b2d55370d")
 setenv("NCAR_GLOBUS_DSS",       "dd1ee92a-6d04-11e5-ba46-22000b92c6ec")
 setenv("NCAR_GLOBUS_GDRIVE",    "397f7166-9af5-402f-abfc-c3b184d609ba")
 
+-- Enable modules from developer trees
+local mroot_vars = os.getenv("NCAR_VARS_MODULEROOT")
+
+if mroot_vars then
+    for var in string.gmatch(mroot_vars, "[^:]+") do
+        local mroot = os.getenv(var)
+
+        if mroot then
+            append_path("MODULEPATH", pathJoin(mroot, "%VERSION%", "Core"))
+
+            if (mode() == "load") then
+                setenv("__" .. var, pathJoin(mroot, "%VERSION%"))
+            end
+        end
+    end
+end
+
 -- Enable custom modules from downstreams
-local is_set    = os.getenv("NCAR_USER_MODULEROOT")
-local was_set   = os.getenv("__NCARENV_USER_MODULEROOT")
-local old_value = os.getenv("__NCAR_USER_MODULEROOT")
+local is_set    = os.getenv("NCAR_MODULEROOT_USER")
+local was_set   = os.getenv("__NCARENV_MODULEROOT_USER")
+local old_value = os.getenv("__NCAR_MODULEROOT_USER")
 
 if was_set or not is_set then
-    user_root = pathJoin("/glade/work", user, "spack-downstreams/modules/%VERSION%")
-    setenv("__NCARENV_USER_MODULEROOT", 1)
+    mroot = pathJoin("/glade/work", user, "spack-downstreams/modules/%VERSION%")
+    setenv("__NCARENV_MODULEROOT_USER", 1)
     
     -- Only unset if user has not changed value in the interim
     if (mode() == "load") or (is_set == old_value) then
-        setenv("NCAR_USER_MODULEROOT", user_root)
+        setenv("NCAR_MODULEROOT_USER", mroot)
     end
 else
-    user_root = is_set
+    mroot = is_set
 end
+
+append_path("NCAR_VARS_MODULEROOT", "NCAR_MODULEROOT_USER")
+append_path("MODULEPATH", pathJoin(mroot, "Core"))
 
 -- We need this variable to ensure modulepaths are unset correctly at swap
 if (mode() == "load") then
-    setenv("__NCAR_USER_MODULEROOT", user_root)
+    setenv("__NCAR_MODULEROOT_USER", mroot)
 end
 
 -- Loading this module unlocks the NCAR Spack module tree
 append_path("MODULEPATH", "%MODPATH%")
-append_path("MODULEPATH", pathJoin(user_root, "/Core"))
 
 -- Add Lmod settings
 setenv("LMOD_PACKAGE_PATH", "%UTILPATH%")

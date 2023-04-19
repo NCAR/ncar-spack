@@ -60,7 +60,7 @@ if [[ -d Core/intel-oneapi ]]; then
 
     for icver in $(find Core/intel-oneapi/ -type f); do
         sed '/INTEL_COMPILER_TYPE/ s/ONEAPI/RECOMMENDED/' $icver > ${icver/-oneapi}
-        sed -i 's|\([/"]\)ifx|\1ifort|' ${icver/-oneapi}
+        sed -i 's|\([/"]\)ifx|\1intel64/ifort|' ${icver/-oneapi}
     done
 fi
 
@@ -104,6 +104,14 @@ for mod_type in ncarenv ncarenv-basic; do
     fi
 done
 
+# Create developer addon modules and hide them
+mkdir -p $mod_root/environment/cesmdev
+mm_file=$mod_root/environment/cesmdev/1.0.lua
+sed "s|%DATE%|$(date)|g" $NCAR_SPACK_ENV_BUILD/templates/modules/cesmdev.lua > $tm_file
+mv $tm_file $mm_file
+hide_module $mm_file
+
+# Add utilities to the view if missing
 tsecho "Adding external utilities to the view"
 
 # Add utilities to the view if missing
