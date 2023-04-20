@@ -123,7 +123,7 @@ if was_set or not is_set or not string.match(is_set, "^/glade") then
 end
 
 -- Set file-system variables (but do not clobber common ones)
-setenv("CHEYENNE_SCRATCH",  pathJoin("/glade/scratch", user))
+setenv("CHEYENNE_SCRATCH",  pathJoin("/glade/cheyenne/scratch", user))
 setenv("LARAMIE_SCRATCH",   pathJoin("/picnic/scratch", user))
 setenv("DERECHO_SCRATCH",   pathJoin("/glade/derecho/scratch", user))
 setenv("GUST_SCRATCH",      pathJoin("/glade/gust/scratch", user))
