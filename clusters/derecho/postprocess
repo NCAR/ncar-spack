@@ -444,7 +444,8 @@ if [[ -d Core/intel-classic ]]; then
         ccver=$(sed -n '/INTEL_VERSION/ s|.*"\(.*\)".*|\1|p' $icver)
         onever=$(sed 's|.*/\(.*\)\.lua|\1|' <<< $icver)
 
-        sed -i "0,/MODULEPATH/ s|intel/${ccver}|oneapi/${onever}|" $icver
+        sed -i "/MODULEPATH/ s|intel|oneapi|" $icver
+        sed -i "/MODULEPATH/ s|${ccver}|${onever}|" $icver
     done
 fi
 
