@@ -45,6 +45,10 @@ setenv("NCAR_GLOBUS_GDRIVE",    "397f7166-9af5-402f-abfc-c3b184d609ba")
 local mroot_vars = os.getenv("NCAR_VARS_MODULEROOT")
 
 if mroot_vars then
+    if (mode() == "load") then
+        setenv("__NCAR_VARS_MODULEROOT", mroot_vars)
+    end
+
     for var in string.gmatch(mroot_vars, "[^:]+") do
         local mroot = os.getenv(var)
 
@@ -81,6 +85,7 @@ append_path("MODULEPATH", pathJoin(mroot, "Core"))
 -- We need this variable to ensure modulepaths are unset correctly at swap
 if (mode() == "load") then
     setenv("__NCAR_MODULEROOT_USER", mroot)
+    append_path("__NCAR_VARS_MODULEROOT", "NCAR_MODULEROOT_USER")
 end
 
 -- Loading this module unlocks the NCAR Spack module tree

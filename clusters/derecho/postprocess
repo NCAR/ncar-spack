@@ -87,13 +87,15 @@ function modify_comp {
 sed -i '/--.*Lmod hierarchy/Q; /pend_path[ ("]*MODULEPATH/d' $1
 cat >> $1 << EOF
 -- Find custom moduleroots
-local mroot_vars = os.getenv("NCAR_VARS_MODULEROOT")
+local mroot_vars = os.getenv("__NCAR_VARS_MODULEROOT")
 
-for var in string.gmatch(mroot_vars, "[^:]+") do
-    local mroot = os.getenv("__" .. var)
+if mroot_vars then
+    for var in string.gmatch(mroot_vars, "[^:]+") do
+        local mroot = os.getenv("__" .. var)
 
-    if mroot then
-        append_path("MODULEPATH", pathJoin(mroot, "$mod"))
+        if mroot then
+            append_path("MODULEPATH", pathJoin(mroot, "$mod"))
+        end
     end
 end
 
@@ -135,13 +137,15 @@ fi
 sed -i '/--.*Lmod hierarchy/Q; /pend_path[ ("]*MODULEPATH/d' $1
 cat >> $1 << EOF
 -- Find custom moduleroots
-local mroot_vars = os.getenv("NCAR_VARS_MODULEROOT")
+local mroot_vars = os.getenv("__NCAR_VARS_MODULEROOT")
 
-for var in string.gmatch(mroot_vars, "[^:]+") do
-    local mroot = os.getenv("__" .. var)
+if mroot_vars then
+    for var in string.gmatch(mroot_vars, "[^:]+") do
+        local mroot = os.getenv("__" .. var)
 
-    if mroot then
-        append_path("MODULEPATH", pathJoin(mroot, "$mod", "$comp"))
+        if mroot then
+            append_path("MODULEPATH", pathJoin(mroot, "$mod", "$comp"))
+        end
     end
 end
 

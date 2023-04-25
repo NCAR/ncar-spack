@@ -30,19 +30,21 @@ family("{{ name }}")
 {% endfor %}
 
 -- Find custom moduleroots
-local mroot_vars = os.getenv("NCAR_VARS_MODULEROOT")
+local mroot_vars = os.getenv("__NCAR_VARS_MODULEROOT")
 
-for var in string.gmatch(mroot_vars, "[^:]+") do
-    local mroot = os.getenv("__" .. var)
+if mroot_vars then
+    for var in string.gmatch(mroot_vars, "[^:]+") do
+        local mroot = os.getenv("__" .. var)
 
-    if mroot then
-{% for name in provides %}
-{% if name == "compiler" %}
-        append_path("MODULEPATH", pathJoin(mroot, "{{ provides['compiler'].name }}", "{{ provides['compiler'].version }}"))
-{% elif name == "mpi" %}
-        append_path("MODULEPATH", pathJoin(mroot, "{{ provides['mpi'].name }}", "{{ provides['mpi'].version }}", "{{ spec.compiler.name }}", "{{ spec.compiler.version }}"))
-{% endif %}
-{% endfor %}
+        if mroot then
+    {% for name in provides %}
+    {% if name == "compiler" %}
+            append_path("MODULEPATH", pathJoin(mroot, "{{ provides['compiler'].name }}", "{{ provides['compiler'].version }}"))
+    {% elif name == "mpi" %}
+            append_path("MODULEPATH", pathJoin(mroot, "{{ provides['mpi'].name }}", "{{ provides['mpi'].version }}", "{{ spec.compiler.name }}", "{{ spec.compiler.version }}"))
+    {% endif %}
+    {% endfor %}
+        end
     end
 end
 

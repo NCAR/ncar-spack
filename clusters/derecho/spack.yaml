@@ -277,6 +277,7 @@ spack:
               NCAR_BUILD_ENV_COMPILER: %HOST%-{name}-{version}
               NCAR_BUILD_ENV: %HOST%-{name}-{version}
         intel-oneapi-compilers:
+          template: ncar_intel.lua
           filter:
             exclude_env_vars: [NCAR_ROOT_INTEL_ONEAPI_COMPILERS, NCAR_SPACK_HASH_INTEL_ONEAPI_COMPILERS]
           environment:
@@ -300,6 +301,7 @@ spack:
               I_MPI_F90: ifx
               I_MPI_F77: ifx
         intel-oneapi-compilers-classic:
+          template: ncar_intel.lua
           autoload: none
           filter:
             exclude_env_vars: [NCAR_ROOT_INTEL_ONEAPI_COMPILERS_CLASSIC, CMAKE_PREFIX_PATH,
