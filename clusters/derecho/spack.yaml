@@ -104,6 +104,8 @@ spack:
       variants: [~suid]
     apptainer:
       variants: [~suid]
+    charliecloud:
+      variants: [+squashfuse]
     parallelio:
       variants: [+pnetcdf, ~logging]
     esmf:
@@ -156,7 +158,7 @@ spack:
           prepend_path:
             LD_LIBRARY_PATH: /glade/u/apps/common/22.12/spack/opt/spack/intel-oneapi-compilers/2023.0.0/compiler/latest/linux/compiler/lib/intel64
           append_path:
-            LD_LIBRARY_PATH: /opt/cray/libfabric/1.15.0.0/lib64
+            LD_LIBRARY_PATH: fakepath-libfabric-any/lib64
     - compiler:
         spec: oneapi@2023.0.0
         paths:
@@ -171,7 +173,7 @@ spack:
           prepend_path:
             LD_LIBRARY_PATH: /glade/u/apps/common/22.12/spack/opt/spack/intel-oneapi-compilers/2023.0.0/compiler/latest/linux/compiler/lib/intel64
           append_path:
-            LD_LIBRARY_PATH: /opt/cray/libfabric/1.15.0.0/lib64
+            LD_LIBRARY_PATH: fakepath-libfabric-any/lib64
     - compiler:
         spec: nvhpc@23.1
         paths:
@@ -186,7 +188,7 @@ spack:
           prepend_path:
             LD_LIBRARY_PATH: /glade/u/apps/common/22.12/spack/opt/spack/nvhpc/23.1/Linux_x86_64/23.1/compilers/lib
           append_path:
-            LD_LIBRARY_PATH: /opt/cray/libfabric/1.15.0.0/lib64
+            LD_LIBRARY_PATH: fakepath-libfabric-any/lib64
     - compiler:
         spec: cce@15.0.1
         paths:
@@ -203,7 +205,7 @@ spack:
           set:
             PE_ENV: CRAY
           append_path:
-            LD_LIBRARY_PATH: /opt/cray/libfabric/1.15.0.0/lib64
+            LD_LIBRARY_PATH: fakepath-libfabric-any/lib64
     - compiler:
         spec: gcc@12.2.0
         paths:
@@ -220,7 +222,7 @@ spack:
           set:
             PE_ENV: GNU
           append_path:
-            LD_LIBRARY_PATH: /opt/cray/libfabric/1.15.0.0/lib64
+            LD_LIBRARY_PATH: fakepath-libfabric-any/lib64
   modules:
     default::
       roots:

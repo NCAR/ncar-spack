@@ -95,6 +95,8 @@ spack:
       variants: [~suid]
     apptainer:
       variants: [~suid]
+    charliecloud:
+      variants: [+squashfuse]
     parallelio:
       variants: [+pnetcdf, ~logging]
     esmf:
