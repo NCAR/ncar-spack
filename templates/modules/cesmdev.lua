@@ -16,3 +16,6 @@ add_property("lmod", "sticky")
 -- Enable custom modules from CSEG downstream
 append_path("NCAR_VARS_MODULEROOT", "NCAR_MODULEROOT_CSEG")
 setenv("NCAR_MODULEROOT_CSEG", pathJoin("/glade/u/apps/cseg/modules"))
+
+-- Add Python packages to environment
+prepend_path("PYTHONPATH", "/glade/u/apps/cseg/python/lib64/python3.6/site-packages")
