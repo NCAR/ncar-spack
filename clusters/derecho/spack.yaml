@@ -109,13 +109,11 @@ spack:
     parallelio:
       variants: [+pnetcdf, ~logging]
     esmf:
-      variants: [~mpi, ~xerces, +external-lapack, +parallelio, +pnetcdf]
+      variants: [~mpi, ~xerces, +external-lapack, +parallelio, ~pnetcdf]
     ncl:
       variants: [+gdal, +hdf4]
     intel-oneapi-mpi:
-      variants: [+external-libfabric, +ilp64]
-    intel-oneapi-mkl:
-      variants: [+ilp64]
+      variants: [+external-libfabric]
     gdb:
       variants: [+gold, +ld, +lto, +tui, ~python, ~debuginfod]
     curl:
@@ -145,48 +143,63 @@ spack:
         spec: gcc@7.5.0
         modules: []
     - compiler:
-        spec: intel@2021.8.0
+        spec: intel@2021.9.0
         paths:
-          cc: /glade/u/apps/common/22.12/spack/opt/spack/intel-oneapi-compilers/2023.0.0/compiler/latest/linux/bin/intel64/icc
-          cxx: /glade/u/apps/common/22.12/spack/opt/spack/intel-oneapi-compilers/2023.0.0/compiler/latest/linux/bin/intel64/icpc
-          f77: /glade/u/apps/common/22.12/spack/opt/spack/intel-oneapi-compilers/2023.0.0/compiler/latest/linux/bin/intel64/ifort
-          fc: /glade/u/apps/common/22.12/spack/opt/spack/intel-oneapi-compilers/2023.0.0/compiler/latest/linux/bin/intel64/ifort
+          cc: fakepath-intel-oneapi-compilers-2023.1.0/compiler/latest/linux/bin/intel64/icc
+          cxx: fakepath-intel-oneapi-compilers-2023.1.0/compiler/latest/linux/bin/intel64/icpc
+          f77: fakepath-intel-oneapi-compilers-2023.1.0/compiler/latest/linux/bin/intel64/ifort
+          fc: fakepath-intel-oneapi-compilers-2023.1.0/compiler/latest/linux/bin/intel64/ifort
         operating_system: sles15
         target: x86_64
         modules: []
         environment:
           prepend_path:
-            LD_LIBRARY_PATH: /glade/u/apps/common/22.12/spack/opt/spack/intel-oneapi-compilers/2023.0.0/compiler/latest/linux/compiler/lib/intel64
+            LD_LIBRARY_PATH: fakepath-intel-oneapi-compilers-2023.1.0/compiler/latest/linux/compiler/lib/intel64
           append_path:
             LD_LIBRARY_PATH: fakepath-libfabric-any/lib64
     - compiler:
-        spec: oneapi@2023.0.0
+        spec: oneapi@2023.1.0
         paths:
-          cc: /glade/u/apps/common/22.12/spack/opt/spack/intel-oneapi-compilers/2023.0.0/compiler/latest/linux/bin/icx
-          cxx: /glade/u/apps/common/22.12/spack/opt/spack/intel-oneapi-compilers/2023.0.0/compiler/latest/linux/bin/icpx
-          f77: /glade/u/apps/common/22.12/spack/opt/spack/intel-oneapi-compilers/2023.0.0/compiler/latest/linux/bin/ifx
-          fc: /glade/u/apps/common/22.12/spack/opt/spack/intel-oneapi-compilers/2023.0.0/compiler/latest/linux/bin/ifx
+          cc: fakepath-intel-oneapi-compilers-2023.1.0/compiler/latest/linux/bin/icx
+          cxx: fakepath-intel-oneapi-compilers-2023.1.0/compiler/latest/linux/bin/icpx
+          f77: fakepath-intel-oneapi-compilers-2023.1.0/compiler/latest/linux/bin/ifx
+          fc: fakepath-intel-oneapi-compilers-2023.1.0/compiler/latest/linux/bin/ifx
         operating_system: sles15
         target: x86_64
         modules: []
         environment:
           prepend_path:
-            LD_LIBRARY_PATH: /glade/u/apps/common/22.12/spack/opt/spack/intel-oneapi-compilers/2023.0.0/compiler/latest/linux/compiler/lib/intel64
+            LD_LIBRARY_PATH: fakepath-intel-oneapi-compilers-2023.1.0/compiler/latest/linux/compiler/lib/intel64
           append_path:
             LD_LIBRARY_PATH: fakepath-libfabric-any/lib64
     - compiler:
-        spec: nvhpc@23.1
+        spec: nvhpc@21.3
         paths:
-          cc: /glade/u/apps/common/22.12/spack/opt/spack/nvhpc/23.1/Linux_x86_64/23.1/compilers/bin/nvc
-          cxx: /glade/u/apps/common/22.12/spack/opt/spack/nvhpc/23.1/Linux_x86_64/23.1/compilers/bin/nvc++
-          f77: /glade/u/apps/common/22.12/spack/opt/spack/nvhpc/23.1/Linux_x86_64/23.1/compilers/bin/nvfortran
-          fc: /glade/u/apps/common/22.12/spack/opt/spack/nvhpc/23.1/Linux_x86_64/23.1/compilers/bin/nvfortran
+          cc: fakepath-nvhpc-21.3/Linux_x86_64/21.3/compilers/bin/nvc
+          cxx: fakepath-nvhpc-21.3/Linux_x86_64/21.3/compilers/bin/nvc++
+          f77: fakepath-nvhpc-21.3/Linux_x86_64/21.3/compilers/bin/nvfortran
+          fc: fakepath-nvhpc-21.3/Linux_x86_64/21.3/compilers/bin/nvfortran
         operating_system: sles15
         target: x86_64
         modules: []
         environment:
           prepend_path:
-            LD_LIBRARY_PATH: /glade/u/apps/common/22.12/spack/opt/spack/nvhpc/23.1/Linux_x86_64/23.1/compilers/lib
+            LD_LIBRARY_PATH: fakepath-nvhpc-21.3/Linux_x86_64/21.3/compilers/lib
+          append_path:
+            LD_LIBRARY_PATH: fakepath-libfabric-any/lib64
+    - compiler:
+        spec: nvhpc@23.3
+        paths:
+          cc: fakepath-nvhpc-23.3/Linux_x86_64/23.3/compilers/bin/nvc
+          cxx: fakepath-nvhpc-23.3/Linux_x86_64/23.3/compilers/bin/nvc++
+          f77: fakepath-nvhpc-23.3/Linux_x86_64/23.3/compilers/bin/nvfortran
+          fc: fakepath-nvhpc-23.3/Linux_x86_64/23.3/compilers/bin/nvfortran
+        operating_system: sles15
+        target: x86_64
+        modules: []
+        environment:
+          prepend_path:
+            LD_LIBRARY_PATH: fakepath-nvhpc-23.3/Linux_x86_64/23.3/compilers/lib
           append_path:
             LD_LIBRARY_PATH: fakepath-libfabric-any/lib64
     - compiler:
@@ -357,6 +370,10 @@ spack:
               NCAR_BUILD_ENV: %HOST%-{name}-{version}
             prepend_path:
               LD_LIBRARY_PATH: '{prefix}/Linux_x86_64/{version}/compilers/lib'
+        nvhpc@21.3:
+          environment:
+            set:
+              CRAY_CPU_TARGET: x86-rome
         ncarcompilers:
           environment:
             set:

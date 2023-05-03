@@ -17,6 +17,7 @@ class PeakMemusage(AutotoolsPackage):
 
     maintainers = ["benkirk"]
 
+    version("3.0.1", sha256="f689452752ba52df41900334dacf8ae7dca657fc39ca5b341aa65a85a5944b12")
     version("3.0.0", sha256="1c2d86be80cc30d2e3e65e249fe1f0b4092c9b5200d61d7b4edd9681ebb251df")
     version("2.1.0", sha256="6d4ea85a9d77144ba7e140e84466fa1e545fc280049d99ec77f763cb8ce82187")
 

@@ -19,6 +19,7 @@ class Ncarcompilers(MakefilePackage):
     maintainers = ['vanderwb']
 
     version('main',  branch='main')
+    version('1.0.0', sha256='99e08722cbfd7aeeb7dfaec18ae9753f9beeeeddfd37b9dc1b0ea7ed40b249d9')
     version('0.8.0', sha256='f9049ee4d63f52c3c971604b72e41d27a913e87b968b5c7f2cbcb08871affed9')
     version('0.7.2', sha256='f0a1b7a8bd271e2ec41eebdbb2bf2d0ae91f8e197dba06a9c7b67f671f41e819')
     version('0.7.1', sha256='88f23f89841b6e49a44b66d3a6afb3d8d817f51103cc07f3c8c48864a0215405')

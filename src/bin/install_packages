@@ -54,9 +54,9 @@ done
 spec_cmd="spack spec -I -N -t -L"
 
 if [[ -n $build_jobs ]]; then
-    build_cmd="spack install --add -j $build_jobs"
+    build_cmd="spack install -j $build_jobs"
 else
-    build_cmd="spack install --add"
+    build_cmd="spack install"
 fi
 
 function add_spec_to_view {
@@ -254,12 +254,13 @@ function install_spec {
     fi
 
     if [[ ${trust_src:-${install_trust:-no}} == yes ]]; then
-        spec_build_cmd="$spec_build_cmd --no-checksum"
+        spec_build_cmd="$spec_build_cmd --no-checksum --deprecated"
     fi
 
     # Install the package and view pertinent log information
     log_cmd "$build_cmd $spec" >> $log_installs
-    $spec_build_cmd $spec |& tee -a $log_installs | stdbuf -oL sed 's/^/   /'                   \
+    spack add $spec > /dev/null; spack concretize -q > /dev/null
+    $spec_build_cmd |& tee -a $log_installs | stdbuf -oL sed 's/^/   /'                         \
             | (grep -e "Executing phase" -e "Successfully installed" -e "already installed"     \
             -e " Total: " -e " from binary cache" -e " Error: " -e "^See build log"             \
             -e "spack-build-out.txt" || true)

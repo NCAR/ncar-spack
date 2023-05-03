@@ -16,6 +16,7 @@ class Netcdf(BundlePackage):
 
     maintainers = ['vanderwb']
     
+    version('4.9.2')
     version('4.9.1')
     version('4.9.0')
     version('4.8.1')
@@ -39,6 +40,7 @@ class Netcdf(BundlePackage):
     depends_on('netcdf-fortran')
     depends_on('netcdf-cxx4')
 
+    depends_on('netcdf-c@4.9.2', when='@4.9.2')
     depends_on('netcdf-c@4.9.1', when='@4.9.1')
     depends_on('netcdf-c@4.9.0', when='@4.9.0')
     depends_on('netcdf-c@4.8.1', when='@4.8.1')

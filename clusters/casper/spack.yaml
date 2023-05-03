@@ -100,13 +100,11 @@ spack:
     parallelio:
       variants: [+pnetcdf, ~logging]
     esmf:
-      variants: [~mpi, ~xerces, +external-lapack, +parallelio, +pnetcdf]
+      variants: [~mpi, ~xerces, +external-lapack, +parallelio, ~pnetcdf]
     ncl:
       variants: [+gdal, +hdf4]
     intel-oneapi-mpi:
-      variants: [+external-libfabric, +ilp64]
-    intel-oneapi-mkl:
-      variants: [+ilp64]
+      variants: [+external-libfabric]
     gdb:
       variants: [+gold, +ld, +lto, +tui, ~python, ~debuginfod]
     curl:
@@ -306,6 +304,10 @@ spack:
               NCAR_BUILD_ENV: %HOST%-{name}-{version}
             prepend_path:
               LD_LIBRARY_PATH: '{prefix}/Linux_x86_64/{version}/compilers/lib'
+        nvhpc@21.3:
+          environment:
+            set:
+              CRAY_CPU_TARGET: x86-rome
         ncarcompilers:
           environment:
             set:
