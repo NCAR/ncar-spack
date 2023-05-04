@@ -94,6 +94,8 @@ spack:
       variants: [+hl, +szip, +fortran, +cxx, ~mpi]
     netcdf-cxx4:
       variants: [~doxygen]
+    jasper:
+      require: '@:2'
     fftw:
       variants: [~mpi]
     eccodes:
@@ -139,103 +141,8 @@ spack:
           f77: /usr/bin/gfortran
           fc: /usr/bin/gfortran
         operating_system: sles15
-        target: x86_64
         spec: gcc@7.5.0
         modules: []
-    - compiler:
-        spec: intel@2021.9.0
-        paths:
-          cc: fakepath-intel-oneapi-compilers-2023.1.0/compiler/latest/linux/bin/intel64/icc
-          cxx: fakepath-intel-oneapi-compilers-2023.1.0/compiler/latest/linux/bin/intel64/icpc
-          f77: fakepath-intel-oneapi-compilers-2023.1.0/compiler/latest/linux/bin/intel64/ifort
-          fc: fakepath-intel-oneapi-compilers-2023.1.0/compiler/latest/linux/bin/intel64/ifort
-        operating_system: sles15
-        target: x86_64
-        modules: []
-        environment:
-          prepend_path:
-            LD_LIBRARY_PATH: fakepath-intel-oneapi-compilers-2023.1.0/compiler/latest/linux/compiler/lib/intel64
-          append_path:
-            LD_LIBRARY_PATH: fakepath-libfabric-any/lib64
-    - compiler:
-        spec: oneapi@2023.1.0
-        paths:
-          cc: fakepath-intel-oneapi-compilers-2023.1.0/compiler/latest/linux/bin/icx
-          cxx: fakepath-intel-oneapi-compilers-2023.1.0/compiler/latest/linux/bin/icpx
-          f77: fakepath-intel-oneapi-compilers-2023.1.0/compiler/latest/linux/bin/ifx
-          fc: fakepath-intel-oneapi-compilers-2023.1.0/compiler/latest/linux/bin/ifx
-        operating_system: sles15
-        target: x86_64
-        modules: []
-        environment:
-          prepend_path:
-            LD_LIBRARY_PATH: fakepath-intel-oneapi-compilers-2023.1.0/compiler/latest/linux/compiler/lib/intel64
-          append_path:
-            LD_LIBRARY_PATH: fakepath-libfabric-any/lib64
-    - compiler:
-        spec: nvhpc@21.3
-        paths:
-          cc: fakepath-nvhpc-21.3/Linux_x86_64/21.3/compilers/bin/nvc
-          cxx: fakepath-nvhpc-21.3/Linux_x86_64/21.3/compilers/bin/nvc++
-          f77: fakepath-nvhpc-21.3/Linux_x86_64/21.3/compilers/bin/nvfortran
-          fc: fakepath-nvhpc-21.3/Linux_x86_64/21.3/compilers/bin/nvfortran
-        operating_system: sles15
-        target: x86_64
-        modules: []
-        environment:
-          prepend_path:
-            LD_LIBRARY_PATH: fakepath-nvhpc-21.3/Linux_x86_64/21.3/compilers/lib
-          append_path:
-            LD_LIBRARY_PATH: fakepath-libfabric-any/lib64
-    - compiler:
-        spec: nvhpc@23.3
-        paths:
-          cc: fakepath-nvhpc-23.3/Linux_x86_64/23.3/compilers/bin/nvc
-          cxx: fakepath-nvhpc-23.3/Linux_x86_64/23.3/compilers/bin/nvc++
-          f77: fakepath-nvhpc-23.3/Linux_x86_64/23.3/compilers/bin/nvfortran
-          fc: fakepath-nvhpc-23.3/Linux_x86_64/23.3/compilers/bin/nvfortran
-        operating_system: sles15
-        target: x86_64
-        modules: []
-        environment:
-          prepend_path:
-            LD_LIBRARY_PATH: fakepath-nvhpc-23.3/Linux_x86_64/23.3/compilers/lib
-          append_path:
-            LD_LIBRARY_PATH: fakepath-libfabric-any/lib64
-    - compiler:
-        spec: cce@15.0.1
-        paths:
-          cc: cc
-          cxx: CC
-          f77: ftn
-          fc: ftn
-        operating_system: sles15
-        target: any
-        modules:
-        - craype
-        - cce/15.0.1
-        environment:
-          set:
-            PE_ENV: CRAY
-          append_path:
-            LD_LIBRARY_PATH: fakepath-libfabric-any/lib64
-    - compiler:
-        spec: gcc@12.2.0
-        paths:
-          cc: cc
-          cxx: CC
-          f77: ftn
-          fc: ftn
-        operating_system: sles15
-        target: any
-        modules:
-        - craype
-        - gcc/12.2.0
-        environment:
-          set:
-            PE_ENV: GNU
-          append_path:
-            LD_LIBRARY_PATH: fakepath-libfabric-any/lib64
   modules:
     default::
       roots:

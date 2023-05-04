@@ -1,0 +1,35 @@
+if [[ $install_modifier == cray ]]; then
+cray_libfabric_root=${cray_libfabric_root:-$(spack location -i libfabric)}
+
+cat << EOF
+  - compiler:
+      spec: $comp_spec
+      paths:
+        cc: cc
+        cxx: CC
+        f77: ftn
+        fc: ftn
+      operating_system: $os
+      modules:
+      - craype
+      - gcc/$version
+      environment:
+        set:
+          PE_ENV: GNU
+        append_path:
+          LD_LIBRARY_PATH: $cray_libfabric_root/lib64
+EOF
+else
+cat << EOF
+  - compiler:
+      spec: $comp_spec 
+      paths:
+        cc: $root/bin/gcc
+        cxx: $root/bin/g++
+        f77: $root/bin/gfortran
+        fc: $root/bin/gfortran
+      operating_system: $os
+      modules: []
+      environment: {}
+EOF
+fi

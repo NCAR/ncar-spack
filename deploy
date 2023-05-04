@@ -4,13 +4,28 @@
 #   a specified cluster definition. 
 #
 #   Author:         Brian Vanderwende
-#   Last Revised:   08:31, 03 May 2023
+#   Last Revised:   16:46, 04 May 2023
 #
 
 set -e
 export NCAR_SPACK_DEPLOY_TIME=$(date +%y%m%dT%H%M)
 export NCAR_SPACK_DEPLOY_DIR="$( cd "$(dirname "$0")" ; pwd )"
 export NCAR_SPACK_DEPLOY_TYPE=testing
+
+function usage {
+cat << EOF
+Usage: $0 [OPTIONS] CLUSTER
+
+Options
+    -h|--help                   show this help message
+    -c|--import-cache PATH      use cache at specified path (in addition to defaults)
+    -n|--no-pkgs                don't install packages, only set up deployment
+    -p|--production             create a production deployment (must be csgteam)
+    --set-version VERSION       override version set in cluster definition
+
+EOF
+exit ${1:-0}
+}
 
 #
 ## ---- INITIALIZATION ----
@@ -23,6 +38,9 @@ while [[ $# -gt 0 ]]; do
     key="$1"
 
     case $key in
+        -h|--help)
+            usage
+            ;;
         -n|--no-pkgs|--nopkgs)
             skip_pkgs=yes
             ;;
@@ -46,6 +64,10 @@ while [[ $# -gt 0 ]]; do
 
             shift
             ;;
+        --set-version)
+            custom_version=$2
+            shift
+            ;;
         *)
             export NCAR_SYS=$1
             ;;
@@ -55,18 +77,11 @@ while [[ $# -gt 0 ]]; do
 done
 
 if [[ -z $NCAR_SYS ]]; then
->&2 cat << EOF
-Error:  deployment configuration must be specified!
-Usage:  $0 [--no-pkgs] [--production] CONFIG
-
-EOF
-exit 1
+    >&2 echo -e "Error: deployment configuration must be specified!\n"
+    usage 1
 elif [[ ! -f $NCAR_SPACK_DEPLOY_DIR/clusters/$NCAR_SYS/main.cfg ]]; then
->&2 cat << EOF
-Error:  deployment "$NCAR_SYS" not recognized from available options
-
-EOF
-exit 1
+    >&2 echo -e "Error: deployment "$NCAR_SYS" not recognized from available options\n"
+    exit 1
 fi
 
 # Source cluster settings
@@ -164,6 +179,12 @@ NCAR_SPACK_DEPLOY_COMMIT=$(git rev-parse HEAD)
 EOF
 
 envsubst '$USER,$NCAR_SYS' < clusters/$NCAR_SYS/main.cfg >> $NCAR_SPACK_ENV_BUILD/main.cfg
+
+# Override the normal version if set at the command-line
+if [[ -n $custom_version ]]; then
+    sed -i "s/\(NCAR_SPACK_HOST_VERSION=\).*/\1${custom_version}/" $NCAR_SPACK_ENV_BUILD/main.cfg
+fi
+
 cp clusters/$NCAR_SYS/packages.cfg $NCAR_SPACK_ENV_BUILD
 cp -r templates $NCAR_SPACK_ENV_BUILD
 

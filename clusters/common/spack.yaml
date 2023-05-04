@@ -33,4 +33,14 @@ spack:
       variants: [+dev]
     arm-forge:
       require: '+accept-eula'
+  compilers:
+    - compiler:
+        paths:
+          cc: /usr/bin/gcc
+          cxx: /usr/bin/g++
+          f77: /usr/bin/gfortran
+          fc: /usr/bin/gfortran
+        operating_system: sles15
+        spec: gcc@7.5.0
+        modules: []
   view: false

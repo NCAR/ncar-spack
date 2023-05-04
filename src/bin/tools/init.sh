@@ -3,7 +3,7 @@
 function tsecho {
     if [[ $1 == Error:* ]]; then
         >&2 echo -e "$RCOL$1$DCOL"
-    else
+    elif [[ ${log_verbosity:-0} -ge ${2:-0} ]]; then
         echo -e "$(date +%FT%T) - $1 ..."
     fi
 }

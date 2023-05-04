@@ -6,8 +6,10 @@ Usage: $0 [MANIFEST]
 
 Options
     -h                      show this help message
+    -c, --prefer-cache      specify that cached versions of packages should be used
     -d, --dry-run           show what would be installed but do not make any changes
     -j, --buildjobs         number of build jobs to run (otherwise will use env default)
+    -v, --verbose           provide details on actions *not* taken
 
 EOF
 exit
@@ -39,6 +41,9 @@ while [[ $# -gt 0 ]]; do
         -j|--buildjobs)
             build_jobs=$2
             shift
+            ;;
+        -v|--verbose)
+            export log_verbosity=1
             ;;
         --skip-checks)
             skip_checks=true
@@ -74,7 +79,7 @@ cat << EOF | sed -i "$select_start r /dev/stdin" $1
 EOF
 fi
 else
->&2 echo "Error: no view defined but $spec requests view access"
+tsecho "Error: no view defined but $spec requests view access"
 exit 1
 fi
 }
@@ -135,9 +140,36 @@ function prepare_spec {
     done
 
     if [[ $spec == */%* ]]; then
-        >&2 echo -e "\nError: spec still contains reference! ($spec)"
+        tsecho "\nError: spec still contains reference! ($spec)"
         exit 1
     fi
+}
+
+function register_compiler {
+    tsecho "Registering $comp_spec as a compiler in spack.yaml"
+    comp_template=$NCAR_SPACK_ENV_BUILD/templates/compilers/${comp_spec%@*}
+
+    if [[ ! -f $comp_template ]]; then
+        tsecho "Error: no compiler template found for $comp_spec"
+    fi
+
+    if [[ $current_comps == *${comp_spec}* ]]; then
+        tsecho "(replacing existing compiler $comp_spec)"
+        spack compiler remove $comp_spec
+    fi
+
+    if [[ -z $os ]]; then
+        os=$(spack arch -o)
+    fi
+
+    if [[ ${install_build:-true} == true ]]; then
+        read -r root version <<< $(spack find --format "{prefix} {version}" $spec)
+    else
+        version=${comp_spec#*@}
+    fi
+
+    block_end=$(expr $(sed -n '1,/^  compilers:/d;/^  [^- ].*/ {=;q}' spack.yaml) - 1)
+    . $comp_template | sed -i "$block_end r /dev/stdin" spack.yaml
 }
 
 function check_spec {
@@ -145,7 +177,7 @@ function check_spec {
         if [[ -n $comp ]]; then
             mpis[$comp]="${mpis[$comp]} ${spec//[[:blank:]]/}"
         else
-            >&2 echo "Error: cannot install an MPI without setting a compiler!"
+            tsecho "Error: cannot install an MPI without setting a compiler!"
             exit 1
         fi
     elif [[ $install_type == compiler ]]; then
@@ -164,13 +196,18 @@ function check_spec {
             else
                 compilers="$compilers $comp_spec"
             fi
-        else
-            spack config add "modules:default:lmod:exclude:$spec"
         fi
     fi
     
     if [[ $install_build == false ]]; then
-        tsecho "Skipping spec   $PCOL$spec$BCOL$type_msg$DCOL (reason: build=false specified)"
+        tsecho "Skipping spec   $PCOL$spec$BCOL$type_msg$DCOL (reason: build=false specified)" 1
+        
+        # If compiler, register in the YAML file
+        if [[ $install_type == compiler ]] && [[ $install_register != no ]]; then
+            if [[ $current_comps != *${comp_spec}* ]]; then
+                register_compiler
+            fi
+        fi
     else
         skip_spec=false spec_hash=
         set +e
@@ -217,7 +254,7 @@ function check_spec {
         fi
 
         if [[ $skip_spec == true ]]; then
-            tsecho "Skipping spec   $PCOL$spec$BCOL$type_msg$DCOL (reason: already installed)"
+            tsecho "Skipping spec   $PCOL$spec$BCOL$type_msg$DCOL (reason: already installed)" 1
         else
             if [[ -n $install_type ]]; then
                 tsecho "Installing spec $GCOL$spec $BCOL(${install_type})$DCOL$cache_label"
@@ -269,7 +306,7 @@ function install_spec {
         # Remove spec to avoid uninstalled package in spack.yaml
         echo
         spack remove $spec
-        >&2 echo -e "\nError: install of package $spec failed! Aborting installs ...\n"
+        tsecho "\nError: install of package $spec failed! Aborting installs ...\n"
         exit 1
     fi
 
@@ -279,42 +316,19 @@ function install_spec {
         unset hash_ref 
     fi
 
-    # Register the compiler in the YAML file if GCC or vendor module
-    if [[ $install_type == compiler ]]; then
-        if [[ -z $current_comps ]]; then
-            current_comps=$(spack config get compilers | grep spec | cut -d: -f2)
-        fi
-
-        if [[ $current_comps != *${comp_spec}* ]] || [[ $install_register == replace ]]; then
-            tsecho "Registering $comp_spec as a compiler in spack.yaml"
-
-            if [[ $current_comps == *${comp_spec}* ]]; then
-                tsecho "(replacing existing compiler $comp_spec)"
-                spack compiler remove $comp_spec
-            fi
-
-            if [[ $install_external == module ]]; then
-                module_name=$(cut -d' ' -f1 <<< "${spec/@//}")
-                (module purge; module load $module_name; spack compiler find > /dev/null)
-            else
-                spack compiler add $(spack location -i /$spec_hash) > /dev/null
-            fi
-        else
-            stack_root=${stack_root:-$(sed "s|/${spec%%@*}.*||" <<< $(spack location -i /$spec_hash))}
-            comp_block=$(sed -n "/^  compilers:/,/^  [^- ].*/ {/$comp_spec/,/- compiler/=}"    \
-                            $SPACK_ENV/spack.yaml | xargs | awk '{ print $1","$NF }')
-
-            if [[ $comp_block != ',' ]]; then
-                tsecho "(locating $comp_spec in environment stack)"
-                sed -i "$comp_block s|/placeholder|$stack_root|" $SPACK_ENV/spack.yaml
-            else
-                tsecho "$RCOL(couldn't find $comp_spec in defined compilers)$DCOL"
-            fi
+    # Register the compiler in the YAML file
+    if [[ $install_type == compiler ]] && [[ $install_register != no ]]; then
+        if [[ $current_comps != *${comp_spec}* ]]; then
+            register_compiler
         fi
     fi
 
     # Modify spack.yaml based on access settings
     case ${install_access:-module} in
+        core)
+            spec_name=$(spack find --format "{name}" $spec)
+            spack config add "modules:default:lmod:core_specs:$spec_name"
+            ;;
         view)
             spack config add "modules:default:lmod:exclude:$spec"
             add_spec_to_view $SPACK_ENV/spack.yaml
@@ -367,8 +381,9 @@ log_installs=$log_dir/installs.$start_time
 tsecho "Verify current environment concretization"
 spack concretize -q
 
-# Detect version of system GCC
+# Detect available compiler information
 sys_gcc=$(gcc -v |& grep "gcc version" | cut -d' ' -f3)
+current_comps=$(spack config get compilers | grep spec | cut -d: -f2)
 
 # Detect Spack and builtin commits
 tsecho "Detect Spack and repo versions"
@@ -473,9 +488,7 @@ while read pkg; do
                 check_spec
                 ;;
             *)
-                echo -e "\n====="
-                echo "Error: unrecognized install mode: $install_mode"
-                echo -e "       halting installs at $pkg\n"
+                tsecho "Error: unrecognized install mode: $install_mode\n       halting installs at $pkg\n"
                 exit 1
                 ;;
         esac

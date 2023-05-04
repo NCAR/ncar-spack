@@ -1,0 +1,20 @@
+cray_libfabric_root=${cray_libfabric_root:-$(spack location -i libfabric)}
+
+cat << EOF
+  - compiler:
+      spec: $comp_spec
+      paths:
+        cc: cc
+        cxx: CC
+        f77: ftn
+        fc: ftn
+      operating_system: $os
+      modules:
+      - craype
+      - cce/$version
+      environment:
+        set:
+          PE_ENV: CRAY
+        append_path:
+          LD_LIBRARY_PATH: $cray_libfabric_root/lib64
+EOF

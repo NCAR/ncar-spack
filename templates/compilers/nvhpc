@@ -1,0 +1,23 @@
+cat << EOF
+  - compiler:
+      spec: $comp_spec
+      paths:
+        cc: $root/Linux_x86_64/$version/compilers/bin/nvc
+        cxx: $root/Linux_x86_64/$version/compilers/bin/nvc++
+        f77: $root/Linux_x86_64/$version/compilers/bin/nvfortran
+        fc: $root/Linux_x86_64/$version/compilers/bin/nvfortran
+      operating_system: $os
+      modules: []
+      environment:
+        prepend_path:
+          LD_LIBRARY_PATH: $root/Linux_x86_64/$version/compilers/lib
+EOF
+
+if [[ $install_modifier == cray ]]; then
+cray_libfabric_root=${cray_libfabric_root:-$(spack location -i libfabric)}
+
+cat << EOF
+        append_path:
+          LD_LIBRARY_PATH: $cray_libfabric_root/lib64
+EOF
+fi

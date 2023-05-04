@@ -1,0 +1,23 @@
+cat << EOF
+  - compiler:
+      spec: $comp_spec 
+      paths:
+        cc: $root/compiler/latest/linux/bin/icx
+        cxx: $root/compiler/latest/linux/bin/icpx
+        f77: $root/compiler/latest/linux/bin/ifx
+        fc: $root/compiler/latest/linux/bin/ifx
+      operating_system: $os
+      modules: []
+      environment:
+        prepend_path:
+          LD_LIBRARY_PATH: $root/compiler/latest/linux/compiler/lib/intel64
+EOF
+
+if [[ $install_modifier == cray ]]; then
+cray_libfabric_root=${cray_libfabric_root:-$(spack location -i libfabric)}
+
+cat << EOF
+        append_path:
+          LD_LIBRARY_PATH: $cray_libfabric_root/lib64
+EOF
+fi
