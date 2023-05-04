@@ -4,7 +4,7 @@
 #   a specified cluster definition. 
 #
 #   Author:         Brian Vanderwende
-#   Last Revised:   16:46, 04 May 2023
+#   Last Revised:   17:17, 04 May 2023
 #
 
 set -e
@@ -17,10 +17,10 @@ cat << EOF
 Usage: $0 [OPTIONS] CLUSTER
 
 Options
-    -h|--help                   show this help message
-    -c|--import-cache PATH      use cache at specified path (in addition to defaults)
-    -n|--no-pkgs                don't install packages, only set up deployment
-    -p|--production             create a production deployment (must be csgteam)
+    -h, --help                  show this help message
+    -n, --no-pkgs               don't install packages, only set up deployment
+    -p, --production            create a production deployment (must be csgteam)
+    --import-cache PATH         use cache at specified path (in addition to defaults)
     --set-version VERSION       override version set in cluster definition
 
 EOF
@@ -54,7 +54,7 @@ while [[ $# -gt 0 ]]; do
                 exit 1
             fi
             ;;
-        -c|--import-cache)
+        --import-cache)
             cache_path=$2
 
             if [[ ! -d $cache_path ]]; then
@@ -66,7 +66,14 @@ while [[ $# -gt 0 ]]; do
             ;;
         --set-version)
             custom_version=$2
-            shift
+
+            if [[ -n $custom_version ]]; then
+                tmp_file_path=$(mktemp ${TMPDIR:-/tmp}/ns-cluster.XXXXXXXX)
+                shift
+            else
+                >&2 echo "Error: --set-version requires an argument"
+                usage 1
+            fi
             ;;
         *)
             export NCAR_SYS=$1
@@ -77,15 +84,23 @@ while [[ $# -gt 0 ]]; do
 done
 
 if [[ -z $NCAR_SYS ]]; then
-    >&2 echo -e "Error: deployment configuration must be specified!\n"
+    >&2 echo "Error: deployment configuration must be specified"
     usage 1
 elif [[ ! -f $NCAR_SPACK_DEPLOY_DIR/clusters/$NCAR_SYS/main.cfg ]]; then
-    >&2 echo -e "Error: deployment "$NCAR_SYS" not recognized from available options\n"
+    >&2 echo "Error: deployment "$NCAR_SYS" not recognized from available options"
     exit 1
 fi
 
 # Source cluster settings
-. $NCAR_SPACK_DEPLOY_DIR/clusters/$NCAR_SYS/main.cfg
+if [[ -n $tmp_file_path ]]; then
+    settings_file=$tmp_file_path
+    sed "s/\(NCAR_SPACK_HOST_VERSION=\).*/\1${custom_version}/" \
+        $NCAR_SPACK_DEPLOY_DIR/clusters/$NCAR_SYS/main.cfg > $settings_file
+else
+    settings_file=${settings_file:-$NCAR_SPACK_DEPLOY_DIR/clusters/$NCAR_SYS/main.cfg}
+fi
+
+. $settings_file
 
 # Check if Github repo exists
 if [[ -n $NCAR_SPACK_GITHUB ]] && [[ $skip_github != yes ]]; then
@@ -178,7 +193,11 @@ NCAR_SPACK_DEPLOY_COMMIT=$(git rev-parse HEAD)
 
 EOF
 
-envsubst '$USER,$NCAR_SYS' < clusters/$NCAR_SYS/main.cfg >> $NCAR_SPACK_ENV_BUILD/main.cfg
+envsubst '$USER,$NCAR_SYS' < $settings_file >> $NCAR_SPACK_ENV_BUILD/main.cfg
+
+if [[ -n $tmp_file_path ]]; then
+    rm -f $tmp_file_path
+fi
 
 # Override the normal version if set at the command-line
 if [[ -n $custom_version ]]; then
