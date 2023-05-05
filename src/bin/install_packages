@@ -371,6 +371,15 @@ function define_items {
     fi
 }
 
+function handle_interrupt {
+    if [[ ${user_stop:-false} == false ]]; then
+        echo -e "\n*** User stop requested. Finishing current install (C-C again to kill) ...\n"
+        user_stop=true
+    else
+        exit 1
+    fi
+}
+
 # Ensure log directory exists
 log_dir=$SPACK_ENV/logs
 mkdir -p $log_dir
@@ -421,6 +430,9 @@ echo -e "Processing install manifest ...\n"
 # Associative arrays to store mpis and requested hashes
 declare -A mpis hashes specs
 
+# Set up signal handler to cleanly deal with interrupts
+trap handle_interrupt SIGINT
+
 while read pkg; do
     if [[ ${skip_checks:-false} == false ]]; then
         if [[ $new_lmod == true ]] && ! module -v 2> /dev/null; then
@@ -438,8 +450,8 @@ while read pkg; do
         fi
     fi
 
-    if [[ $pkg == \#* ]]; then
-        if [[ $pkg == \#break ]]; then
+    if [[ $pkg == \#* ]] || [[ $user_stop == true ]]; then
+        if [[ $pkg == \#break ]] || [[ $user_stop == true ]]; then
             echo -e "\nUser-requested early stop in manifest"
             exit
         fi
