@@ -18,7 +18,8 @@ lines = data.splitlines()
 with open(temp_path, 'w') as temp_file:
     for line in lines:
         if line.strip().startswith('specs:'):
-            temp_file.write('  specs:\n')
+            if line != lines[-1]:
+                temp_file.write('  specs:\n')
             break
         else:
             temp_file.write(f'{line}\n')
