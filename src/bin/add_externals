@@ -76,7 +76,7 @@ function manual_upstream {
             sed -i ${req_start}s/\"/\'/g $1
             req_contents=$(sed -n "$req_start p" $1)
 
-            if ! grep "'" $req_contents | grep -q "^[^^]*${ext_meta}"; then
+            if ! grep "'" <<< "$req_contents" | grep -q "^[^^]*${ext_meta}"; then
                 sed -i "$req_start s/\(.* '\)\(.*\)/\1${ext_meta} \2/p" $1
                 mod_yaml=1
             fi
