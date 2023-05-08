@@ -148,6 +148,7 @@ function prepare_spec {
 function register_compiler {
     tsecho "Registering $comp_spec as a compiler in spack.yaml"
     comp_template=$NCAR_SPACK_ENV_BUILD/templates/compilers/${comp_spec%@*}
+    root=/usr
 
     if [[ ! -f $comp_template ]]; then
         tsecho "Error: no compiler template found for $comp_spec"
@@ -168,8 +169,9 @@ function register_compiler {
         version=${comp_spec#*@}
     fi
 
-    block_end=$(expr $(sed -n '1,/^  compilers:/d;/^  [^- ].*/ {=;q}' spack.yaml) - 1)
-    . $comp_template | sed -i "$block_end r /dev/stdin" spack.yaml
+    sed -i 's/^\(  compilers:\)[ ]*\[\]/\1/' $SPACK_ENV/spack.yaml
+    block_end=$(expr $(sed -n '1,/^  compilers:/d;/^  [^- ].*/ {=;q}' $SPACK_ENV/spack.yaml) - 1)
+    . $comp_template | sed -i "$block_end r /dev/stdin" $SPACK_ENV/spack.yaml
 }
 
 function check_spec {
