@@ -8,24 +8,23 @@ log_dir=$SPACK_ENV/logs
 mkdir -p $log_dir
 log_file=$log_dir/externals.$start_time
 
-function manual_external {
-pkg_block=$(sed -n "/^  packages:/,/^  [^ ].*/ {/^    $pkg_name:/,/^    [^ ].*/=}" $1 | xargs | awk '{ print $1","$NF }')
-if [[ $pkg_block != ',' ]]; then
-ext_start=$(sed -n "$pkg_block {/externals:/=}" $1)
-if [[ -n $ext_start ]]; then
+function external_cat1 {
 cat << EOF | sed -i "$ext_start r /dev/stdin" $1
       - spec: $pkg_spec
         prefix: $pkg_path
 EOF
-else
+}
+
+function external_cat2 {
 cat << EOF | sed -i "$(cut -d, -f1 <<< $pkg_block) r /dev/stdin" $1
       externals:
       - spec: $pkg_spec
         prefix: $pkg_path
       buildable: false
 EOF
-fi
-else
+}
+
+function external_cat3 {
 cat << EOF | sed -i '/^  packages:/ r /dev/stdin' $1
     $pkg_name:
       externals:
@@ -33,31 +32,64 @@ cat << EOF | sed -i '/^  packages:/ r /dev/stdin' $1
         prefix: $pkg_path
       buildable: false
 EOF
-fi
+}
+
+function manual_external {
+    pkg_block=$(sed -n "/^  packages:/,/^  [^ ].*/ {/^    $pkg_name:/,/^    [^ ].*/=}" $1 | xargs | awk '{ print $1","$NF }')
+
+    if [[ $pkg_block != ',' ]]; then
+        ext_start=$(sed -n "$pkg_block {/externals:/=}" $1)
+
+        if [[ -n $ext_start ]]; then
+            external_cat1 $1
+        else
+            external_cat2 $1
+        fi
+    else
+        external_cat3 $1
+    fi
+}
+
+function upstream_cat1 {
+cat << EOF | sed -i "$(cut -d, -f1 <<< $pkg_block) r /dev/stdin" $1
+      require: '${ext_meta}'
+EOF
+}
+
+function upstream_cat2 {
+cat << EOF | sed -i '/^  packages:/ r /dev/stdin' $1
+    $pkg_name:
+      require: '${ext_meta}'
+EOF
 }
 
 function manual_upstream {
-pkg_block=$(sed -n "/^  packages:/,/^  [^ ].*/ {/^    $pkg_name:/,/^    [^ ].*/=}" $1 | xargs | awk '{ print $1","$NF }')
-if [[ $pkg_block != ',' ]]; then
-req_start=$(sed -n "$pkg_block {/require:/=}" $1)
-if [[ -z $req_start ]]; then
-cat << EOF | sed -i "$(cut -d, -f1 <<< $pkg_block) r /dev/stdin" $1
-      require: '${ext_meta}'
-EOF
-mod_yaml=1
-fi
-else
-cat << EOF | sed -i '/^  packages:/ r /dev/stdin' $1
-    $pkg_name:
-      require: '${ext_meta}'
-EOF
-mod_yaml=1
-fi
+    pkg_block=$(sed -n "/^  packages:/,/^  [^ ].*/ {/^    $pkg_name:/,/^    [^ ].*/=}" $1 | xargs | awk '{ print $1","$NF }')
 
-if [[ $mod_yaml == 1 ]]; then
-tsecho "Set requirement   $GCOL$pkg_name (upstream)$DCOL"
-unset mod_yaml
-fi
+    if [[ $pkg_block != ',' ]]; then
+        req_start=$(sed -n "$pkg_block {/require:/=}" $1)
+
+        if [[ -z $req_start ]]; then
+            upstream_cat1 $1
+            mod_yaml=1
+        else
+            sed -i ${req_start}s/\"/\'/g $1
+            req_contents=$(sed -n "$req_start p" $1)
+
+            if ! grep "'" $req_contents | grep -q "^[^^]*${ext_meta}"; then
+                sed -i "$req_start s/\(.* '\)\(.*\)/\1${ext_meta} \2/p" $1
+                mod_yaml=1
+            fi
+        fi
+    else
+        upstream_cat2 $1
+        mod_yaml=1
+    fi
+
+    if [[ $mod_yaml == 1 ]]; then
+        tsecho "Set requirement   $GCOL$pkg_name (upstream)$DCOL"
+        unset mod_yaml
+    fi
 }
 
 # First, let's get the known external prefixes
