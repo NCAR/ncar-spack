@@ -16,7 +16,7 @@
 #           shell script. So we must activate in the script!
 #
 #   Author:         Brian Vanderwende
-#   Last Revised:   18:00, 30 Mar 2023
+#   Last Revised:   10:28, 09 May 2023
 #
 
 function remove_lock {
@@ -85,7 +85,7 @@ while read spec; do
     else
         echo "    $spec" >> $1
     fi
-done < <(sed 's/^[ ]*- //' <<< $new_pkgs)
+done < <(sed 's/^[ ]*- //' <<< $new_pkgs | sed '$!N; s/\n\s\s*\(.*\)/ \1/; P; D')
 
 spack env deactivate
 spack env activate $NCAR_SPACK_ENV_PUBLIC
