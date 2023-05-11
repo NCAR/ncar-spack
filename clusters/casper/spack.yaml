@@ -119,6 +119,16 @@ spack:
       variants: [~mpi]
     openblas:
       variants: [+fortran]
+    cmake:
+      variants: [~ownlibs]
+    libarchive:
+      require: 'compression=bz2lib,lz4,lzma,lzo2,zlib,zstd xar=expat'
+    cairo:
+      variants: [+fc, +gobject]
+    pango:
+      variants: [+X]
+    imagemagick:
+      variants: [+ghostscript]
   view:
     baseenv:
       root: %VIEWROOT%

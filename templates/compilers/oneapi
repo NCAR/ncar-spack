@@ -4,8 +4,8 @@ cat << EOF
       paths:
         cc: $root/compiler/latest/linux/bin/icx
         cxx: $root/compiler/latest/linux/bin/icpx
-        f77: $root/compiler/latest/linux/bin/ifx
-        fc: $root/compiler/latest/linux/bin/ifx
+        f77: $root/compiler/latest/linux/bin/intel64/ifort
+        fc: $root/compiler/latest/linux/bin/intel64/ifort
       operating_system: $os
       modules: []
       environment:
