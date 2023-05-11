@@ -168,6 +168,7 @@ fi
 function create_sp {
 cat > $tm_file << EOF
 require("strict")
+require("sandbox")
 local hook = require("Hook")
 
 local mapT =
@@ -177,7 +178,7 @@ local mapT =
       ['/Core$'] = "Compilers and Core Software",
 EOF
 
-comp_cat_list="aocc arm clang gcc intel nag oneapi pgi"
+comp_cat_list="aocc arm clang gcc intel nag oneapi nvhpc"
 mpi_cat_list="hpcx-mpi intel-mpi intel-oneapi-mpi mpi-serial mpich mvapich2 mvapich2-gdr openmpi"
 
 for comp_cat in $comp_cat_list; do
@@ -210,6 +211,16 @@ function avail_hook(t)
 end
 
 hook.register("avail",avail_hook)
+
+function universal_mgrload(required, active)
+   if (mode() == "load" or mode() == "unload") then
+      MCP:mgrload(required, active)
+   end
+end
+
+sandbox_registration {
+    universal_mgrload = universal_mgrload
+}
 EOF
 }
 

@@ -81,9 +81,6 @@ else
     export NGPUS=0
 fi
 
-# Add Python import monitoring to environment
-export PYTHONPATH=/glade/u/apps/opt/conda/ncarbin/monitor/site-packages:\$PYTHONPATH
-
 # Load default modules
 if [ -z "\$__Init_Default_Modules" -o -z "\$LD_LIBRARY_PATH" ]; then
   __Init_Default_Modules=1; export __Init_Default_Modules;
@@ -155,13 +152,6 @@ if ( \`where nvidia-smi\` != "" ) then
     endif
 else
     setenv NGPUS 0
-endif
-
-# Add Python import monitoring to environment
-if ( ! (\$?PYTHONPATH) ) then
-    setenv PYTHONPATH=/glade/u/apps/opt/conda/ncarbin/monitor/site-packages
-else
-    setenv PYTHONPATH=/glade/u/apps/opt/conda/ncarbin/monitor/site-packages:\$PYTHONPATH
 endif
 
 # Load default modules
