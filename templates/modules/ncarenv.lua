@@ -93,7 +93,7 @@ if mroot_vars then
         local mroot = os.getenv("__" .. var)
 
         if mroot then
-            append_path("MODULEPATH", pathJoin(mroot, "%VERSION%", "Core"))
+            append_path("MODULEPATH", pathJoin(mroot, "Core"))
         end
     end
 end
