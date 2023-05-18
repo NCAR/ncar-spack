@@ -104,6 +104,8 @@ if [[ -f $SPACK_ENV/externals.cfg ]]; then
 
         if [[ $ext_type == fixed ]]; then
             ext_flags=--not-buildable
+        elif [[ -z $ext_type ]]; then
+            continue
         fi
 
         if [[ $ext_data == /* ]]; then
