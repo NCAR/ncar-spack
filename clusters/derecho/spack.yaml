@@ -7,18 +7,15 @@ spack:
     install_tree:
       root: %INSTALLROOT%
       projections:
-        gcc: '{name}/{version}'
-        hdf5+threadsafe: '{name}/{version}-safe/{compiler.name}/{compiler.version}'
-        netcdf-c^hdf5+threadsafe: '{name}/{version}-safe/{compiler.name}/{compiler.version}'
-        eccodes^hdf5+threadsafe: '{name}/{version}-safe/{compiler.name}/{compiler.version}'
-        netcdf-c^mpi: 'netcdf/{version}/packages/{name}/{version}/{^mpi.name}/{^mpi.version}/{compiler.name}/{compiler.version}'
-        netcdf-fortran^mpi: 'netcdf/{^netcdf-c.version}/packages/{name}/{version}/{^mpi.name}/{^mpi.version}/{compiler.name}/{compiler.version}'
-        netcdf-cxx4^mpi: 'netcdf/{^netcdf-c.version}/packages/{name}/{version}/{^mpi.name}/{^mpi.version}/{compiler.name}/{compiler.version}'
-        netcdf-c: 'netcdf/{version}/packages/{name}/{version}/{compiler.name}/{compiler.version}'
-        netcdf-fortran: 'netcdf/{^netcdf-c.version}/packages/{name}/{version}/{compiler.name}/{compiler.version}'
-        netcdf-cxx4: 'netcdf/{^netcdf-c.version}/packages/{name}/{version}/{compiler.name}/{compiler.version}'
-        all: '{name}/{version}/{compiler.name}/{compiler.version}'
-        ^mpi: '{name}/{version}/{^mpi.name}/{^mpi.version}/{compiler.name}/{compiler.version}'
+        gcc: '{name}/{version}/{hash:4}'
+        netcdf-c^mpi: 'netcdf/{version}/packages/{name}/{version}/{^mpi.name}/{^mpi.version}/{compiler.name}/{compiler.version}/{hash:4}'
+        netcdf-fortran^mpi: 'netcdf/{^netcdf-c.version}/packages/{name}/{version}/{^mpi.name}/{^mpi.version}/{compiler.name}/{compiler.version}/{hash:4}'
+        netcdf-cxx4^mpi: 'netcdf/{^netcdf-c.version}/packages/{name}/{version}/{^mpi.name}/{^mpi.version}/{compiler.name}/{compiler.version}/{hash:4}'
+        netcdf-c: 'netcdf/{version}/packages/{name}/{version}/{compiler.name}/{compiler.version}/{hash:4}'
+        netcdf-fortran: 'netcdf/{^netcdf-c.version}/packages/{name}/{version}/{compiler.name}/{compiler.version}/{hash:4}'
+        netcdf-cxx4: 'netcdf/{^netcdf-c.version}/packages/{name}/{version}/{compiler.name}/{compiler.version}/{hash:4}'
+        all: '{name}/{version}/{compiler.name}/{compiler.version}/{hash:4}'
+        ^mpi: '{name}/{version}/{^mpi.name}/{^mpi.version}/{compiler.name}/{compiler.version}/{hash:4}'
     build_jobs: 4 
     test_stage: %TMPROOT%/$user/temp/spack/%DEPLOYMENT%/tests
     source_cache: %TMPROOT%/$user/temp/spack/cache
@@ -131,13 +128,15 @@ spack:
     libarchive:
       require: 'compression=bz2lib,lz4,lzma,lzo2,zlib,zstd xar=expat'
     cairo:
-      variants: [+fc, +gobject]
+      variants: [+fc, +gobject, +X, +ft, +pdf]
     pango:
       variants: [+X]
     imagemagick:
       variants: [+ghostscript]
     libffi:
       require: '@:3.3'
+    wgrib2:
+      variants: [+netcdf4, ~netcdf3, +mysql, +udf, +proj4]
   view:
     baseenv:
       root: %VIEWROOT%
