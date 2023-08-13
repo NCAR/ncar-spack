@@ -23,11 +23,12 @@ end
 
 -- Enable custom modules from CSEG downstream
 append_path("NCAR_VARS_MODULEROOT", "NCAR_MODULEROOT_CSEG")
-setenv("NCAR_MODULEROOT_CSEG", pathJoin("/glade/u/apps/cseg/modules"))
+setenv("NCAR_MODULEROOT_CSEG", pathJoin("/glade/u/apps/cseg/%HOST%/modules"))
 
 for i = 1,#activeA do
   universal_mgrload(required, activeA[i])
 end
 
 -- Add Python packages to environment
-prepend_path("PYTHONPATH", "/glade/u/apps/cseg/python/lib64/python3.6/site-packages")
+prepend_path("PATH",        "/glade/u/apps/cseg/%HOST%/python/lib64/python3.10/site-packages/bin")
+prepend_path("PYTHONPATH",  "/glade/u/apps/cseg/%HOST%/python/lib64/python3.10/site-packages")

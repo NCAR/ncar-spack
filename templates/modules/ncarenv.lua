@@ -122,6 +122,7 @@ setenv("OMP_STACKSIZE", "64000K")
 
 -- Model-specific settings
 setenv("WRFIO_NCD_LARGE_FILE_SUPPORT", "1")
+setenv("CESMDATAROOT", "/glade/p/cesmdata")
 
 -- Set user's TMPDIR if not already set
 local is_set    = os.getenv("TMPDIR")
@@ -159,10 +160,6 @@ if was_set or not is_set then
     setenv("__NCARENV_SCRATCH", 1)
 end
 
--- On CSEG's request (jedwards/mvertens@ucar.edu)
--- setenv("CESMDATAROOT",  "/glade/p/cesmdata/cseg")
--- setenv("CESMROOT",      "/glade/p/cesm")
-
 -- Make sure localization is set
 setenv("LC_ALL",    "en_US.UTF-8")
 setenv("LANG",      "en_US.UTF-8")
@@ -185,3 +182,6 @@ prepend_path("PKG_CONFIG_PATH", pathJoin(viewpath, "lib64/pkgconfig"))
 append_path("PATH",             syspath)
 append_path("MANPATH",          sysman)
 append_path("INFOPATH",         sysinfo)
+
+-- Add PERL library from the view
+append_path("PERL5LIB", pathJoin(viewpath, "perl5lib/lib/perl5"))

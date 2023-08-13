@@ -5,30 +5,42 @@
 conflict("python")
 
 -- Define paths for functions/aliases below
-local initpath = pathJoin("{{spec.prefix}}", "etc/profile.d")
-local ncarpath = pathJoin("{{spec.prefix}}", "ncarbin")
+local basepath = "{{spec.prefix}}"
+local binpath  = pathJoin(basepath, "condabin")
+local initpath = pathJoin(basepath, "etc/profile.d")
 
--- Update path variables in user environment
-prepend_path("PATH",        pathJoin("{{spec.prefix}}", "condabin"))
-prepend_path("MANPATH",     pathJoin("{{spec.prefix}}", "share/man"))
-prepend_path("INFOPATH",    pathJoin("{{spec.prefix}}", "share/info"))
+-- Determine whether user already has miniconda initialized
+local my_conda = os.getenv("NCAR_USER_CONDA")
+local my_shell = myShellType()
 
--- Add conda alias to allow activation when not init in current shell
--- This messy method ensures it works in shell scripts too
-if myShellType() == "sh" then
-    execute { cmd = "if type -t conda |& grep -q -v function; then function conda { . " .. ncarpath .. "/conda.sh ; }; fi", modeA = { "load" }}
-    execute { cmd = "if type conda |& grep -q " .. ncarpath .. ' || [ -n "${NCAR_CONDA_INIT:+x}" ]; then unset -f conda; unset NCAR_CONDA_INIT; fi', modeA = { "unload" }}
-    execute { cmd = "if type -t mamba |& grep -q -v function; then function mamba { . " .. ncarpath .. "/mamba.sh ; }; fi", modeA = { "load" }}
-    execute { cmd = "if type mamba |& grep -q " .. ncarpath .. ' || [ -n "${NCAR_MAMBA_INIT:+x}" ]; then unset -f mamba; unset NCAR_MAMBA_INIT; fi', modeA = { "unload" }}
-else
-    execute { cmd = "alias conda |& grep -q source || alias conda 'source " .. initpath .. "/conda.csh'", modeA = { "load" }}
-    execute { cmd = "alias conda |& grep -q " .. initpath .. " && unalias conda", modeA = { "unload" }}
+if not my_conda then
+    my_conda = os.getenv("CONDA_EXE") or ""
 
-    -- If prompt is not set, we need to set it so conda init script doesn't break
-    local csh_prompt = os.getenv("prompt")
-    
-    if not csh_prompt then
+    if my_conda ~= "" then
+        my_conda = my_conda:gsub("/bin/conda$", "")
+    end
+end
+
+if my_conda ~= basepath then
+    setenv("NCAR_USER_CONDA", my_conda)
+end
+
+-- If csh prompt is not set, we need to set it so conda init script doesn't break
+if my_shell == "csh" then
+    if not os.getenv("prompt") then
         setenv("prompt", "")
+    end
+end
+
+-- Use NCAR conda while this module is loaded
+prepend_path("PATH", binpath)
+source_sh(my_shell:gsub("^sh$","bash"), pathJoin(initpath, "conda." .. my_shell))
+
+if my_conda ~= "" and my_conda ~= basepath then
+    if my_shell == "sh" then
+        execute { cmd = ". " .. pathJoin(my_conda, "etc/profile.d/conda.sh"), modeA = { "unload" }}
+    else
+        execute { cmd = "source " .. pathJoin(my_conda, "etc/profile.d/conda.csh"), modeA = { "unload" }}
     end
 end
 {% endblock %}

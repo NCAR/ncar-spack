@@ -14,7 +14,7 @@ cat << EOF
 EOF
 
 if [[ $install_modifier == cray ]]; then
-cray_libfabric_root=${cray_libfabric_root:-$(spack location -i libfabric)}
+cray_libfabric_root=${cray_libfabric_root:-$(spack location -i libfabric %gcc)}
 
 cat << EOF
         append_path:
