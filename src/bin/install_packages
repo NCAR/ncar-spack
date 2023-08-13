@@ -89,28 +89,35 @@ function prepare_spec {
 
     while [[ $spec == *:* ]]; do
         spec_opt="$(sed 's|.*<\([^>]*\)>.*|\1|' <<< "$spec")"
-        IFS=: read opt_type opt_body <<< "$spec_opt"
+        IFS=: read opt_types opt_body <<< "$spec_opt"
+        opt_types="${opt_types//,/ }"
 
-        if [[ $comp == ${opt_type}* ]] || [[ $mpi == ${opt_type}* ]]; then
-            spec="${spec/<$spec_opt>/$opt_body}"
-        else
-            # Make sure white space is trimmed using xargs
-            spec=$(xargs <<< ${spec/<$spec_opt>})
-            
-            if [[ $opt_type == hash-ref ]]; then
-                hash_ref="$opt_body"
-                [[ -n $comp ]] && hash_ref="$hash_ref $comp"
-                [[ -n $mpi ]]  && hash_ref="$hash_ref $mpi"
-            elif [[ $opt_type == spec-ref ]]; then
-                if [[ -z ${specs[$opt_body]} ]]; then
-                    specs[$opt_body]="$spec"
+        for opt_type in $opt_types; do
+            if [[ $comp == ${opt_type}* ]] || [[ $mpi == ${opt_type}* ]]; then
+                spec="${spec/<$spec_opt>/$opt_body}"
+            else
+                if [[ $opt_type == hash-ref ]]; then
+                    hash_ref="$opt_body"
+                    [[ -n $comp ]] && hash_ref="$hash_ref $comp"
+                    [[ -n $mpi ]]  && hash_ref="$hash_ref $mpi"
+                    tsecho " >> package will be stored using hash-reference" 1
+                elif [[ $opt_type == spec-ref ]]; then
+                    if [[ -z ${specs[$opt_body]} ]]; then
+                        # Make sure white space is trimmed using xargs
+                        specs[$opt_body]="$(xargs -0 <<< ${spec/<$spec_opt>})"
+                        tsecho " >> package will be stored using spec-reference" 1
+                    fi
+                elif [[ $opt_type == cache ]]; then
+                    use_cache=${opt_body/never/no}
+                    tsecho " >> public environment will use cached version? $use_cache" 1
+                elif [[ $opt_type == trust ]]; then
+                    trust_src=${opt_body/always/yes}
+                    tsecho " >> package download check is bypassed" 1
                 fi
-            elif [[ $opt_type == cache ]]; then
-                use_cache=${opt_body/never/no}
-            elif [[ $opt_type == trust ]]; then
-                trust_src=${opt_body/always/yes}
             fi
-        fi
+        done
+
+        spec="${spec/<$spec_opt>}"
     done
 
     for spec_ref in $(xargs -n1 <<< ${!specs[@]} | tac | xargs); do
@@ -127,6 +134,7 @@ function prepare_spec {
     spec="${filter_spec[@]}"
     unset filter_spec
 
+    [[ -n $comp ]] && spec="$(sed "s|\^%CMP%|\^$comp|g" <<< "$spec")"
     [[ -n $comp ]] && spec="$(sed "s|%CMP%|%$comp|g;t;s|$| %$comp|" <<< "$spec")"
     [[ -n $mpi ]]  && spec="$(sed "s|%MPI%|^$mpi|g;t;s|$| ^$mpi|" <<< "$spec")"
     spec="$(sed -r "s/%gcc( |$)/%gcc@${sys_gcc}\1/g" <<< "$spec")"
@@ -147,7 +155,7 @@ function prepare_spec {
 
 function register_compiler {
     tsecho "Registering $comp_spec as a compiler in spack.yaml"
-    comp_template=$NCAR_SPACK_ENV_BUILD/templates/compilers/${comp_spec%@*}
+    comp_template=$NCAR_SPACK_ENV_BUILD/templates/compilers/${comp_spec%%@*}
     root=/usr
 
     if [[ ! -f $comp_template ]]; then
@@ -385,8 +393,8 @@ function handle_interrupt {
 # Ensure log directory exists
 log_dir=$SPACK_ENV/logs
 mkdir -p $log_dir
-log_specs=$log_dir/specs.$start_time
-log_installs=$log_dir/installs.$start_time
+log_specs=$log_dir/specs.$start_time.$SUDO_USER
+log_installs=$log_dir/installs.$start_time.$SUDO_USER
 
 # Make sure environment reports current state
 tsecho "Verify current environment concretization"

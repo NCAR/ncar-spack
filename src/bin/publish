@@ -284,6 +284,11 @@ spack env activate $NCAR_SPACK_ENV_PUBLIC
 log_dir=$SPACK_ENV/logs
 mkdir -p $log_dir
 
+# Ensure production YAML is in proper format
+if grep -q -E '^ +specs: +\[' $SPACK_ENV/spack.yaml; then
+    spack python $my_dir/tools/fix_specs.py
+fi
+
 # Find any packages to remove
 rm_pkgs=$(grep -xv -f <(sed '1,/  specs:/d' $NCAR_SPACK_ENV_BUILD/spack.yaml) <(sed '1,/  specs:/d' spack.yaml) || [[ $? == 1 ]])
 
