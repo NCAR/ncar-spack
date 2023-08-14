@@ -1,0 +1,17 @@
+#!/bin/bash
+
+# Perform common script setup including environment checks
+export my_dir="$( cd "$(dirname "$0")" ; pwd )"
+. $my_dir/tools/init.sh
+
+# Make sure environment is exported for Python
+export NCAR_SPACK_HOST NCAR_SPACK_HOST_VERSION NCAR_SPACK_TMPROOT
+
+# Run the main code using Spack's Python
+spack python $my_dir/tools/templatize_yaml.py
+
+if [[ $? == 0 ]]; then
+    tsecho "YAML template generated in $SPACK_ENV/templates/yaml"
+else
+    tsecho "Error: YAML template could not be created"
+fi
