@@ -23,6 +23,7 @@ spack:
       target: [x86_64_v3]
       providers:
         pkgconfig:: [pkg-config]
+        zlib-api:: [zlib]
       permissions:
         read: world
         write: user
