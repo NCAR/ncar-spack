@@ -113,6 +113,9 @@ function prepare_spec {
                 elif [[ $opt_type == trust ]]; then
                     trust_src=${opt_body/always/yes}
                     tsecho " >> package download check is bypassed" 1
+                elif [[ $opt_type == publish ]]; then
+                    publish_pkg=$opt_body
+                    tsecho " >> package will not be published to public env" 1
                 fi
             fi
         done
@@ -213,7 +216,7 @@ function check_spec {
         tsecho "Skipping spec   $PCOL$spec$BCOL$type_msg$DCOL (reason: build=false specified)" 1
         
         # If compiler, register in the YAML file
-        if [[ $install_type == compiler ]] && [[ $install_register != no ]]; then
+        if [[ $install_type == compiler ]] && [[ $install_register != no ]] && [[ $dry_run != true ]]; then
             if [[ $current_comps != *${comp_spec}* ]]; then
                 register_compiler
             fi
@@ -241,7 +244,7 @@ function check_spec {
             spec_hash=$(grep -A2 ^Concretized <<< "$spack_spec_out" | tail -n1 | awk '{print $2}')
 
             if [[ " $start_hashes " == *" $spec_hash "* ]]; then
-                echo "${spec}:$spec_hash:${use_cache:-yes}" >> $SPACK_ENV/.installs
+                echo "${spec}:$spec_hash:${use_cache:-yes}:${publish_pkg:-yes}" >> $SPACK_ENV/.installs
                 skip_spec=true
             fi
         fi
@@ -277,7 +280,7 @@ function check_spec {
                 echo "$spack_spec_out" &>> $log_specs
                 unset spack_spec_out
                 install_spec
-                echo "${spec}:$spec_hash:${use_cache:-yes}" >> $SPACK_ENV/.installs
+                echo "${spec}:$spec_hash:${use_cache:-yes}:${publish_pkg:-yes}" >> $SPACK_ENV/.installs
             fi
 
             if [[ $spec == lmod* ]]; then
@@ -288,7 +291,7 @@ function check_spec {
         unset cache_label
     fi
 
-    unset use_cache trust_src
+    unset use_cache trust_src publish_pkg
 }
 
 function install_spec {
@@ -307,10 +310,10 @@ function install_spec {
     # Install the package and view pertinent log information
     log_cmd "$build_cmd $spec" >> $log_installs
     spack add $spec > /dev/null; spack concretize -q > /dev/null
-    $spec_build_cmd |& tee -a $log_installs | stdbuf -oL sed 's/^/   /'                         \
-            | (grep -e "Executing phase" -e "Successfully installed" -e "already installed"     \
-            -e " Total: " -e " from binary cache" -e " Error: " -e "^See build log"             \
-            -e "spack-build-out.txt" || true)
+    $spec_build_cmd |& tee -a $log_installs | sed -u 's/^/   /' | (grep --line-buffered \
+            -e "Executing phase" -e "Successfully installed" -e "already installed"     \
+            -e " Total: " -e " from binary cache" -e " Error: " -e "^See build log"     \
+            -e "spack-build-out.txt" | grep -v "Skipping external package" || true)
 
     if [[ ${PIPESTATUS[0]} -ne 0 ]]; then
         # Remove spec to avoid uninstalled package in spack.yaml
@@ -327,7 +330,7 @@ function install_spec {
     fi
 
     # Register the compiler in the YAML file
-    if [[ $install_type == compiler ]] && [[ $install_register != no ]]; then
+    if [[ $install_type == compiler ]] && [[ $install_register != no ]] && [[ $dry_run != true ]]; then
         if [[ $current_comps != *${comp_spec}* ]]; then
             register_compiler
         fi
@@ -393,8 +396,8 @@ function handle_interrupt {
 # Ensure log directory exists
 log_dir=$SPACK_ENV/logs
 mkdir -p $log_dir
-log_specs=$log_dir/specs.$start_time.$SUDO_USER
-log_installs=$log_dir/installs.$start_time.$SUDO_USER
+log_specs=$log_dir/specs.$start_time.${SUDO_USER:-$USER}
+log_installs=$log_dir/installs.$start_time.${SUDO_USER:-$USER}
 
 # Make sure environment reports current state
 tsecho "Verify current environment concretization"

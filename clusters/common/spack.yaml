@@ -8,7 +8,7 @@ spack:
       root: %INSTALLROOT%
       projections:
         all: '{name}/{version}'
-    build_jobs: 8
+    build_jobs: 4
     test_stage: %TMPROOT%/${user}/temp/spack/%DEPLOYMENT%/tests
     source_cache: %TMPROOT%/${user}/temp/spack/cache
     misc_cache: %TMPROOT%/${user}/temp/spack/%DEPLOYMENT%/misc
@@ -33,14 +33,7 @@ spack:
       variants: [+dev]
     arm-forge:
       require: '+accept-eula'
-  compilers:
-    - compiler:
-        paths:
-          cc: /usr/bin/gcc
-          cxx: /usr/bin/g++
-          f77: /usr/bin/gfortran
-          fc: /usr/bin/gfortran
-        operating_system: sles15
-        spec: gcc@7.5.0
-        modules: []
+    linaro-forge:
+      require: '+accept-eula'
+  compilers: []
   view: false

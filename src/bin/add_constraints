@@ -1,0 +1,213 @@
+#!/bin/bash
+
+# Perform common script setup including environment checks
+export my_dir="$( cd "$(dirname "$0")" ; pwd )"
+. $my_dir/tools/init.sh
+
+log_dir=$SPACK_ENV/logs
+mkdir -p $log_dir
+log_file=$log_dir/constraints.$start_time.${SUDO_USER:-$USER}
+
+function external_cat1 {
+cat << EOF | sed -i "$ext_start r /dev/stdin" $1
+      - spec: $pkg_spec
+        prefix: $pkg_path
+EOF
+}
+
+function external_cat2 {
+cat << EOF | sed -i "$(cut -d, -f1 <<< $pkg_block) r /dev/stdin" $1
+      externals:
+      - spec: $pkg_spec
+        prefix: $pkg_path
+      buildable: false
+EOF
+}
+
+function external_cat3 {
+cat << EOF | sed -i '/^  packages:/ r /dev/stdin' $1
+    $pkg_name:
+      externals:
+      - spec: $pkg_spec
+        prefix: $pkg_path
+      buildable: false
+EOF
+}
+
+function manual_external {
+    pkg_block=$(sed -n "/^  packages:/,/^  [^ ].*/ {/^    $pkg_name:/,/^    [^ ].*/=}" $1 | xargs | awk '{ print $1","$NF }')
+
+    if [[ $pkg_block != ',' ]]; then
+        ext_start=$(sed -n "$pkg_block {/externals:/=}" $1)
+
+        if [[ -n $ext_start ]]; then
+            external_cat1 $1
+        else
+            external_cat2 $1
+        fi
+    else
+        external_cat3 $1
+    fi
+}
+
+function require_cat1 {
+cat << EOF | sed -i "$(cut -d, -f1 <<< $pkg_block) r /dev/stdin" $1
+      require: '${req_meta}'
+EOF
+}
+
+function require_cat2 {
+cat << EOF | sed -i '/^  packages:/ r /dev/stdin' $1
+    $pkg_name:
+      require: '${req_meta}'
+EOF
+}
+
+function manual_require {
+    if [[ $pkg_name == gcc ]]; then
+        return
+    fi
+
+    if [[ ${2:-core} == core ]]; then
+        if [[ -n $core ]]; then
+            req_meta=$core
+        else
+            tsecho "Error: Core compiler requirement used but core not specified!"
+            exit 1
+        fi
+    else
+        req_meta=$2
+    fi
+
+    pkg_block=$(sed -n "/^  packages:/,/^  [^ ].*/ {/^    $pkg_name:/,/^    [^ ].*/=}" $1 | xargs | awk '{ print $1","$NF }')
+
+    if [[ $pkg_block != ',' ]]; then
+        req_start=$(sed -n "$pkg_block {/require:/=}" $1)
+
+        if [[ -z $req_start ]]; then
+            require_cat1 $1
+            mod_yaml=1
+        else
+            sed -i ${req_start}s/\"/\'/g $1
+            req_contents=$(sed -n "$req_start p" $1)
+
+            if ! grep "'" <<< "$req_contents" | grep -q "^[^^]*${req_meta}"; then
+                sed -i "$req_start s/\(.* '\)\(.*\)/\1${req_meta} \2/p" $1
+                mod_yaml=1
+            fi
+        fi
+    else
+        require_cat2 $1
+        mod_yaml=1
+    fi
+
+    if [[ $mod_yaml == 1 ]]; then
+        tsecho "Set requirement   $GCOL$pkg_name$DCOL to use $PCOL$req_meta$DCOL"
+        unset mod_yaml
+    fi
+}
+
+# First, let's get the known external prefixes
+known_externals=$(spack config get packages | grep prefix: | awk -F: '{print $2}' | sort | uniq | xargs)
+
+# Add package configuration settings
+if [[ -f $SPACK_ENV/constraints.cfg ]]; then
+    tsecho "Finding specified package configuration in constraints.cfg"
+
+    while read entry; do
+        if [[ -z $entry ]]; then
+            continue
+        fi
+
+        case $entry in
+            *=*)
+                read var_name var_value <<< ${entry/=/ }
+                declare $var_name=$var_value
+                ;;
+            *'{'*)
+                IFS=: read my_mode my_meta <<< ${entry%%\{*}
+                my_meta="${my_meta/,/ }"
+                ;;
+            '}'*)
+                unset my_mode my_meta
+                ;;
+            *)
+                case ${my_mode// } in
+                    externals)
+                        if [[ " $my_meta " == *" fixed "* ]]; then
+                            ext_flags=--not-buildable
+                        fi
+
+                        if [[ $entry == /* ]]; then
+                            ext_flags="$ext_flags --path"
+
+                            if [[ $entry != *\[*\]* ]]; then
+                                tsecho "Error: spec must be delimited in path by [*]!"
+                                exit 1
+                            fi
+
+                            search_expr=$(sed 's/\[.*\]/\\(\.\*\\)/' <<< $entry)
+                            pkg_paths=$(echo $(tr -d '[]' <<< $entry))
+
+                            for pkg_path in $pkg_paths; do
+                                pkg_spec=$(sed "s|$search_expr|\1|; s|/|@|" <<< $pkg_path)
+
+                                if [[ -d $pkg_path ]]; then
+                                    if [[ " $known_externals " != *" ${pkg_path%%/} "* ]]; then
+                                        pkg_name=${pkg_spec%@*}
+                                        pkg_version=${pkg_spec#*@}
+
+                                        if [[ " $my_meta " != *" manual "* ]]; then
+                                            auto_result=$(spack external find $ext_flags $pkg_path $pkg_name)
+                                        else
+                                            unset auto_result
+                                        fi
+
+                                        if [[ $auto_result == *spack.yaml* ]]; then
+                                            tsecho "Adding external   $GCOL$pkg_spec$DCOL"
+                                        else
+                                            manual_external $NCAR_SPACK_ENV_BUILD/spack.yaml
+                                            tsecho "Adding external   $GCOL$pkg_spec (manual)$DCOL"
+                                        fi
+
+                                        known_externals="$known_externals ${pkg_path%%/}"
+                                        mod_yaml=1
+                                    fi
+                                elif [[ $pkg_path != *sbang ]]; then
+                                    tsecho "Skipping external $BCOL${pkg_spec} (not found!)$DCOL"
+                                fi
+                            done
+
+                            # Externals should also "use" the core compiler
+                            if [[ $mod_yaml == 1 ]]; then
+                                manual_require $NCAR_SPACK_ENV_BUILD/spack.yaml
+                                unset mod_yaml
+                            fi
+                        else
+                            auto_result=$(spack external find $ext_flags $entry)
+
+                            if [[ $auto_result == *spack.yaml* ]]; then
+                                found_list=$(tail -n +2 <<< $auto_result | xargs)
+                                tsecho "Adding externals  $GCOL${found_list}$DCOL"
+                            fi
+
+                            # Externals should also "use" the core compiler
+                            for pkg_name in $entry; do
+                                manual_require $NCAR_SPACK_ENV_BUILD/spack.yaml
+                            done
+                        fi
+                        ;;
+                    require)
+                        for pkg_name in $entry; do
+                            manual_require $NCAR_SPACK_ENV_BUILD/spack.yaml $my_meta
+                        done
+                        ;;
+                    *)
+                        tsecho "Error: Unknown mode $my_mode"
+                        exit 1
+                        ;;
+                esac
+                ;;
+        esac
+    done < $SPACK_ENV/constraints.cfg
+fi

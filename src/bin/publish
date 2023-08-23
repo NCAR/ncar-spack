@@ -16,7 +16,7 @@
 #           shell script. So we must activate in the script!
 #
 #   Author:         Brian Vanderwende
-#   Last Revised:   10:28, 09 May 2023
+#   Last Revised:   15:18, 15 Aug 2023
 #
 
 function remove_lock {
@@ -79,11 +79,14 @@ while read spec; do
     fi
 
     use_cache=$(awk -F: -v spec="$spec_hash" '$2 == spec {print $3}' $NCAR_SPACK_ENV_BUILD/.installs)
+    publish_pkg=$(awk -F: -v spec="$spec_hash" '$2 == spec {print $4}' $NCAR_SPACK_ENV_BUILD/.installs)
 
-    if [[ $use_cache == no ]]; then
-        echo "    $spec <cache:no>" >> $1
-    else
-        echo "    $spec" >> $1
+    if [[ ${publish_pkg:-yes} == yes ]]; then
+        if [[ $use_cache == no ]]; then
+            echo "    $spec <cache:no>" >> $1
+        else
+            echo "    $spec" >> $1
+        fi
     fi
 done < <(sed 's/^[ ]*- //' <<< $new_pkgs | sed '$!N; s/\n\s\s*\(.*\)/ \1/; P; D')
 

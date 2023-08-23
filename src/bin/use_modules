@@ -12,6 +12,21 @@ fi
 export my_dir="$( cd "$(dirname "${BASH_SOURCE[0]}")" ; pwd )"
 . $my_dir/../main.cfg
 
+# Check that system matches what we are loading if possible
+if [[ -n $NCAR_HOST ]]; then
+    if [[ $NCAR_HOST != $NCAR_SPACK_HOST ]]; then
+        2>&1 echo "Error: Module stack ($NCAR_SPACK_HOST) does not match identified host ($NCAR_HOST)."
+        2>&1 echo -e "       No changes will be made.\n"
+        return 1
+    fi
+else
+    2>&1 echo "Warning: System is not known (NCAR_HOST not set). Cannot verify stack compatibility."
+fi
+
+# Store old module tree for reversal
+NCAR_SPACK_RESET_SCRIPT=$(sed 's|\(.*envs/\).*|\1build/bin/use_modules|' <<< $LMOD_CONFIG_DIR)
+NCAR_SPACK_RESET_TYPE=$(sed 's|.*/\([^/]*\)/util|\1|' <<< $LMOD_CONFIG_DIR)
+
 # First we clean
 if [[ $(type -t module) == function ]]; then
     module --force purge
@@ -31,5 +46,20 @@ if [[ -f $mod_init ]]; then
     . $mod_init
     echo -e " -> $MODULEPATH_ROOT\n"
 else
-    echo " X  localinit.sh does not exit; no changes made"
+    2>&1 echo -e "Error: localinit.sh does not exist. No changes will be made.\n"
+    return 1
+fi
+
+# Define shell function to return to default
+if [[ $(type -t reset_modules) != function ]]; then
+    if [[ -f $NCAR_SPACK_RESET_SCRIPT ]]; then
+        function reset_modules {
+            . $NCAR_SPACK_RESET_SCRIPT $NCAR_SPACK_RESET_TYPE
+            unset ${!NCAR_SPACK_RESET_*} reset_modules
+        }
+
+        echo -e "Type \"reset_modules\" to return to system module stack\n"
+    else
+        unset ${!NCAR_SPACK_RESET_*}
+    fi
 fi

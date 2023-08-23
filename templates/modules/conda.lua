@@ -34,12 +34,15 @@ end
 
 -- Use NCAR conda while this module is loaded
 prepend_path("PATH", binpath)
-source_sh(my_shell:gsub("^sh$","bash"), pathJoin(initpath, "conda." .. my_shell))
+
+if my_shell == "sh" or my_shell == "csh" then
+    source_sh(my_shell:gsub("^sh$","bash"), pathJoin(initpath, "conda." .. my_shell))
+end
 
 if my_conda ~= "" and my_conda ~= basepath then
     if my_shell == "sh" then
         execute { cmd = ". " .. pathJoin(my_conda, "etc/profile.d/conda.sh"), modeA = { "unload" }}
-    else
+    elseif my_shell == "csh" then
         execute { cmd = "source " .. pathJoin(my_conda, "etc/profile.d/conda.csh"), modeA = { "unload" }}
     end
 end

@@ -9,6 +9,9 @@
 import spack.util.spack_yaml as yaml
 import os, re, copy
 
+# Packages to exclude when pruning externals
+excluded_pkgs = ["openpbs", "cray-libsci", "cray-mpich", "miniconda3"]
+
 # Infer some settings from the environment
 env_dir = os.environ["SPACK_ENV"]
 yaml_path = "{}/spack.yaml".format(env_dir)
@@ -31,9 +34,9 @@ for key in raw["spack"]:
             if subkey == "template_dirs":
                 del data["spack"][key][subkey]
             elif subkey == "install_tree":
-                if "root" in data["spack"][key][subkey]:
-                    del data["spack"][key][subkey]["root"]
-                if "projections" in data["spack"][key][subkey]:
+                if "root" in raw["spack"][key][subkey]:
+                    data["spack"][key][subkey]["root"] = "%INSTALLROOT%"
+                if "projections" in raw["spack"][key][subkey]:
                     data["spack"][key][subkey]["projections"] = dict(sorted(data["spack"][key][subkey]["projections"].items(), key=lambda item: item[0]))
             elif "_cache" in subkey or subkey == "test_stage":
                 data["spack"][key][subkey] = data["spack"][key][subkey].replace(tmproot, "%TMPROOT%").replace(deployment, "%DEPLOYMENT%")
@@ -45,7 +48,10 @@ for key in raw["spack"]:
 
             for pkgkey in raw["spack"][key][subkey]:
                 if pkgkey in ["externals", "buildable"]:
-                    del data["spack"][key][subkey][pkgkey]
+                    if subkey not in excluded_pkgs:
+                        del data["spack"][key][subkey][pkgkey]
+                    else:
+                        keep_pkg = True
                 else:
                     keep_pkg = True
 
