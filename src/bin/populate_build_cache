@@ -52,7 +52,7 @@ done
 log_dir=$SPACK_ENV/logs
 mkdir -p $log_dir
 log_file=$log_dir/cache.$start_time
-cache_cmd="spack buildcache create -a"
+cache_cmd="spack buildcache push -a"
 
 if [[ $NCAR_SPACK_DEPLOY_TYPE == production ]]; then
     mirror_path=${mirror_path:-$NCAR_SPACK_MIRROR_GLOBAL}
@@ -75,25 +75,25 @@ function wait_for_jobs {
 
 tsecho "Using up to $max_jobs threads to populate cache"
 
-pkglist=$(spack find -L -p | awk -v envpath=${SPACK_ENV}/opt '$3~envpath { print $1 }')
-cachelist=$(ls $mirror_path/build_cache/ 2> /dev/null || true)
+raw_list=$(spack find --format "{prefix} {hash} {name}@{version}%{compiler}{variants}")
+pkg_list=$(awk -v envpath=${SPACK_ENV}/opt '$1~envpath { print $2" "$3 }' <<< "$raw_list")
+cache_list=$(ls $mirror_path/build_cache/ 2> /dev/null || true)
 
-for pkg in $pkglist; do
-    if [[ $cachelist != *$pkg* ]]; then
+while read pkg spec; do
+    if [[ $cache_list != *$pkg* ]]; then
         if [[ -f $NCAR_SPACK_ENV_BUILD/.installs ]]; then
             use_cache=$(awk -F: -v spec_hash="$pkg" '$2 == spec_hash {print $3}' $NCAR_SPACK_ENV_BUILD/.installs)
         fi
 
         if [[ $use_cache != no ]]; then
-            pkg_label=$(spack find --no-groups -f --show-full-compiler -v /$pkg | tail -n1)
-            tsecho "Caching package:  ${GCOL}$pkg_label${DCOL}"
-            log_cmd "$cache_cmd -d $mirror_path --only=package /$pkg" >> $log_file
-            $cache_cmd -d $mirror_path --only=package /$pkg &>> $log_file &
+            tsecho "Caching package:  ${GCOL}$spec${DCOL}"
+            log_cmd "$cache_cmd --only=package $mirror_path /$pkg" >> $log_file
+            $cache_cmd --only=package $mirror_path /$pkg &>> $log_file &
             job_pids[$!]=running
         fi
     fi
     
     wait_for_jobs $max_jobs
-done
+done <<< "$pkg_list"
 
 wait_for_jobs 1

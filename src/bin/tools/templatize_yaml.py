@@ -65,7 +65,7 @@ for key in raw["spack"]:
     elif key == "view":
         for subkey in raw["spack"][key]:
             if "root" in raw["spack"][key][subkey]:
-                data["spack"][key][subkey]["root"] = "%VIEWROOT%"
+                data["spack"][key][subkey]["root"] = "%BASEROOT%/view"
             if "select" in raw["spack"][key][subkey]:
                 data["spack"][key][subkey]["select"] = ["git"]
     elif key == "compilers":

@@ -310,10 +310,10 @@ function install_spec {
     # Install the package and view pertinent log information
     log_cmd "$build_cmd $spec" >> $log_installs
     spack add $spec > /dev/null; spack concretize -q > /dev/null
-    $spec_build_cmd |& tee -a $log_installs | sed -u 's/^/   /' | (grep --line-buffered \
-            -e "Executing phase" -e "Successfully installed" -e "already installed"     \
-            -e " Total: " -e " from binary cache" -e " Error: " -e "^See build log"     \
-            -e "spack-build-out.txt" | grep -v "Skipping external package" || true)
+    $spec_build_cmd |& tee -a $log_installs | sed -u 's/^/   /' | (grep --line-buffered             \
+            -e "Executing phase" -e "Successfully installed" -e "already installed" -e " Total: "   \
+            -e " from binary cache" -e " Error: " -e "^See build log" -e "spack-build-out.txt"      \
+            -e "Installing" | grep -v "Skipping external package" || true)
 
     if [[ ${PIPESTATUS[0]} -ne 0 ]]; then
         # Remove spec to avoid uninstalled package in spack.yaml

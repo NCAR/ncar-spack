@@ -27,13 +27,6 @@ fi
 NCAR_SPACK_RESET_SCRIPT=$(sed 's|\(.*envs/\).*|\1build/bin/use_modules|' <<< $LMOD_CONFIG_DIR)
 NCAR_SPACK_RESET_TYPE=$(sed 's|.*/\([^/]*\)/util|\1|' <<< $LMOD_CONFIG_DIR)
 
-# First we clean
-if [[ $(type -t module) == function ]]; then
-    module --force purge
-    unset MODULEPATH MODULEPATH_ROOT
-    unset ${!__LMOD*} ${!LMOD*} ${!_ModuleTable*}
-fi
-
 if [[ ${1:-build} == p* ]]; then
     echo "Switching to public module tree:"
     mod_init=$NCAR_SPACK_ENV_PUBLIC/util/localinit.sh
@@ -43,6 +36,14 @@ else
 fi
 
 if [[ -f $mod_init ]]; then
+    # First we clean
+    if [[ $(type -t module) == function ]]; then
+        module --force purge
+        unset MODULEPATH MODULEPATH_ROOT
+        unset ${!__LMOD*} ${!LMOD*} ${!_ModuleTable*}
+    fi
+
+    # Now we use new modules
     . $mod_init
     echo -e " -> $MODULEPATH_ROOT\n"
 else
