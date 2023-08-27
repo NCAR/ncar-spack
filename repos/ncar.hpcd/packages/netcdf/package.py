@@ -44,6 +44,7 @@ class Netcdf(BundlePackage):
     depends_on('netcdf-c@4.9.1', when='@4.9.1')
     depends_on('netcdf-c@4.9.0', when='@4.9.0')
     depends_on('netcdf-c@4.8.1', when='@4.8.1')
+    depends_on('netcdf-fortran@4.6.1', when='@4.9.2:')
     depends_on('netcdf-fortran@4.6.0', when='@4.9.0:')
     depends_on('netcdf-fortran@4.5.3', when='@4.8.1')
     depends_on('netcdf-cxx4@4.3.1', when='@4.8.1:')
