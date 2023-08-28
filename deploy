@@ -4,7 +4,7 @@
 #   a specified cluster definition. 
 #
 #   Author:         Brian Vanderwende
-#   Last Revised:   17:57, 26 Aug 2023
+#   Last Revised:   15:50, 27 Aug 2023
 #
 
 set -e
@@ -230,7 +230,7 @@ sed -i "s|%VERSION%|$NCAR_SPACK_HOST_VERSION|" $NCAR_SPACK_ENV_BUILD/spack.yaml
 sed -i "s|%DEPLOYMENT%|${NCAR_SPACK_HOST}/$NCAR_SPACK_HOST_VERSION|" $NCAR_SPACK_ENV_BUILD/spack.yaml
 sed -i "s|%INSTALLROOT%|${NCAR_SPACK_ENV_BUILD}/opt|" $NCAR_SPACK_ENV_BUILD/spack.yaml
 sed -i "s|%MODULESROOT%|${NCAR_SPACK_ENV_BUILD}/modules/$NCAR_SPACK_HOST_VERSION|" $NCAR_SPACK_ENV_BUILD/spack.yaml
-sed -i "s|%VIEWROOT%|${NCAR_SPACK_ENV_BUILD}/ncarenv|" $NCAR_SPACK_ENV_BUILD/spack.yaml
+sed -i "s|%BASEROOT%|$NCAR_SPACK_ENV_BUILD|" $NCAR_SPACK_ENV_BUILD/spack.yaml
 sed -i "s|%TMPROOT%|$NCAR_SPACK_TMPROOT|g" $NCAR_SPACK_ENV_BUILD/spack.yaml
 
 # Activate the environment

@@ -24,8 +24,9 @@ local syspath   = os.getenv("NCAR_DEFAULT_PATH")
 local sysman    = os.getenv("NCAR_DEFAULT_MANPATH")
 local sysinfo   = os.getenv("NCAR_DEFAULT_INFOPATH")
 
--- Utility locations
-local viewpath      = "%VIEWROOT%"
+-- Base shell environment packages and utilities
+local basepath      = "%BASEROOT%"
+local viewpath      = pathJoin(basepath, "view")
 
 -- System specific settings
 setenv("NCAR_ENV_VERSION",  "%VERSION%")
@@ -164,8 +165,8 @@ end
 setenv("LC_ALL",    "en_US.UTF-8")
 setenv("LANG",      "en_US.UTF-8")
 
--- Add view utilities to PATHS
-prepend_path("PATH",            pathJoin(viewpath, "utils/bin"))
+-- Add base packages utilities to PATHS
+prepend_path("PATH",            pathJoin(basepath, "utils/bin"))
 append_path("PATH",             pathJoin(viewpath, "bin"))
 append_path("MANPATH",          pathJoin(viewpath, "man"))
 append_path("MANPATH",          pathJoin(viewpath, "share/man"))
@@ -183,5 +184,5 @@ append_path("PATH",             syspath)
 append_path("MANPATH",          sysman)
 append_path("INFOPATH",         sysinfo)
 
--- Add PERL library from the view
-append_path("PERL5LIB", pathJoin(viewpath, "perl5lib/lib/perl5"))
+-- Add PERL library from the base
+append_path("PERL5LIB", pathJoin(basepath, "perl/lib/perl5"))

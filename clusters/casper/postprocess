@@ -139,6 +139,7 @@ ncar_utils[qinteractive]=pbstools
 ncar_utils[qcmd]=pbstools
 ncar_utils[qhist]=qhist
 ncar_utils[gladequota]=gladequota
+ncar_utils[set_gpu_rank]=mpitools
 ncar_utils[create_conda_kernel]=ncar-conda
 ncar_utils[compare_env_yaml]=ncar-conda
 ncar_utils[spack-downstream]=csg-spack-downstreams

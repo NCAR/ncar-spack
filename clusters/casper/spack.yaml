@@ -34,7 +34,6 @@ spack:
       - gcc
       - nvhpc
       - oneapi
-      - intel
       providers:
         'mpi:':
         - openmpi
@@ -130,6 +129,9 @@ spack:
       - any_of:
         - ^hdf5+mpi
         when: +hdf5
+    darshan-util:
+      variants:
+      - +bzip2
     diffutils:
       require:
       - '%gcc@7.5.0'
@@ -236,8 +238,6 @@ spack:
     ghostscript:
       require:
       - '%gcc@7.5.0'
-    # Note - openssl needs to use certs=system when specified as an external
-    # or else the Rust build will fail (and maybe others)
     giflib:
       require: '%gcc@7.5.0'
     git:
@@ -255,6 +255,10 @@ spack:
       - +wx
     googletest:
       require: '%gcc@7.5.0'
+    gptl:
+      variants:
+      - +papi
+      - +pmpi
     groff:
       require:
       - '%gcc@7.5.0'
@@ -292,6 +296,7 @@ spack:
     intel-oneapi-mpi:
       variants:
       - +external-libfabric
+      - +generic-names
     ispc:
       require: '%clang'
     # Newer Jasper versions have caused issues in the past
@@ -304,6 +309,10 @@ spack:
       require: '%gcc@7.5.0'
     jsoncpp:
       require: '%gcc@7.5.0'
+    julia:
+      require:
+        - ^llvm~clang~gold~polly
+        - ^openblas threads=openmp
     krb5:
       require:
       - '%gcc@7.5.0'
@@ -342,6 +351,14 @@ spack:
       require: '%gcc@7.5.0'
     libtool:
       require: '%gcc@7.5.0'
+    libunwind:
+      variants:
+      - +cxx_exceptions
+      - +debug_frame
+      - +pic
+      - +xz
+      - +zlib
+      - components=setjump,ptrace,coredump
     libx11:
       require: '%gcc@7.5.0'
     libxaw:
@@ -372,10 +389,17 @@ spack:
       - spec: miniconda3@4.12.0
         prefix: /glade/u/apps/opt/conda
       buildable: false
+    mpifileutils:
+      variants:
+      - +gpfs
+      - +lustre
+      - +xattr
     # Newer ESMF versions cause issues for NCL
     # TODO - bake this into recipe?
     ncl:
-      require: ^esmf@:8.0.1 ~external-lapack ^hdf5~mpi
+      require: 
+      - ^esmf@:8.0.1 ~external-lapack
+      - ^hdf5~mpi
       variants:
       - +gdal
       - +grib
@@ -435,6 +459,8 @@ spack:
     openssh:
       require:
       - '%gcc@7.5.0'
+    # Note - openssl needs to use certs=system when specified as an external
+    # or else the Rust build will fail (and maybe others)
     openssl:
       require:
       - certs=system
@@ -446,6 +472,9 @@ spack:
       - +ncint
       - +pnetcdf
       - ~logging
+    parallelio1:
+      variants:
+      - +pnetcdf
     paraview:
       variants:
       - +adios2
@@ -647,6 +676,7 @@ spack:
           environment:
             set:
               CUDATOOLKIT_HOME: '{prefix}'
+              CUDA_VERSION: '{version}'
               NVHPC_CUDA_HOME: '{prefix}'
             prepend_path:
               LD_LIBRARY_PATH: '{prefix}/lib64:{prefix}/nvvm/lib64:{prefix}/extras/CUPTI/lib64:{prefix}/extras/Debugger/lib64'
@@ -654,6 +684,14 @@ spack:
           environment:
             prepend_path:
               LD_LIBRARY_PATH: '{prefix}/lib'
+        cutensor:
+          template: ncar_requires_cuda.lua
+          filter:
+            exclude_env_vars:
+            - NCAR_LDFLAGS_CUTENSOR
+          environment:
+            set:
+              NCAR_LDFLAGS_CUTENSOR_CUDA: '{prefix}/lib/" .. os.getenv("CUDA_MAJOR_VERSION") .."'
         darshan-runtime:
           autoload: none
           environment:
@@ -662,11 +700,15 @@ spack:
               DARSHAN_MOD_DISABLE: LUSTRE
               DARSHAN_SHARED_LIB: '{prefix}/lib/libdarshan.so'
         defaults:
-        - netcdf@4.9.1
+        - netcdf@4.9.2
         - parallel-netcdf@1.12.3
         - fftw@3.3.10
         - openmpi@4.1.5
-        - nvhpc@23.1
+        - nvhpc@23.7
+        - parallelio+mpi
+        - esmf+mpi
+        esmf:
+          autoload: none
         exclude:
         - lmod
         exclude_implicits: true
@@ -712,7 +754,6 @@ spack:
               OMPI_CXX: icpx
               OMPI_F77: ifx
               OMPI_FC: ifx
-              PE_ENV: INTEL
         intel-oneapi-compilers-classic:
           template: ncar_intel.lua
           autoload: none
@@ -740,7 +781,6 @@ spack:
               OMPI_CXX: icpc
               OMPI_F77: ifort
               OMPI_FC: ifort
-              PE_ENV: INTEL
         intel-oneapi-mkl:
           template: ncar_math.lua
           filter:
@@ -764,11 +804,24 @@ spack:
               I_MPI_HYDRA_BOOTSTRAP_EXEC: pbs_tmrsh
               NCAR_ROOT_INTEL_MPI: '{prefix}'
               NCAR_SPACK_HASH_INTEL_MPI: '{hash}'
+        intel-oneapi-vtune:
+          filter:
+            exclude_env_vars:
+            - NCAR_ROOT_INTEL_ONEAPI_VTUNE
+            - NCAR_SPACK_HASH_INTEL_ONEAPI_VTUNE
+          environment:
+            set:
+              NCAR_ROOT_VTUNE: '{prefix}'
+              NCAR_SPACK_HASH_VTUNE: '{hash}'
+            append_path:
+              LD_LIBRARY_PATH: '{prefix}/vtune/latest/lib64'
         miniconda3:
           filter:
             exclude_env_vars:
             - ACLOCAL_PATH
             - CMAKE_PREFIX_PATH
+            - CONDA_EXE
+            - CONDA_PYTHON_EXE
             - CONDA_SHLVL
             - LD_LIBRARY_PATH
             - MANPATH
@@ -781,8 +834,6 @@ spack:
             - _CE_M
           environment:
             set:
-              CONDA_EXE: '{prefix}/bin/conda'
-              CONDA_ROOT: '{prefix}'
               NCAR_ROOT_CONDA: '{prefix}'
           template: conda.lua
         mpi:
@@ -810,7 +861,6 @@ spack:
               NCAR_ID_COMPILER: '{name}-{version}'
               NVIDIA_PATH: '{prefix}'
               NVIDIA_VERSION: '{version}'
-              PE_ENV: NVIDIA
             prepend_path:
               LD_LIBRARY_PATH: '{prefix}/Linux_x86_64/{version}/compilers/lib'
         nvhpc@21.3:
@@ -833,6 +883,20 @@ spack:
           environment:
             set:
               PIO: '{prefix}'
+        parallelio1:
+          filter:
+            exclude_env_vars:
+            - NCAR_INC_PARALLELIO1
+            - NCAR_LDFLAGS_PARALLELIO1
+            - NCAR_ROOT_PARALLELIO1
+            - NCAR_SPACK_HASH_PARALLELIO1
+          environment:
+            set:
+              NCAR_INC_PARALLELIO: '{prefix}/include'
+              NCAR_LDFLAGS_PARALLELIO: '{prefix}/lib'
+              NCAR_ROOT_PARALLELIO: '{prefix}'
+              NCAR_SPACK_HASH_PARALLELIO: '{hash}'
+              PIO: '{prefix}'
         projections:
           all: '{name}/{version}'
           fftw+mpi: fftw-mpi/{version}
@@ -843,7 +907,9 @@ spack:
           intel-oneapi-compilers-classic: intel-classic/{^intel-oneapi-compilers.version}
           intel-oneapi-mpi: intel-mpi/{version}
           intel-oneapi-mkl: mkl/{version}
+          intel-oneapi-vtune: vtune/{version}
           miniconda3: conda/latest
+          parallelio1: parallelio/{version}
         singularityce:
           environment:
             prepend_path:

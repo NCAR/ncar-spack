@@ -22,7 +22,7 @@ tmproot = os.environ["NCAR_SPACK_TMPROOT"]
 deployment = "{}/{}".format(os.environ["NCAR_SPACK_HOST"], os.environ["NCAR_SPACK_HOST_VERSION"])
 
 with open(yaml_path, 'r') as yaml_file:
-    raw = yaml.load(yaml_file)
+    raw = yaml.load_config(yaml_file)
 
 # We need to operate on a deep copy since we will modify the dictionary
 data = copy.deepcopy(raw)
@@ -94,4 +94,4 @@ for key in raw["spack"]:
 
 # Write modified yaml to template
 with open(temp_path, 'w') as temp_file:
-    temp_file.write(yaml.dump(data))
+    yaml.dump_config(data, temp_file)

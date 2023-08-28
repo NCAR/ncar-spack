@@ -31,12 +31,15 @@ core="  craype/2.7.20
 cdep="  cray-libsci/23.02.1.1
         cray-mpich/8.1.25"
 
+hide_list=" */*/openmpi/*"
+
+
 if [[ $SPACK_ENV == $NCAR_SPACK_ENV_PUBLIC ]]; then
     mod_root=$NCAR_SPACK_ROOT_MODULES
-    view_root=$NCAR_SPACK_ROOT_VIEW
+    base_root=$NCAR_SPACK_ROOT_BASE
 else
     mod_root=$SPACK_ENV/modules
-    view_root=$SPACK_ENV/ncarenv
+    base_root=$SPACK_ENV
 fi
 
 mod_deployment=${mod_root}/$NCAR_SPACK_HOST_VERSION
@@ -50,6 +53,13 @@ while [[ $# -gt 0 ]]; do
 
     shift
 done
+
+# First, let's make sure module tree exists
+if [[ ! -d $mod_deployment ]] || [[ -n $spack_flags ]]; then
+    spack module lmod refresh -y $spack_flags
+fi
+
+# ===== CRAY PROGRAMMING ENVIRONMENT INTEGRATION =====
 
 function get_cpe_version {
     for cpe in $cpe_versions; do
@@ -213,9 +223,13 @@ setenv("NCAR_BUILD_ENV_MPI",    my_ncar_env)
 pushenv("NCAR_BUILD_ENV",       my_ncar_env)
 
 -- If GPUs available, depend on CUDA
-if tonumber(os.getenv("NGPUS")) > 0 then
+local num_gpus = os.getenv("NGPUS")
+if num_gpus and tonumber(num_gpus) > 0 then
     depends_on("cuda")
 end
+
+-- Add site customizations (see "man intro_mpi" for details)
+setenv("FI_CXI_RX_MATCH_MODE", "hybrid")
 EOF
 }
 
@@ -373,27 +387,6 @@ function copy_mods {
     done
 }
 
-function hide_module {
-    hl_file=$SPACK_ENV/util/hidden-modules
-
-    if [[ -f $hl_file ]]; then
-        if grep -q $1 $hl_file; then
-            return
-        fi
-    fi
-
-    echo "hide-modulefile $1" >> $hl_file
-}
-
-# First, let's make sure module tree exists
-if [[ ! -d $mod_deployment ]] || [[ -n $spack_flags ]]; then
-    spack module lmod refresh -y $spack_flags
-fi
-
-# Cray module paths
-cray_core=/opt/cray/pe/lmod/modulefiles/core
-cray_comnet=/opt/cray/pe/lmod/modulefiles/comnet/%CMP%/*/ofi/1.0
-
 # Find CPE versions
 cpe_root=/opt/cray/pe/cpe
 cpe_versions="$(ls --color=never -rd /opt/cray/pe/cpe/*.* | xargs -n1 basename | xargs)"
@@ -432,6 +425,8 @@ done
 tsecho "Copying cdep modules to $mod_root"
 copy_mods cdep
 
+# ===== INTEL ONEAPI MODULE TRIO =====
+
 tsecho "Populating Intel compiler module set"
 
 if [[ -d Core/intel-oneapi ]]; then
@@ -439,7 +434,8 @@ if [[ -d Core/intel-oneapi ]]; then
 
     for icver in $(find Core/intel-oneapi/ -type f); do
         sed '/INTEL_COMPILER_TYPE/ s/ONEAPI/RECOMMENDED/' $icver > ${icver/-oneapi}
-        sed -i 's|\([/"]\)ifx|\1intel64/ifort|' ${icver/-oneapi}
+        sed -i 's|/ifx|/intel64/ifort|' ${icver/-oneapi}
+        sed -i 's|"ifx|"ifort|' ${icver/-oneapi}
     done
 fi
 
@@ -453,6 +449,20 @@ if [[ -d Core/intel-classic ]]; then
     done
 fi
 
+# ===== CREATE META-MODULES =====
+
+function hide_module {
+    hl_file=$SPACK_ENV/util/hidden-modules
+
+    if [[ -f $hl_file ]]; then
+        if grep -q $1 $hl_file; then
+            return
+        fi
+    fi
+
+    echo "hide-modulefile $1" >> $hl_file
+}
+
 sys_gcc=gcc@$(gcc -dumpfullversion)
 
 if [[ $core_gcc != $sys_gcc ]]; then
@@ -460,8 +470,9 @@ if [[ $core_gcc != $sys_gcc ]]; then
     cc_root=$(spack location -i $core_gcc)
 fi
 
-
-# ===== CREATE META-MODULES =====
+# Cray module paths
+cray_core=/opt/cray/pe/lmod/modulefiles/core
+cray_comnet=/opt/cray/pe/lmod/modulefiles/comnet/%CMP%/*/ofi/1.0
 
 cray_mpath=/opt/cray/pe/lmod/modulefiles/core:/opt/cray/modulefiles:/opt/cray/pe/lmod/modulefiles/craype-targets/default
 
@@ -472,7 +483,7 @@ for mod_type in ncarenv ncarenv-basic; do
     mm_file=$mod_root/environment/$mod_type/${NCAR_SPACK_HOST_VERSION}.lua
 
     sed "s|%MODPATH%|${mod_deployment}/Core|g" $mm_src > $tm_file
-    sed -i "s|%VIEWROOT%|${view_root}|g" $tm_file
+    sed -i "s|%BASEROOT%|${base_root}|g" $tm_file
     sed -i "s|%VERSION%|${NCAR_SPACK_HOST_VERSION}|g" $tm_file
     sed -i "s|%DATE%|$(date)|g" $tm_file
     sed -i "s|%UTILPATH%|${SPACK_ENV}/util|g" $tm_file
@@ -518,12 +529,25 @@ done
 mkdir -p $mod_root/environment/cesmdev
 mm_file=$mod_root/environment/cesmdev/1.0.lua
 sed "s|%DATE%|$(date)|g" $NCAR_SPACK_ENV_BUILD/templates/modules/cesmdev.lua > $tm_file
+sed -i "s|%HOST%|$NCAR_SPACK_HOST|g" $tm_file
 mv $tm_file $mm_file
 hide_module $mm_file
 
-tsecho "Adding external utilities to the view"
+# ===== HIDE REQUESTED MODULES =====
 
-# Add utilities to the view if missing
+for hl in $hide_list; do
+    hide_mods="$(ls -1 --color=never $mod_deployment/$hl 2> /dev/null || true)"
+
+    for hm in $hide_mods; do
+        hide_module $hm
+    done
+done
+
+# ===== FINALIZE BASE SHELL ENVIRONMENT =====
+
+tsecho "Adding external utilities to the shell environment"
+
+# Add utilities to the base environment when using ncarenv
 util_root=/glade/u/apps/opt; cd $util_root
 
 declare -A ncar_utils
@@ -532,13 +556,15 @@ ncar_utils[qinteractive]=pbstools
 ncar_utils[qcmd]=pbstools
 ncar_utils[qhist]=qhist
 ncar_utils[gladequota]=gladequota
-ncar_utils[get_local_rank]=mpitools
 ncar_utils[set_gpu_rank]=mpitools
+ncar_utils[create_conda_kernel]=ncar-conda
+ncar_utils[compare_env_yaml]=ncar-conda
+ncar_utils[spack-downstream]=csg-spack-downstreams
 
 skip_clone="gladequota mpitools"
 
 if [[ $SPACK_ENV == $NCAR_SPACK_ENV_PUBLIC ]]; then
-    mkdir -p $NCAR_SPACK_ROOT_VIEW/utils/bin
+    mkdir -p $NCAR_SPACK_ROOT_BASE/utils/bin
 
     for util in ${!ncar_utils[@]}; do
         if [[ ! -d ${ncar_utils[$util]} ]]; then
@@ -556,10 +582,10 @@ if [[ $SPACK_ENV == $NCAR_SPACK_ENV_PUBLIC ]]; then
             fi
         fi
 
-        if [[ ! -e $NCAR_SPACK_ROOT_VIEW/utils/bin/$util ]]; then
+        if [[ ! -e $NCAR_SPACK_ROOT_BASE/utils/bin/$util ]]; then
             if [[ -e $util_root/${ncar_utils[$util]}/bin/$util ]]; then
                 tsecho "    adding $GCOL$util$DCOL"
-                ln -s $util_root/${ncar_utils[$util]}/bin/$util $NCAR_SPACK_ROOT_VIEW/utils/bin/
+                ln -s $util_root/${ncar_utils[$util]}/bin/$util $NCAR_SPACK_ROOT_BASE/utils/bin/
             else
                 tsecho "Error: Expected binary not found ($util_root/${ncar_utils[$util]}/bin/$util)!"
                 exit 1
@@ -568,9 +594,35 @@ if [[ $SPACK_ENV == $NCAR_SPACK_ENV_PUBLIC ]]; then
     done
 fi
 
+tsecho "Finalize the Spack view"
+view_root=$base_root/view
+
 # Make sure RPC is available for WRF
 if [[ ! -e $view_root/include/rpc ]] && [[ -d $view_root/include/tirpc/rpc ]]; then
     ln -s $view_root/include/tirpc/* $view_root/include/
+fi
+
+# ===== SET UP PERL LIBRARY =====
+
+perl_mod_list="Pod::Parser HTML::Entities"
+perl_lib_root=$view_root/perl5lib
+
+if [[ $NCAR_SPACK_ENV_TYPE == public ]]; then
+    tsecho "Checking for Spack-installed Perl"
+    perl_hash=$(spack find -x --format '{hash}' perl)
+
+    if [[ $? == 0 ]]; then
+        tsecho "Populating Perl library"
+        echo
+        spack load /$perl_hash
+
+        for pmod in $perl_mod_list; do
+            cpanm install -L $perl_lib_root $pmod
+        done
+
+        spack unload /$perl_hash
+        echo
+    fi
 fi
 
 # ===== CREATE LMOD AVAIL HOOK =====
