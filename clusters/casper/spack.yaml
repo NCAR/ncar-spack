@@ -21,6 +21,8 @@ spack:
     build_stage:
     - '%TMPROOT%/$user/temp/spack/%DEPLOYMENT%/builds'
     shared_linking:
+      # Turning this setting on would be beneficial but vendor compilers do not
+      # seem to work with it! Avoid!
       type: rpath
       bind: false
   packages:
@@ -55,13 +57,23 @@ spack:
         read: world
         write: user
       target:
+        # This target is lowest-common denominator between Intel and Milans
       - x86_64_v3
       require:
+        # This should force packages to use the vendor-preferred solution
+        # for BLAS and LAPACK without needing to set it on each package
       - any_of:
-        - '%gcc ^openblas %gcc@11:'
+        - '%gcc@7 ^openblas %gcc@7'
+        - '%gcc@11: ^openblas %gcc@11:'
         - '%oneapi ^intel-oneapi-mkl'
         - '%nvhpc ^nvhpc'
         when: ^blas
+      - any_of:
+        - '%gcc@7 ^openblas %gcc@7'
+        - '%gcc@11: ^openblas %gcc@11:'
+        - '%oneapi ^intel-oneapi-mkl'
+        - '%nvhpc ^nvhpc'
+        when: ^lapack
     antlr:
       require: '%gcc@7.5.0'
     apptainer:
@@ -83,6 +95,9 @@ spack:
       require: '%gcc@7.5.0'
     bzip2:
       require: '%gcc@7.5.0'
+    c-blosc:
+      require:
+      - '%gcc@7.5.0'
     cairo:
       require: '%gcc@7.5.0'
       variants:
@@ -100,9 +115,10 @@ spack:
       - +squashfuse
     cli11:
       require: '%gcc@7.5.0'
-    # Without +ownlibs, some packages can't concretize due to infinite regression
     cmake:
-      require: '%gcc@7.5.0'
+      # Without +ownlibs, some packages can't concretize due to infinite regression
+      require:
+      - '%gcc@7.5.0'
       variants:
       - +ownlibs
     cpio:
@@ -111,14 +127,17 @@ spack:
     cuda:
       require:
       - +allow-unsupported-compilers
+      - '%gcc@7.5.0'
     cudnn:
       require: '%gcc@7.5.0'
     curl:
+      # Need mbedtls option for Julia - most other packages seem to prefer openSSL
       require: '%gcc@7.5.0'
       variants:
       - +libidn2
+      - +libssh2
       - +nghttp2
-      - tls=openssl
+      - tls=openssl,mbedtls
     cutensor:
       require: '%gcc@7.5.0'
     darshan-runtime:
@@ -150,8 +169,11 @@ spack:
     eigen:
       require: '%gcc@7.5.0'
     esmf:
-      variants:
+      # If external-lapack not forced, concretizer will try to be lazy and
+      # avoid lapack requirements by switching to internal despite variant
+      require:
       - +external-lapack
+      variants:
       - +parallelio
       - ~mpi
       - ~pnetcdf
@@ -189,9 +211,9 @@ spack:
       require: '%gcc@7.5.0'
     fontconfig:
       require: '%gcc@7.5.0'
-    # Newer version leads to concretization issues for Python packages
-    # This setting avoids multiple builds of many packages
     freetype:
+      # Newer version leads to concretization issues for Python packages
+      # This setting avoids multiple builds of many packages
       require: '@:2.10.2'
     gawk:
       require:
@@ -200,6 +222,8 @@ spack:
       variants:
       - +piclibs
       - languages=c,c++,fortran,go
+      require:
+      - '%gcc@7.5.0'
     gdal:
       require:
       - any_of:
@@ -299,9 +323,9 @@ spack:
       - +generic-names
     ispc:
       require: '%clang'
-    # Newer Jasper versions have caused issues in the past
-    # TODO - recheck whether this is a problem now
     jasper:
+      # Newer Jasper versions have caused issues in the past
+      # TODO - recheck whether this is a problem now
       require:
       - '%gcc@7.5.0'
       - '@:2'
@@ -311,15 +335,16 @@ spack:
       require: '%gcc@7.5.0'
     julia:
       require:
-        - ^llvm~clang~gold~polly
-        - ^openblas threads=openmp
+      - ^llvm~clang~gold~polly
+      - ^openblas threads=openmp
     krb5:
       require:
       - '%gcc@7.5.0'
     libarchive:
       require: compression=bz2lib,lz4,lzma,lzo2,zlib,zstd xar=expat
     libcatalyst:
-      require: '%gcc@7.5.0'
+      require:
+      - '%gcc@7.5.0'
     libdeflate:
       require: '%gcc@7.5.0'
     libfabric:
@@ -332,15 +357,25 @@ spack:
       - '@:3.3'
     libfuse:
       require: ~utils
-    # gnuplot fails to build with newer version due to libiconv linking failure
     libgd:
+      # gnuplot fails to build with newer version due to libiconv linking failure
       require: '@2.2.4'
+    libgit2:
+      # Julia is demanding...
+      require:
+      - '@1.5'
     libjpeg-turbo:
       require: '%gcc@7.5.0'
     libogg:
       require: '%gcc@7.5.0'
     libpng:
       require: '%gcc@7.5.0'
+    libssh2:
+      # Julia again...
+      require:
+      - '@1.10'
+      variants:
+      - crypto=mbedtls
     libszip:
       require: '%gcc@7.5.0'
     libtheora:
@@ -382,8 +417,14 @@ spack:
     maven:
       require:
       - '%gcc@7.5.0'
+    mbedtls:
+      # Julia of course...
+      require:
+      - '@2.28'
+      - libs=static,shared
     mgard:
-      require: '%gcc@7.5.0'
+      require:
+      - '%gcc@7.5.0'
     miniconda3:
       externals:
       - spec: miniconda3@4.12.0
@@ -394,10 +435,10 @@ spack:
       - +gpfs
       - +lustre
       - +xattr
-    # Newer ESMF versions cause issues for NCL
-    # TODO - bake this into recipe?
     ncl:
-      require: 
+      # Newer ESMF versions cause issues for NCL
+      # TODO - bake this into recipe?
+      require:
       - ^esmf@:8.0.1 ~external-lapack
       - ^hdf5~mpi
       variants:
@@ -415,6 +456,9 @@ spack:
     netcdf-cxx4:
       variants:
       - ~doxygen
+    nghttp2:
+      # Thanks Julia...
+      require: '@1.48'
     ninja:
       require: '%gcc@7.5.0'
     numactl:
@@ -444,6 +488,7 @@ spack:
     openblas:
       variants:
       - +fortran
+      - threads=openmp
     openjdk:
       require:
       - '%gcc@7.5.0'
@@ -456,14 +501,17 @@ spack:
       - spec: openpbs@2021.1.3
         prefix: /opt/pbs
       buildable: false
+      require:
+      - '%gcc@7.5.0'
     openssh:
       require:
       - '%gcc@7.5.0'
-    # Note - openssl needs to use certs=system when specified as an external
-    # or else the Rust build will fail (and maybe others)
     openssl:
+      # Requiring certs=system is necessary to perform builds like rust using
+      # external openssl
       require:
       - certs=system
+      - '%gcc@7.5.0'
     pango:
       variants:
       - +X
@@ -491,12 +539,17 @@ spack:
       - +qt
       - +visitbridge
       require:
+        # Paraview will not concretize logically if these are not set
       - any_of:
         - ^netcdf-c+mpi
         when: +mpi
       - any_of:
         - '^adios2@2.9: %gcc@11:'
         when: +adios2
+    patchelf:
+      # Version 0.18 breaks when using gcc@7.5.0
+      require:
+      - '@:0.17'
     pcre:
       require: '%gcc@7.5.0'
     pcre2:
@@ -512,8 +565,8 @@ spack:
       require: '%gcc@7.5.0'
     protobuf:
       require: '%gcc@7.5.0'
-    # Newer versions cannot be used by py-numpy as of Aug 2023
     py-setuptools:
+      # Newer versions cannot be used by py-numpy as of Aug 2023
       require: '@:63'
     qhull:
       require: '%gcc@7.5.0'
@@ -603,9 +656,9 @@ spack:
       require: '%gcc@7.5.0'
     zfp:
       require: '%gcc@7.5.0'
-    # zlib 1.3 causes configure failure for openssh because it expects
-    # 3 version digits (i.e., X.Y.Z) as of Aug 2023
     zlib:
+      # zlib 1.3 causes configure failure for openssh because it expects
+      # 3 version digits (i.e., X.Y.Z) as of Aug 2023
       require:
       - '%gcc@7.5.0'
       - '@:1.2.13'
@@ -662,16 +715,17 @@ spack:
         core_compilers:
         - gcc@7.5.0
         core_specs:
+        - paraview
         - octave
         - nccmp
         - ncview
         - cdo
         - nco
+        - visit
         - cuda
         - r
         - cmake
         - wgrib2
-        - visit
         cuda:
           environment:
             set:
@@ -691,7 +745,8 @@ spack:
             - NCAR_LDFLAGS_CUTENSOR
           environment:
             set:
-              NCAR_LDFLAGS_CUTENSOR_CUDA: '{prefix}/lib/" .. os.getenv("CUDA_MAJOR_VERSION") .."'
+              NCAR_LDFLAGS_CUTENSOR_CUDA: '{prefix}/lib/" .. os.getenv("CUDA_MAJOR_VERSION")
+                .."'
         darshan-runtime:
           autoload: none
           environment:
