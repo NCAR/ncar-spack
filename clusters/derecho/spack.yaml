@@ -21,20 +21,22 @@ spack:
     build_stage:
     - '%TMPROOT%/$user/temp/spack/%DEPLOYMENT%/builds'
     shared_linking:
+      # Turning this setting on would be beneficial but vendor compilers do not
+      # seem to work with it! Avoid!
       type: rpath
       bind: false
   packages:
     adios2:
       variants:
       - +hdf5
-      - +python
+      - ~python
     all:
       'compiler:':
-        - gcc@7.5.0
-        - gcc
-        - oneapi
-        - nvhpc
-        - cce
+      - gcc@7.5.0
+      - gcc
+      - oneapi
+      - nvhpc
+      - cce
       providers:
         'mpi:':
         - cray-mpich
@@ -57,13 +59,23 @@ spack:
         read: world
         write: user
       target:
-        - x86_64_v3
+        # This target is lowest-common denominator between Intel and Milans
+      - x86_64_v3
       require:
+        # This should force packages to use the vendor-preferred solution
+        # for BLAS and LAPACK without needing to set it on each package
       - any_of:
-        - '%gcc ^openblas %gcc@11:'
+        - '%gcc@7 ^openblas %gcc@7'
+        - '%gcc@11: ^openblas %gcc@11:'
         - '%oneapi ^intel-oneapi-mkl'
         - '%nvhpc ^nvhpc'
         when: ^blas
+      - any_of:
+        - '%gcc@7 ^openblas %gcc@7'
+        - '%gcc@11: ^openblas %gcc@11:'
+        - '%oneapi ^intel-oneapi-mkl'
+        - '%nvhpc ^nvhpc'
+        when: ^lapack
     antlr:
       require: '%gcc@7.5.0'
     apptainer:
@@ -78,10 +90,16 @@ spack:
       require: '%gcc@7.5.0'
     automake:
       require: '%gcc@7.5.0'
+    bash:
+      require:
+      - '%gcc@7.5.0'
     bison:
       require: '%gcc@7.5.0'
     bzip2:
       require: '%gcc@7.5.0'
+    c-blosc:
+      require:
+      - '%gcc@7.5.0'
     cairo:
       require: '%gcc@7.5.0'
       variants:
@@ -97,11 +115,17 @@ spack:
     charliecloud:
       variants:
       - +squashfuse
-    # Without +ownlibs, some packages can't concretize due to infinite regression
+    cli11:
+      require:
+      - '%gcc@7.5.0'
     cmake:
+      # Without +ownlibs, some packages can't concretize due to infinite regression
       require: '%gcc@7.5.0'
       variants:
       - +ownlibs
+    cpio:
+      require:
+      - '%gcc@7.5.0'
     cray-libsci:
       externals:
       - spec: cray-libsci@23.05.1.4
@@ -123,13 +147,20 @@ spack:
         prefix: /opt/cray/pe/mpich/8.1.25/ofi/intel/19.0
       buildable: false
     cuda:
-      require: +allow-unsupported-compilers
+      require:
+      - +allow-unsupported-compilers
+      - '%gcc@7.5.0'
+    cudnn:
+      require:
+      - '%gcc@7.5.0'
     curl:
+      # Need mbedtls option for Julia - most other packages seem to prefer openSSL
       require: '%gcc@7.5.0'
       variants:
       - +libidn2
+      - +libssh2
       - +nghttp2
-      - tls=openssl
+      - tls=openssl,mbedtls
     darshan-runtime:
       variants:
       - +parallel-netcdf
@@ -141,9 +172,14 @@ spack:
     darshan-util:
       variants:
       - +bzip2
+    diffutils:
+      require:
+      - '%gcc@7.5.0'
     doxygen:
       variants:
       - +graphviz
+      require:
+      - '%gcc@7.5.0'
     eccodes:
       variants:
       - +fortran
@@ -151,9 +187,17 @@ spack:
       - +png
       - +tools
       - jp2k=jasper
+    eigen:
+      require:
+      - '%gcc@7.5.0'
     esmf:
+      # If external-lapack not forced, concretizer will try to be lazy and
+      # avoid lapack requirements by switching to internal despite variant
+      require:
+      - any_of:
+        - '@8.1: +external-lapack'
+        - '@:8'
       variants:
-      - +external-lapack
       - +parallelio
       - ~mpi
       - ~pnetcdf
@@ -182,16 +226,29 @@ spack:
     fftw:
       variants:
       - ~mpi
+    findutils:
+      require:
+      - '%gcc@7.5.0'
     flex:
       require: '%gcc@7.5.0'
+    fltk:
+      require:
+      - '%gcc@7.5.0'
     fontconfig:
       require: '%gcc@7.5.0'
     freetype:
+      # Newer version leads to concretization issues for Python packages
+      # This setting avoids multiple builds of many packages
       require: '@:2.10.2'
+    gawk:
+      require:
+      - '%gcc@7.5.0'
     gcc:
       variants:
       - +piclibs
       - languages=c,c++,fortran,go
+      require:
+      - '%gcc@7.5.0'
     gdal:
       require:
       - any_of:
@@ -227,13 +284,21 @@ spack:
       - +tui
       - ~debuginfod
       - ~python
+    ghostscript:
+      require:
+      - '%gcc@7.5.0'
     giflib:
-      require: '%gcc@7.5.0'
+      require:
+      - '%gcc@7.5.0'
     git:
       variants:
       - +svn
+    glpk:
+      require:
+      - '%gcc@7.5.0'
     gmake:
-      require: '%gcc@7.5.0'
+      require:
+      - '%gcc@7.5.0'
     gnuplot:
       variants:
       - +X
@@ -245,6 +310,9 @@ spack:
       variants:
       - +papi
       - +pmpi
+    groff:
+      require:
+      - '%gcc@7.5.0'
     gtkplus:
       variants:
       - +cups
@@ -269,9 +337,15 @@ spack:
       - +cuda
     icu4c:
       require: '%gcc@7.5.0'
+    idl:
+      require:
+      - '%gcc@7.5.0'
     imagemagick:
       variants:
       - +ghostscript
+    intel-oneapi-compilers:
+      require:
+      - '%gcc@7.5.0'
     intel-oneapi-mpi:
       variants:
       - +external-libfabric
@@ -279,31 +353,69 @@ spack:
     ispc:
       require: '%clang'
     jasper:
-      require: 
+      # Newer Jasper versions have caused issues in the past
+      # TODO - recheck whether this is a problem now
+      require:
       - '%gcc@7.5.0'
       - '@:2'
     json-c:
-      require: '%gcc@7.5.0'
+      require:
+      - '%gcc@7.5.0'
+    jsoncpp:
+      require:
+      - '%gcc@7.5.0'
     julia:
       require: ^llvm~clang~gold~polly ^openblas threads=openmp
+    krb5:
+      require:
+      - '%gcc@7.5.0'
     libarchive:
       require: compression=bz2lib,lz4,lzma,lzo2,zlib,zstd xar=expat
+    libcatalyst:
+      require:
+      - '%gcc@7.5.0'
     libdeflate:
-      require: '%gcc@7.5.0'
+      require:
+      - '%gcc@7.5.0'
+    libfabric:
+      require:
+      - '%gcc@7.5.0'
     libffi:
-      require: '@:3.3'
+      require:
+      - '@:3.3'
+      - '%gcc@7.5.0'
     libfuse:
       require: ~utils
     libgd:
+      # gnuplot fails to build with newer version due to libiconv linking failure
       require: '@2.2.4'
+    libgit2:
+      # Julia is demanding...
+      require:
+      - '@1.5'
     libjpeg-turbo:
       require: '%gcc@7.5.0'
+    libogg:
+      require:
+      - '%gcc@7.5.0'
     libpng:
       require: '%gcc@7.5.0'
+    libssh2:
+      # Julia again...
+      require:
+      - '@1.10'
+      variants:
+      - crypto=mbedtls
     libszip:
       require: '%gcc@7.5.0'
+    libtheora:
+      require:
+      - '%gcc@7.5.0'
     libtiff:
       require: '%gcc@7.5.0'
+    libtirpc:
+      require:
+      - '%gcc@7.5.0'
     libtool:
       require: '%gcc@7.5.0'
     libunwind:
@@ -316,15 +428,42 @@ spack:
       - +zlib
       - components=setjump,ptrace,coredump
     libx11:
-      require: '%gcc@7.5.0'
+      require:
+      - '%gcc@7.5.0'
     libxaw:
-      require: '%gcc@7.5.0'
+      require:
+      - '%gcc@7.5.0'
     libxcb:
       require: '%gcc@7.5.0'
     libxml2:
       require: '%gcc@7.5.0'
+    linaro-forge:
+      require:
+      - '%gcc@7.5.0'
+    lustre:
+      require:
+      - '%gcc@7.5.0'
     lz4:
-      require: '%gcc@7.5.0'
+      require:
+      - '%gcc@7.5.0'
+    m4:
+      # Julia of course...
+      require:
+      - '%gcc@7.5.0'
+    matlab:
+      require:
+      - '%gcc@7.5.0'
+    maven:
+      require:
+      - '%gcc@7.5.0'
+    mbedtls:
+      # Julia of course...
+      require:
+      - '@2.28'
+      - libs=static,shared
+    mgard:
+      require:
+      - '%gcc@7.5.0'
     miniconda3:
       externals:
       - spec: miniconda3@4.12.0
@@ -336,9 +475,11 @@ spack:
       - +lustre
       - +xattr
     ncl:
+      # Newer ESMF versions cause issues for NCL
+      # TODO - bake this into recipe?
       require:
-        - ^esmf@:8.0.1 ~external-lapack
-        - ^hdf5~mpi
+      - ^esmf@:8.0.1 ~external-lapack
+      - ^hdf5~mpi
       variants:
       - +gdal
       - +grib
@@ -354,10 +495,18 @@ spack:
     netcdf-cxx4:
       variants:
       - ~doxygen
+    nghttp2:
+      # Thanks Julia...
+      require: '@1.48'
     ninja:
-      require: '%gcc@7.5.0'
+      require:
+      - '%gcc@7.5.0'
     numactl:
-      require: '%gcc@7.5.0'
+      require:
+      - '%gcc@7.5.0'
+    nvhpc:
+      require:
+      - '%gcc@7.5.0'
     octave:
       variants:
       - +arpack
@@ -381,8 +530,10 @@ spack:
     openblas:
       variants:
       - +fortran
+      - threads=openmp
     openjdk:
-      require: '%gcc@7.5.0'
+      require:
+      - '%gcc@7.5.0'
     openmpi:
       variants:
       - +cuda
@@ -392,9 +543,17 @@ spack:
       - spec: openpbs@2021.1.3
         prefix: /opt/pbs
       buildable: false
+      require:
+      - '%gcc@7.5.0'
+    openssh:
+      require:
+      - '%gcc@7.5.0'
     openssl:
+      # Requiring certs=system is necessary to perform builds like rust using
+      # external openssl
       require:
       - certs=system
+      - '%gcc@7.5.0'
     pango:
       variants:
       - +X
@@ -406,19 +565,36 @@ spack:
     parallelio1:
       variants:
       - +pnetcdf
+    patchelf:
+      # Patchelf 0.18 breaks using gcc@7.5.0
+      require:
+      - '@:0.17'
+    pcre:
+      require:
+      - '%gcc@7.5.0'
     pcre2:
       require: '%gcc@7.5.0'
+    pegtl:
+      require:
+      - '%gcc@7.5.0'
     perl:
       require: '%gcc@7.5.0'
     pkg-config:
-      require: '%gcc@7.5.0'
+      require:
+      - '%gcc@7.5.0'
+    pmix:
+      require:
+      - '%gcc@7.5.0'
+    protobuf:
+      require:
+      - '%gcc@7.5.0'
     py-setuptools:
+      # Newer versions cannot be used by py-numpy as of Aug 2023
       require:
       - '@:63'
-    pmix:
-      require: '%gcc@7.5.0'
     qhull:
-      require: '%gcc@7.5.0'
+      require:
+      - '%gcc@7.5.0'
     qt:
       variants:
       - +dbus
@@ -428,19 +604,42 @@ spack:
       - +webkit
     readline:
       require: '%gcc@7.5.0'
+    rsync:
+      require:
+      - '%gcc@7.5.0'
+    sed:
+      require:
+      - '%gcc@7.5.0'
     singularityce:
       variants:
       - ~suid
     snappy:
-      require: '%gcc@7.5.0'
+      require:
+      - '%gcc@7.5.0'
     sqlite:
       require: '%gcc@7.5.0'
+    sz:
+      require:
+      - '%gcc@7.5.0'
     tar:
-      require: '%gcc@7.5.0'
+      require:
+      - '%gcc@7.5.0'
     texinfo:
       require: '%gcc@7.5.0'
+    texlive:
+      require:
+      - '%gcc@7.5.0'
+    ucx:
+      require:
+      - '%gcc@7.5.0'
     util-linux-uuid:
       require: '%gcc@7.5.0'
+    vtk-m:
+      require:
+      - '%gcc@7.5.0'
+    wget:
+      require:
+      - '%gcc@7.5.0'
     wgrib2:
       variants:
       - +netcdf4
@@ -455,7 +654,12 @@ spack:
       - +opengl
     xz:
       require: '%gcc@7.5.0'
+    zfp:
+      require:
+      - '%gcc@7.5.0'
     zlib:
+      # zlib 1.3 causes configure failure for openssh because it expects
+      # 3 version digits (i.e., X.Y.Z) as of Aug 2023
       require:
       - '%gcc@7.5.0'
       - '@:1.2.13'
