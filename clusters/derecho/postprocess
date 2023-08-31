@@ -391,6 +391,11 @@ function copy_mods {
 cpe_root=/opt/cray/pe/cpe
 cpe_versions="$(ls --color=never -rd /opt/cray/pe/cpe/*.* | xargs -n1 basename | xargs)"
 
+# Cray module paths
+cray_core=/opt/cray/pe/lmod/modulefiles/core
+cray_comnet=/opt/cray/pe/lmod/modulefiles/comnet/%CMP%/*/ofi/1.0
+cray_mpath=/opt/cray/pe/lmod/modulefiles/core:/opt/cray/modulefiles:/opt/cray/pe/lmod/modulefiles/craype-targets/default
+
 tsecho "Copying core modules to $mod_root"
 
 tm_file=$SPACK_ENV/.tempmod
@@ -470,12 +475,6 @@ if [[ $core_gcc != $sys_gcc ]]; then
     cc_root=$(spack location -i $core_gcc)
 fi
 
-# Cray module paths
-cray_core=/opt/cray/pe/lmod/modulefiles/core
-cray_comnet=/opt/cray/pe/lmod/modulefiles/comnet/%CMP%/*/ofi/1.0
-
-cray_mpath=/opt/cray/pe/lmod/modulefiles/core:/opt/cray/modulefiles:/opt/cray/pe/lmod/modulefiles/craype-targets/default
-
 # *This* ncarenv deployment
 for mod_type in ncarenv ncarenv-basic; do
     mkdir -p $mod_root/environment/$mod_type
@@ -553,6 +552,7 @@ util_root=/glade/u/apps/opt; cd $util_root
 declare -A ncar_utils
 ncar_utils[qstat]=qstat-cache
 ncar_utils[qinteractive]=pbstools
+ncar_utils[execcasper]=pbstools
 ncar_utils[qcmd]=pbstools
 ncar_utils[qhist]=qhist
 ncar_utils[gladequota]=gladequota

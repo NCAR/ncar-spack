@@ -537,7 +537,11 @@ spack:
     openmpi:
       variants:
       - +cuda
-      require: fabrics=cma,ofi,knem schedulers=tm +gpfs +lustre
+      require:
+      - fabrics=cma,ofi,knem schedulers=tm
+      - +gpfs
+      - +lustre
+      - +internal-pmix
     openpbs:
       externals:
       - spec: openpbs@2021.1.3
@@ -868,8 +872,8 @@ spack:
               FI_PROVIDER_PATH: /opt/cray/libfabric/1.15.2.0
               I_MPI_HYDRA_BOOTSTRAP: rsh
               I_MPI_HYDRA_BOOTSTRAP_EXEC: pbs_tmrsh
-              NCAR_ROOT_IMPI: '{prefix}'
-              NCAR_SPACK_HASH_IMPI: '{hash}'
+              NCAR_ROOT_INTEL_MPI: '{prefix}'
+              NCAR_SPACK_HASH_INTEL_MPI: '{hash}'
             prepend_path:
               LD_LIBRARY_PATH: /opt/cray/libfabric/1.15.2.0/lib64
         intel-oneapi-vtune:
