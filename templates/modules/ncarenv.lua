@@ -165,6 +165,10 @@ end
 setenv("LC_ALL",    "en_US.UTF-8")
 setenv("LANG",      "en_US.UTF-8")
 
+-- Specify certificate behavior for curl
+setenv("CURL_SSL_BACKEND",  "openssl")
+setenv("CURL_CA_BUNDLE",    "/etc/ssl/ca-bundle.pem")
+
 -- Add base packages utilities to PATHS
 prepend_path("PATH",            pathJoin(basepath, "utils/bin"))
 append_path("PATH",             pathJoin(viewpath, "bin"))

@@ -4,7 +4,7 @@
 #   a specified cluster definition. 
 #
 #   Author:         Brian Vanderwende
-#   Last Revised:   15:50, 27 Aug 2023
+#   Last Revised:   10:54, 01 Sep 2023
 #
 
 set -e
@@ -239,6 +239,9 @@ spack env status
 
 # Make sure packages are concretized separately (to allow multiple variants)
 spack config add 'concretizer:unify:false'
+
+# Set Spack-version specific bootstrap path to avoid conflicts
+spack bootstrap root $NCAR_SPACK_ROOT_BOOTSTRAP
 
 # Add package constraints from initial config file
 if [[ -f clusters/$NCAR_SYS/constraints.cfg ]]; then
