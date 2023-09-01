@@ -16,7 +16,7 @@
 #           shell script. So we must activate in the script!
 #
 #   Author:         Brian Vanderwende
-#   Last Revised:   11:36, 25 Aug 2023
+#   Last Revised:   11:11, 01 Sep 2023
 #
 
 function remove_lock {
@@ -372,10 +372,6 @@ git add spack.yaml spack.lock config
 
 if [[ -d util ]]; then
     git add util
-fi
-
-if [[ -n $SUDO_USER ]]; then
-    commit_msg="${SUDO_USER}: $commit_msg"
 fi
 
 git commit -m "$commit_msg"
