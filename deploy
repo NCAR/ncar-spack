@@ -4,7 +4,7 @@
 #   a specified cluster definition. 
 #
 #   Author:         Brian Vanderwende
-#   Last Revised:   10:54, 01 Sep 2023
+#   Last Revised:   11:38, 01 Sep 2023
 #
 
 set -e
@@ -138,7 +138,7 @@ if [[ $NCAR_SPACK_ROOT != $spack_clone_path ]]; then
     git remote add upstream https://github.com/spack/spack.git
 
     # Set prompt label in clean_bash script
-    sed -i "s/\[clean\]/\[${NCAR_SPACK_HOST}\]/" $spack_clone_path/bin/clean_bash
+    sed -i "s/\[clean\]/\[${NCAR_SPACK_HOST}-${NCAR_SPACK_HOST_VERSION}\]/" $spack_clone_path/bin/clean_bash
 
     # Add custom cluster source files if found
     if [[ -d $NCAR_SPACK_DEPLOY_DIR/clusters/$NCAR_SYS/src/spack ]]; then
