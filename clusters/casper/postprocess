@@ -189,7 +189,7 @@ fi
 # ===== SET UP PERL LIBRARY =====
 
 perl_mod_list="Pod::Parser HTML::Entities"
-perl_lib_root=$NCAR_SPACK_ROOT_BASE/perl5lib
+perl_lib_root=$NCAR_SPACK_ROOT_BASE/perl
 
 if [[ $NCAR_SPACK_ENV_TYPE == public ]]; then
     tsecho "Checking for Spack-installed Perl"
