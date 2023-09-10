@@ -261,6 +261,8 @@ function check_spec {
 
             if [[ ${use_cache:-${prefer_cache:-no}} == yes ]]; then
                 cache_label=" (cached)"
+            elif [[ $use_cache == dependencies ]]; then
+                cache_label=" (cached dependencies)"
             fi
         else
             use_cache=no
@@ -296,9 +298,15 @@ function check_spec {
 
 function install_spec {
     if [[ $use_cache == no ]]; then
-        spec_build_cmd="${build_cmd} --no-cache"
+        spec_build_cmd="${build_cmd} --use-buildcache never"
+    elif [[ $use_cache == dependencies ]]; then
+        if [[ $prefer_cache == yes ]]; then
+            spec_build_cmd="${build_cmd} --use-buildcache package:never,dependencies:only"
+        else
+            spec_build_cmd="${build_cmd} --use-buildcache package:never,dependencies:auto"
+        fi
     elif [[ $prefer_cache == yes ]]; then
-        spec_build_cmd="$build_cmd --cache-only"
+        spec_build_cmd="$build_cmd --use-buildcache only"
     else
         spec_build_cmd="$build_cmd"
     fi

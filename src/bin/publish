@@ -16,7 +16,7 @@
 #           shell script. So we must activate in the script!
 #
 #   Author:         Brian Vanderwende
-#   Last Revised:   11:11, 01 Sep 2023
+#   Last Revised:   09:45, 10 Sep 2023
 #
 
 function remove_lock {
@@ -82,10 +82,10 @@ while read spec; do
     publish_pkg=$(awk -F: -v spec="$spec_hash" '$2 == spec {print $4}' $NCAR_SPACK_ENV_BUILD/.installs)
 
     if [[ ${publish_pkg:-yes} == yes ]]; then
-        if [[ $use_cache == no ]]; then
-            echo "    $spec <cache:no>" >> $1
-        else
+        if [[ $use_cache == yes ]]; then
             echo "    $spec" >> $1
+        else
+            echo "    $spec <cache:${use_cache}>" >> $1
         fi
     fi
 done < <(sed 's/^[ ]*- //' <<< $new_pkgs | sed '$!N; s/\n\s\s*\(.*\)/ \1/; P; D')
@@ -372,6 +372,10 @@ git add spack.yaml spack.lock config
 
 if [[ -d util ]]; then
     git add util
+fi
+
+if [[ -n $SUDO_USER ]]; then
+    commit_msg="${SUDO_USER}: $commit_msg"
 fi
 
 git commit -m "$commit_msg"
