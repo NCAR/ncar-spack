@@ -1,0 +1,55 @@
+#!/bin/bash
+
+# Perform common script setup including environment checks
+export my_dir="$( cd "$(dirname "$0")" ; pwd )"
+. $my_dir/tools/init.sh
+
+function usage {
+cat << EOF
+Usage: $0
+
+Sometimes, the package index gets messed up. A good indication of this is
+that Spack decides to start installing packages you know are installed after
+an unexpected lengthy concretization. There's no good way out of this. You
+need to regenerate the package index:
+
+    rm opt/.../.spack-db/index.json
+    spack reindex
+
+This gets you out of that problem, but Spack seems to get confused as to
+whether a package was explicitly installed or not. If you don't fix that,
+you'll get modules for all sorts of things.
+
+Run this script after regenerating the index to restore the package marks.
+
+EOF
+exit
+}
+
+while [[ $# -gt 0 ]]; do
+    case $1 in
+        -h|--help)
+            clear
+            usage
+            ;;
+        -v|--verbose)
+            export log_verbosity=1
+            ;;
+    esac
+
+    shift
+done
+
+pkg_list=$(spack find --format '{name} {hash}')
+
+while read pkg_name pkg_hash; do
+    pkg_spec=$(grep :${pkg_hash}: $SPACK_ENV/.installs |& cut -d: -f1)
+
+    if [[ -n $pkg_spec ]]; then
+        spack mark -e /$pkg_hash
+        tsecho "Marking explicit: $GCOL${pkg_spec}$DCOL"
+    else
+        spack mark -i /$pkg_hash
+        tsecho "Marking implicit: $PCOL${pkg_name}$DCOL" 1
+    fi
+done <<< "$pkg_list"
