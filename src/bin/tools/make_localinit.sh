@@ -25,8 +25,9 @@ tsecho "lmod (${NCAR_SPACK_LMOD_VERSION:-latest}) not installed; skipping module
 else
 mkdir -p $util_path
 tsecho "Generating localinit.sh and localinit.csh"
+tm_file=$SPACK_ENV/.tempinit
 
-cat > $util_path/localinit.sh << EOF
+cat > $tm_file << EOF
 # Location variables
 export INSTALLPATH_ROOT=$pkg_root
 export MODULEPATH_ROOT=$module_root
@@ -34,7 +35,14 @@ export MODULEPATH_ROOT=$module_root
 # Lmod configuration
 export LMOD_SYSTEM_NAME=$NCAR_SPACK_HOST
 export LMOD_SYSTEM_DEFAULT_MODULES="$NCAR_SPACK_DEFMODS_NCAR"
-export MODULEPATH=$module_root/environment
+
+case "\$MODULEPATH" in
+    *"\${MODULEPATH_ROOT}"*)
+        ;;
+    *)
+        export MODULEPATH=\$MODULEPATH_ROOT/environment
+        ;;
+esac
 
 # Location of Lmod initialization scripts
 export LMOD_ROOT=$lmod_location
@@ -60,7 +68,6 @@ export PATH=\${PATH}:\$NCAR_DEFAULT_PATH
 export MANPATH=\${MANPATH}:\$NCAR_DEFAULT_MANPATH
 export INFOPATH=\${INFOPATH}:\$NCAR_DEFAULT_INFOPATH
 
-
 # Set PBS workdir if appropriate
 if [ -n "\$PBS_O_WORKDIR" ] && [ -z "\$NCAR_PBS_JOBINIT" ]; then
     if [ -d "\$PBS_O_WORKDIR" ]; then
@@ -68,19 +75,6 @@ if [ -n "\$PBS_O_WORKDIR" ] && [ -z "\$NCAR_PBS_JOBINIT" ]; then
     fi
 
     export NCAR_PBS_JOBINIT=\$PBS_JOBID
-fi
-
-# Set number of GPUs (analogous to NCPUS)
-if [ -n "\$PBS_JOBID" ]; then
-    if command -v nvidia-smi &> /dev/null; then
-        export NGPUS=\`nvidia-smi -L |& grep -c UUID\`
-
-        if  [ \$NGPUS -gt 0 ]; then
-            export MPICH_GPU_MANAGED_MEMORY_SUPPORT_ENABLED=1
-        fi
-    else
-        export NGPUS=0
-    fi
 fi
 
 # Load default modules
@@ -93,7 +87,9 @@ fi
 export LMOD_MODULERCFILE=$util_path/hidden-modules
 EOF
 
-cat > $util_path/localinit.csh << EOF
+mv $tm_file $util_path/localinit.sh
+
+cat > $tm_file << EOF
 # Location variables
 setenv INSTALLPATH_ROOT $pkg_root
 setenv MODULEPATH_ROOT $module_root
@@ -101,7 +97,12 @@ setenv MODULEPATH_ROOT $module_root
 # Lmod configuration
 setenv LMOD_SYSTEM_NAME $NCAR_SPACK_HOST
 setenv LMOD_SYSTEM_DEFAULT_MODULES "$NCAR_SPACK_DEFMODS_NCAR"
-setenv MODULEPATH $module_root/environment
+
+if ( ! \$?MODULEPATH ) then
+    setenv MODULEPATH \$MODULEPATH_ROOT/environment
+else if ( \$MODULEPATH !~ *\${MODULEPATH_ROOT}* ) then
+    setenv MODULEPATH \$MODULEPATH_ROOT/environment
+endif
 
 # Get location of Lmod initialization scripts
 setenv LMOD_ROOT $lmod_location
@@ -124,13 +125,13 @@ setenv NCAR_DEFAULT_INFOPATH /usr/local/share/info:/usr/share/info
 
 setenv PATH \${PATH}:\$NCAR_DEFAULT_PATH
 
-if ( ! (\$?MANPATH) ) then
+if ( ! \$?MANPATH ) then
     setenv MANPATH \$NCAR_DEFAULT_MANPATH
 else
     setenv MANPATH \${MANPATH}:\$NCAR_DEFAULT_MANPATH
 endif
 
-if ( ! (\$?INFOPATH) ) then
+if ( ! \$?INFOPATH ) then
     setenv INFOPATH \$NCAR_DEFAULT_INFOPATH
 else
     setenv INFOPATH \${INFOPATH}:\$NCAR_DEFAULT_INFOPATH
@@ -145,19 +146,6 @@ if ( \$?PBS_O_WORKDIR  && ! \$?NCAR_PBS_JOBINIT ) then
     setenv NCAR_PBS_JOBINIT \$PBS_JOBID
 endif
 
-# Set number of GPUs (analogous to NCPUS)
-if ( \$?PBS_JOBID ) then
-    if ( \`where nvidia-smi\` != "" ) then
-        setenv NGPUS \`nvidia-smi -L |& grep -c UUID\`
-
-        if ( \$NGPUS > 0 ) then
-            setenv MPICH_GPU_MANAGED_MEMORY_SUPPORT_ENABLED 1
-        endif
-    else
-        setenv NGPUS 0
-    endif
-endif
-
 # Load default modules
 if ( ! \$?__Init_Default_Modules || ! \$?LD_LIBRARY_PATH ) then
   setenv __Init_Default_Modules 1
@@ -168,3 +156,5 @@ endif
 setenv LMOD_MODULERCFILE $util_path/hidden-modules
 EOF
 fi
+
+mv $tm_file $util_path/localinit.csh

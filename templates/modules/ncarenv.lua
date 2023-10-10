@@ -107,6 +107,7 @@ setenv("LMOD_PACKAGE_PATH", "%UTILPATH%")
 setenv("LMOD_CONFIG_DIR",   "%UTILPATH%")
 setenv("LMOD_AVAIL_STYLE",  "grouped:system")
 pushenv("LMOD_SYSTEM_DEFAULT_MODULES", "%DEFMODS%")
+pushenv("LMOD_MODULERCFILE", "%MODRC%")
 
 -- Ensure modules load in subshells
 setenv("ENV", "/etc/profile.d/modules.sh")
@@ -166,8 +167,8 @@ setenv("LC_ALL",    "en_US.UTF-8")
 setenv("LANG",      "en_US.UTF-8")
 
 -- Specify certificate behavior for curl
-setenv("CURL_SSL_BACKEND",  "openssl")
-setenv("CURL_CA_BUNDLE",    "/etc/ssl/ca-bundle.pem")
+setenv("CURL_SSL_BACKEND", "openssl")
+setenv("CURL_CA_BUNDLE", "/etc/ssl/ca-bundle.pem")
 
 -- Add base packages utilities to PATHS
 prepend_path("PATH",            pathJoin(basepath, "utils/bin"))
@@ -190,3 +191,13 @@ append_path("INFOPATH",         sysinfo)
 
 -- Add PERL library from the base
 append_path("PERL5LIB", pathJoin(basepath, "perl/lib/perl5"))
+
+-- Set number of GPUs (analogous to NCPUS)
+if os.getenv("PBS_JOBID") then
+    local num_gpus = subprocess("nvidia-smi -L |& grep -c UUID"):gsub("\n$","")
+    setenv("NGPUS", num_gpus)
+
+    if tonumber(num_gpus) > 0 then
+        setenv("MPICH_GPU_MANAGED_MEMORY_SUPPORT_ENABLED", "1")
+    end
+end

@@ -31,3 +31,13 @@ pushenv("LMOD_SYSTEM_DEFAULT_MODULES", "ncarenv-basic/%VERSION%")
 
 -- Ensure modules load in subshells
 setenv("ENV", "/etc/profile.d/modules.sh")
+
+-- Set number of GPUs (analogous to NCPUS)
+if os.getenv("PBS_JOBID") then
+    local num_gpus = subprocess("nvidia-smi -L |& grep -c UUID"):gsub("\n$","")
+    setenv("NGPUS", num_gpus)
+
+    if tonumber(num_gpus) > 0 then
+        setenv("MPICH_GPU_MANAGED_MEMORY_SUPPORT_ENABLED", "1")
+    end
+end

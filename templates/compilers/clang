@@ -1,11 +1,17 @@
+if [[ -f $root/bin/flang ]]; then
+    flang_path=$root/bin/flang
+else
+    flang_path=None
+fi
+
 cat << EOF
   - compiler:
       spec: $comp_spec 
       paths:
         cc: $root/bin/clang
         cxx: $root/bin/clang
-        f77: $root/bin/flang
-        fc: $root/bin/flang
+        f77: $flang_path
+        fc: $flang_path
       operating_system: $os
       modules: []
 EOF
