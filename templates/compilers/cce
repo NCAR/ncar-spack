@@ -15,6 +15,7 @@ cat << EOF
       environment:
         set:
           PE_ENV: CRAY
+          NVCCFLAGS: -allow-unsupported-compiler
         append_path:
           LD_LIBRARY_PATH: $cray_libfabric_root/lib64
 EOF

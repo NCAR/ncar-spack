@@ -141,11 +141,17 @@ ncar_utils[qcmd]=pbstools
 ncar_utils[qhist]=qhist
 ncar_utils[gladequota]=gladequota
 ncar_utils[set_gpu_rank]=mpitools
+ncar_utils[mpibind]=mpitools
+ncar_utils[cpu_bind]=mpitools
+ncar_utils[gpu_bind]=mpitools
 ncar_utils[create_conda_kernel]=ncar-conda
 ncar_utils[compare_env_yaml]=ncar-conda
 ncar_utils[spack-downstream]=csg-spack-downstreams
+ncar_utils[sudox]=termtools
+ncar_utils[licstatus]=termtools
+ncar_utils[vncmgr]=vncmgr
 
-skip_clone="gladequota mpitools"
+skip_clone="gladequota"
 
 if [[ $SPACK_ENV == $NCAR_SPACK_ENV_PUBLIC ]]; then
     mkdir -p $NCAR_SPACK_ROOT_BASE/utils/bin
@@ -155,7 +161,7 @@ if [[ $SPACK_ENV == $NCAR_SPACK_ENV_PUBLIC ]]; then
             if [[ -O $util_root ]]; then
                 if [[ " $skip_clone " != *" ${ncar_utils[$util]} "* ]]; then
                     tsecho "    cloning $GCOL${ncar_utils[$util]}$DCOL repo"
-                    git clone git@github.com:NCAR/${ncar_utils[$util]}.git
+                    git clone --recurse-submodules --remote-submodules git@github.com:NCAR/${ncar_utils[$util]}.git
                 else
                     tsecho "Error: No github repo for $util. Perform manual install and retry!"
                     exit 1
@@ -167,6 +173,15 @@ if [[ $SPACK_ENV == $NCAR_SPACK_ENV_PUBLIC ]]; then
         fi
 
         if [[ ! -e $NCAR_SPACK_ROOT_BASE/utils/bin/$util ]]; then
+            # First, let's make sure the repo is up to date (and submodules pulled)
+            cd $util_root/${ncar_utils[$util]}
+            git pull > /dev/null
+
+            if [[ -f .gitmodules ]]; then
+                git submodule update --init --remote --recursive > /dev/null
+            fi
+            cd - > /dev/null
+
             if [[ -e $util_root/${ncar_utils[$util]}/bin/$util ]]; then
                 tsecho "    adding $GCOL$util$DCOL"
                 ln -s $util_root/${ncar_utils[$util]}/bin/$util $NCAR_SPACK_ROOT_BASE/utils/bin/

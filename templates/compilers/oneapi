@@ -9,6 +9,8 @@ cat << EOF
       operating_system: $os
       modules: []
       environment:
+        set:
+          NVCCFLAGS: -allow-unsupported-compiler
         prepend_path:
           LD_LIBRARY_PATH: $root/compiler/latest/linux/compiler/lib/intel64
 EOF

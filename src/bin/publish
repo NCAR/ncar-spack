@@ -16,7 +16,7 @@
 #           shell script. So we must activate in the script!
 #
 #   Author:         Brian Vanderwende
-#   Last Revised:   09:45, 10 Sep 2023
+#   Last Revised:   22:16, 20 Oct 2023
 #
 
 function remove_lock {
@@ -48,7 +48,6 @@ This branch tracks the **production** deployment of Spack for the following conf
 | Creation date | $(date) |
 | ncar-spack commit | $NCAR_SPACK_DEPLOY_COMMIT |
 | Host version | $NCAR_SPACK_HOST_VERSION |
-| Spack version | $NCAR_SPACK_CLONE_VERSION |
 | Deployment path | $NCAR_SPACK_ROOT_DEPLOYMENT |
 | Environments path | $NCAR_SPACK_ROOT_ENVS |
 
@@ -162,7 +161,7 @@ else
 fi
 
 tsecho "Testing build environment for unconcretized changes"
-conc_test=$(2>&1 taskset -c 0-7 spack concretize |& grep -v -e "Updating view at" -e "Skipping external" || true)
+conc_test=$(2>&1 taskset -c 0-7 spack concretize |& grep -v -e "Updating view at" -e "Skipping external" -e "terminal_title" || true)
 
 if [[ -n $conc_test ]]; then
 >&2 cat << EOF

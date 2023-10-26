@@ -16,6 +16,7 @@ cat << EOF
       environment:
         set:
           PE_ENV: GNU
+          NVCCFLAGS: -allow-unsupported-compiler
         append_path:
           LD_LIBRARY_PATH: $cray_libfabric_root/lib64
 EOF
@@ -30,6 +31,8 @@ cat << EOF
         fc: $root/bin/gfortran
       operating_system: $os
       modules: []
-      environment: {}
+      environment:
+        set:
+          NVCCFLAGS: -allow-unsupported-compiler
 EOF
 fi

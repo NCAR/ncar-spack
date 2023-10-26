@@ -4,7 +4,7 @@
 #   a specified cluster definition. 
 #
 #   Author:         Brian Vanderwende
-#   Last Revised:   11:38, 01 Sep 2023
+#   Last Revised:   09:37, 12 Oct 2023
 #
 
 set -e
@@ -130,12 +130,19 @@ if [[ $NCAR_SPACK_ROOT != $spack_clone_path ]]; then
 
     # Install latest source from GitHub and checkout specified version
     echo "Installing Spack into $spack_clone_path ..."
-    git clone -c feature.manyFiles=true https://github.com/NCAR/csg-spack-fork.git $spack_clone_path
+    git clone -c feature.manyFiles=true git@github.com:NCAR/csg-spack-fork.git $spack_clone_path
     cd $spack_clone_path
-    git checkout $NCAR_SPACK_CLONE_VERSION
+
+    if [[ -n $NCAR_SPACK_CUSTOM_BRANCH ]]; then
+        echo -e "\nSwitching to custom branch $NCAR_SPACK_CUSTOM_BRANCH ..."
+        git checkout $NCAR_SPACK_CUSTOM_BRANCH
+    elif git branch -r | grep -q /$NCAR_SPACK_HOST_VERSION; then
+        echo -e "\nSwitching to existing version branch $NCAR_SPACK_HOST_VERSION ..."
+        git checkout $NCAR_SPACK_HOST_VERSION
+    fi
 
     # Add original Spack repo as an upstream for checking out recipe updates
-    git remote add upstream https://github.com/spack/spack.git
+    git remote add upstream git@github.com:spack/spack.git
 
     # Set prompt label in clean_bash script
     sed -i "s/\[clean\]/\[${NCAR_SPACK_HOST}-${NCAR_SPACK_HOST_VERSION}\]/" $spack_clone_path/bin/clean_bash

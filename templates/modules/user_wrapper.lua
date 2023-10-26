@@ -9,13 +9,16 @@ end
 local comp_name = os.getenv("LMOD_FAMILY_COMPILER")
 
 if (comp_name == "intel") then
-    setenv("FC",    "ifort")
-    setenv("F77",   "ifort")
+    pushenv("FC",    "ifort")
+    pushenv("F77",   "ifort")
 elseif (comp_name == "intel-classic") then
-    setenv("CC",    "icc")
-    setenv("CXX",   "icpc")
-    setenv("FC",    "ifort")
-    setenv("F77",   "ifort")
+    pushenv("CC",    "icc")
+    pushenv("CXX",   "icpc")
+    pushenv("FC",    "ifort")
+    pushenv("F77",   "ifort")
+elseif (comp_name == "intel-oneapi") then
+    pushenv("FC",    "ifx")
+    pushenv("F77",   "ifx")
 end
 
 {{ super() }}
