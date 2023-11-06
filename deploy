@@ -4,7 +4,7 @@
 #   a specified cluster definition. 
 #
 #   Author:         Brian Vanderwende
-#   Last Revised:   09:37, 12 Oct 2023
+#   Last Revised:   09:11, 01 Nov 2023
 #
 
 set -e
@@ -42,7 +42,7 @@ while [[ $# -gt 0 ]]; do
         -h|--help)
             usage
             ;;
-        -n|--no-keygen|--nokeygen)
+        -k|--no-keygen|--nokeygen)
             skip_keygen=yes
             ;;
         -n|--no-pkgs|--nopkgs)
