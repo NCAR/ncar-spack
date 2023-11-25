@@ -1,4 +1,13 @@
 #!/bin/bash
+#
+#   This script is used to install packages into either the build or public environment.
+#   Use this script instead of "spack install" to increasing logging, and simplify
+#   buildout of stacks.
+#
+#   Author:         Brian Vanderwende
+#   Last Revised:   16:16, 25 Nov 2023
+#
+
 
 function usage {
 cat << EOF
@@ -59,9 +68,9 @@ done
 spec_cmd="spack spec -I -N -t -L"
 
 if [[ -n $build_jobs ]]; then
-    build_cmd="spack install -j $build_jobs"
+    build_cmd="spack install -j $build_jobs --include-build-deps"
 else
-    build_cmd="spack install"
+    build_cmd="spack install --include-build-deps"
 fi
 
 function add_spec_to_view {

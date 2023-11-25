@@ -16,7 +16,7 @@
 #           shell script. So we must activate in the script!
 #
 #   Author:         Brian Vanderwende
-#   Last Revised:   22:16, 20 Oct 2023
+#   Last Revised:   11:28, 20 Nov 2023
 #
 
 function remove_lock {
@@ -112,6 +112,17 @@ EOF
 exit 1
 }
 
+function dry_run_header {
+cat << EOF
+
+*** DRY RUN REQUESTED - NO CHANGES WILL BE MADE! ***
+
+The following diff shows changes that would be made to the public environment
+spack.yaml upon calling publish:
+
+EOF
+}
+
 #
 ## ---- INITIALIZATION ----
 #
@@ -128,8 +139,8 @@ force_resume=N
 
 while [[ $# -gt 0 ]]; do
     case $1 in
-        -d|--set-default)
-            set_as_default=true
+        -d|--dry-run|--dryrun)
+            dry_run=true
             ;;
         -f|--force)
             force_commit=true
@@ -137,6 +148,9 @@ while [[ $# -gt 0 ]]; do
         --resume)
             echo "Danger: You are asking to resume a failed publish."
             read -e -p "        Are you sure (y/N)? " force_resume
+            ;;
+        --set-default)
+            set_as_default=true
             ;;
         *)
             commit_msg="$1"
@@ -154,10 +168,12 @@ if [[ YES == ${force_resume^^}* ]]; then
         tsecho "Error:  Prior publish attempt not found. Cannot resume."
         exit 1
     fi
-elif [[ -z $commit_msg ]]; then
-    commit_error
-else
-    store_publish_options
+elif [[ $dry_run != true ]]; then
+    if [[ -z $commit_msg ]]; then
+        commit_error
+    else
+        store_publish_options
+    fi
 fi
 
 tsecho "Testing build environment for unconcretized changes"
@@ -183,6 +199,11 @@ else
     tsecho "Skipping build cache as caching is off"
 fi
 
+if [[ ! -f $NCAR_SPACK_ENV_PUBLIC/spack.yaml ]] && [[ $dry_run == true ]]; then
+    tsecho "Dry run requested but no public environment exists. Exiting"
+    exit
+fi
+
 #
 ## ---- INSPECT THE PUBLIC ENVIRONMENT ----
 #
@@ -198,7 +219,7 @@ if [[ -n $pad_length ]]; then
 fi
 
 sed -i "s|\([ ]*lmod: \)/.*|\1$NCAR_SPACK_ROOT_MODULES/$NCAR_SPACK_HOST_VERSION|" .prototype/spack.yaml
-sed -i "/[ ]*view:.*/,/[ ]*root:.*/{s|\([ ]*root: \)/.*|\1$NCAR_SPACK_ROOT_BASE/view|}" .prototype/spack.yaml
+sed -i "/[ ]*view:.*/,/[ ]*root:.*/{s|\([ ]*root: \)/.*/view|\1$NCAR_SPACK_ROOT_BASE/view|}" .prototype/spack.yaml
 
 spack env activate .prototype
 
@@ -208,6 +229,19 @@ fi
 
 spack config remove 'config:install_tree:root'
 spack env deactivate
+
+if [[ $dry_run == true ]]; then
+    dry_run_header
+
+    if cmp -s $NCAR_SPACK_ENV_PUBLIC/spack.yaml .prototype/spack.yaml; then
+        echo "build and public environments are in sync; no changes will be made"
+    else
+        diff -U2 --color $NCAR_SPACK_ENV_PUBLIC/spack.yaml .prototype/spack.yaml
+    fi
+
+    echo
+    exit
+fi
 
 if [[ -d $NCAR_SPACK_ENV_PUBLIC ]]; then
     tsecho "Testing public environment for untracked changes"
