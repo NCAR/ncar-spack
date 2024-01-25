@@ -103,9 +103,9 @@ end
 append_path("MODULEPATH", "%MODPATH%")
 
 -- Add Lmod settings
-setenv("LMOD_PACKAGE_PATH", "%UTILPATH%")
-setenv("LMOD_CONFIG_DIR",   "%UTILPATH%")
-setenv("LMOD_AVAIL_STYLE",  "grouped:system")
+pushenv("LMOD_PACKAGE_PATH", "%UTILPATH%")
+pushenv("LMOD_CONFIG_DIR",   "%UTILPATH%")
+pushenv("LMOD_AVAIL_STYLE",  "grouped:system")
 pushenv("LMOD_SYSTEM_DEFAULT_MODULES", "%DEFMODS%")
 pushenv("LMOD_MODULERCFILE", "%MODRC%")
 
@@ -124,26 +124,28 @@ setenv("OMP_STACKSIZE", "64000K")
 
 -- Model-specific settings
 setenv("WRFIO_NCD_LARGE_FILE_SUPPORT", "1")
-setenv("CESMDATAROOT", "/glade/p/cesmdata")
+setenv("CESMDATAROOT", "/glade/campaign/cesm/cesmdata")
 
 -- Set user's TMPDIR if not already set
 local is_set    = os.getenv("TMPDIR")
 local was_set   = os.getenv("__NCARENV_TMPDIR")
+local scratch   = pathJoin("/glade/derecho/scratch", user)
 
 if was_set or not is_set or not string.match(is_set, "^/glade") then
-    local tmpdir = pathJoin("%TMPROOT%", user, "tmp")
-    setenv("TMPDIR", tmpdir)
-    setenv("__NCARENV_TMPDIR", 1)
+    local exists = subprocess("bash -c 'timeout 5 test -d " .. scratch .. " && echo yes'"):gsub("\n$","")
 
-    if not isDir(tmpdir) then
-        execute { cmd = "mkdir -p " .. tmpdir, modeA = { "load" } }
+    if exists == "yes" then
+        local tmpdir = pathJoin(scratch, "tmp")
+        execute {cmd="mkdir -p " .. tmpdir, modeA={"load"}}
+        setenv("TMPDIR", tmpdir)
+        setenv("__NCARENV_TMPDIR", 1)
     end
 end
 
 -- Set file-system variables (but do not clobber common ones)
 setenv("CHEYENNE_SCRATCH",  pathJoin("/glade/cheyenne/scratch", user))
 setenv("LARAMIE_SCRATCH",   pathJoin("/picnic/scratch", user))
-setenv("DERECHO_SCRATCH",   pathJoin("/glade/derecho/scratch", user))
+setenv("DERECHO_SCRATCH",   scratch)
 setenv("GUST_SCRATCH",      pathJoin("/glade/gust/scratch", user))
 
 local is_set    = os.getenv("WORK")
@@ -158,17 +160,17 @@ local is_set    = os.getenv("SCRATCH")
 local was_set   = os.getenv("__NCARENV_SCRATCH")
 
 if was_set or not is_set then
-    setenv("SCRATCH", pathJoin("%TMPROOT%", user))
+    setenv("SCRATCH", scratch)
     setenv("__NCARENV_SCRATCH", 1)
 end
 
 -- Make sure localization is set
-setenv("LC_ALL",    "en_US.UTF-8")
-setenv("LANG",      "en_US.UTF-8")
+pushenv("LC_ALL",    "en_US.UTF-8")
+pushenv("LANG",      "en_US.UTF-8")
 
 -- Specify certificate behavior for curl
-setenv("CURL_SSL_BACKEND", "openssl")
-setenv("CURL_CA_BUNDLE", "/etc/ssl/ca-bundle.pem")
+pushenv("CURL_SSL_BACKEND", "openssl")
+pushenv("CURL_CA_BUNDLE", "/etc/ssl/ca-bundle.pem")
 
 -- Add base packages utilities to PATHS
 prepend_path("PATH",            pathJoin(basepath, "utils/bin"))
@@ -176,6 +178,7 @@ append_path("PATH",             pathJoin(viewpath, "bin"))
 append_path("MANPATH",          pathJoin(viewpath, "man"))
 append_path("MANPATH",          pathJoin(viewpath, "share/man"))
 append_path("INFOPATH",         pathJoin(viewpath, "share/info"))
+append_path("ACLOCAL_PATH",     pathJoin(viewpath, "share/aclocal"))
 
 setenv("NCAR_INC_0_COMMON",       pathJoin(viewpath, "include"))
 setenv("NCAR_LDFLAGS_0_COMMON",   pathJoin(viewpath, "lib"))
@@ -184,10 +187,11 @@ setenv("NCAR_LDFLAGS_0_COMMON64", pathJoin(viewpath, "lib64"))
 prepend_path("PKG_CONFIG_PATH", pathJoin(viewpath, "lib/pkgconfig"))
 prepend_path("PKG_CONFIG_PATH", pathJoin(viewpath, "lib64/pkgconfig"))
 
--- Make sure system versions come after Spack versions
+-- Make sure system versions come after Spack versions (save aclocal)
 append_path("PATH",             syspath)
 append_path("MANPATH",          sysman)
 append_path("INFOPATH",         sysinfo)
+prepend_path("ACLOCAL_PATH",    "/usr/share/aclocal")
 
 -- Add PERL library from the base
 append_path("PERL5LIB", pathJoin(basepath, "perl/lib/perl5"))

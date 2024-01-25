@@ -4,7 +4,7 @@
 #   a specified cluster definition. 
 #
 #   Author:         Brian Vanderwende
-#   Last Revised:   09:11, 01 Nov 2023
+#   Last Revised:   21:47, 25 Nov 2023
 #
 
 set -e
@@ -18,6 +18,7 @@ Usage: $0 [OPTIONS] CLUSTER
 
 Options
     -h, --help                  show this help message
+    -b, --spack-branch          override the branch of the CSG Spack fork to use
     -k, --no-keygen             do not create a new GPG key
     -n, --no-pkgs               don't install packages, only set up deployment
     -p, --production            create a production deployment (must be csgteam)
@@ -41,6 +42,9 @@ while [[ $# -gt 0 ]]; do
     case $key in
         -h|--help)
             usage
+            ;;
+        -b|--spack-branch)
+            custom_branch=$2
             ;;
         -k|--no-keygen|--nokeygen)
             skip_keygen=yes
@@ -132,6 +136,10 @@ if [[ $NCAR_SPACK_ROOT != $spack_clone_path ]]; then
     echo "Installing Spack into $spack_clone_path ..."
     git clone -c feature.manyFiles=true git@github.com:NCAR/csg-spack-fork.git $spack_clone_path
     cd $spack_clone_path
+
+    if [[ -n $custom_branch ]]; then
+        NCAR_SPACK_CUSTOM_BRANCH=$custom_branch
+    fi
 
     if [[ -n $NCAR_SPACK_CUSTOM_BRANCH ]]; then
         echo -e "\nSwitching to custom branch $NCAR_SPACK_CUSTOM_BRANCH ..."

@@ -56,7 +56,7 @@ if [[ -f $SPACK_ENV/constraints.cfg ]]; then
                 my_meta="${my_meta/,/ }"
                 ;;
             '}'*)
-                unset my_mode my_meta
+                unset my_mode my_meta ext_flags
                 ;;
             *)
                 case ${my_mode// } in
@@ -73,7 +73,7 @@ if [[ -f $SPACK_ENV/constraints.cfg ]]; then
                                 exit 1
                             fi
 
-                            search_expr=$(sed 's/\[[^]]*\]/\\(\.\*\\)/g' <<< $entry)
+                            search_expr=$(sed 's/\[[^]]*\]/\\(\*\\)/g; s/\*/\.\*/g' <<< $entry)
                             search_params=$(tr -cd '(' <<< $search_expr | wc -c)
                             pkg_paths=$(echo $(tr -d '[]' <<< $entry))
                            
@@ -87,7 +87,7 @@ if [[ -f $SPACK_ENV/constraints.cfg ]]; then
                                         read pkg_name pkg_version <<< $(sed "s|$search_expr|\1 \2|" <<< $pkg_path)
                                         pkg_spec=${pkg_name}@$pkg_version
                                     fi
-                                   
+
                                     if [[ -d $pkg_path ]]; then
                                         if [[ " $known_externals " != *" ${pkg_path%%/} "* ]]; then
                                             if [[ " $my_meta " != *" manual "* ]]; then

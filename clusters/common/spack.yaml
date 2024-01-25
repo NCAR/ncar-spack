@@ -5,15 +5,15 @@
 spack:
   config:
     install_tree:
-      root: %INSTALLROOT%
+      root: '%INSTALLROOT%'
       projections:
         all: '{name}/{version}'
     build_jobs: 4
-    test_stage: %TMPROOT%/${user}/temp/spack/%DEPLOYMENT%/tests
-    source_cache: %TMPROOT%/${user}/temp/spack/cache
-    misc_cache: %TMPROOT%/${user}/temp/spack/%DEPLOYMENT%/misc
+    test_stage: '%TMPROOT%/${user}/temp/spack/%DEPLOYMENT%/tests'
+    source_cache: '%TMPROOT%/${user}/temp/spack/cache'
+    misc_cache: '%TMPROOT%/${user}/temp/spack/%DEPLOYMENT%/misc'
     build_stage:
-      - %TMPROOT%/${user}/temp/spack/builds
+    - '%TMPROOT%/${user}/temp/spack/builds'
     shared_linking:
       type: rpath
       bind: false
@@ -22,19 +22,27 @@ spack:
       compiler: [gcc@7.5.0]
       target: [x86_64_v3]
       providers:
-        pkgconfig:: [pkg-config]
-        zlib-api:: [zlib]
+        'pkgconfig:': [pkg-config]
+        'zlib-api:': [zlib]
       permissions:
         read: world
         write: user
-    gcc:
-      variants: [+piclibs, 'languages=c,c++,fortran,go']
+    aocc:
+      require:
+      - +license-agreed
     cuda:
-      require: '+allow-unsupported-compilers'
-      variants: [+dev]
-    arm-forge:
-      require: '+accept-eula'
+      require: +allow-unsupported-compilers
+      variants:
+      - +dev
+    gcc:
+      variants:
+      - +piclibs
+      - languages=c,c++,fortran,go
     linaro-forge:
-      require: '+accept-eula'
+      require: +accept-eula
+    pkg-config:
+      require: '%gcc@7.5.0'
   compilers: []
   view: false
+  concretizer:
+    unify: false

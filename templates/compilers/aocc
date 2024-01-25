@@ -1,0 +1,23 @@
+cat << EOF
+  - compiler:
+      spec: $comp_spec 
+      paths:
+        cc: $root/bin/clang
+        cxx: $root/bin/clang
+        f77: $root/bin/flang
+        fc: $root/bin/flang
+      operating_system: $os
+      modules: []
+      environment:
+        set:
+          NVCCFLAGS: -allow-unsupported-compiler
+EOF
+
+if [[ $install_modifier == cray ]]; then
+cray_libfabric_root=${cray_libfabric_root:-$(spack location -i libfabric %gcc)}
+
+cat << EOF
+        append_path:
+          LD_LIBRARY_PATH: $cray_libfabric_root/lib64
+EOF
+fi

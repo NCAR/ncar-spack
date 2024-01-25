@@ -8,6 +8,7 @@
 # Hopefully this API doesn't change often...
 import spack.util.spack_yaml as yaml
 import os, re, copy
+from collections.abc import Iterable
 
 # Packages to exclude when pruning externals
 excluded_pkgs = ["openpbs", "cray-libsci", "cray-mpich", "miniconda3"]
@@ -62,7 +63,7 @@ for key in raw["spack"]:
                 del data["spack"][key][subkey]
 
         data["spack"][key] = dict(sorted(data["spack"][key].items(), key=lambda item: item[0]))
-    elif key == "view":
+    elif key == "view" and isinstance(raw["spack"][key], Iterable):
         for subkey in raw["spack"][key]:
             if "root" in raw["spack"][key][subkey]:
                 data["spack"][key][subkey]["root"] = "%BASEROOT%/view"

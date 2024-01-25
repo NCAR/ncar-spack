@@ -44,6 +44,11 @@ case "\$MODULEPATH" in
         ;;
 esac
 
+# Set defaults for Lmod behavior configuration
+export LMOD_PACKAGE_PATH=$util_path
+export LMOD_CONFIG_DIR=$util_path
+export LMOD_AVAIL_STYLE=grouped:system
+
 # Location of Lmod initialization scripts
 export LMOD_ROOT=$lmod_location
 
@@ -104,6 +109,11 @@ else if ( \$MODULEPATH !~ *\${MODULEPATH_ROOT}* ) then
     setenv MODULEPATH \$MODULEPATH_ROOT/environment
 endif
 
+# Set defaults for Lmod behavior configuration
+setenv LMOD_PACKAGE_PATH $util_path
+setenv LMOD_CONFIG_DIR $util_path
+setenv LMOD_AVAIL_STYLE grouped:system
+
 # Get location of Lmod initialization scripts
 setenv LMOD_ROOT $lmod_location
 
@@ -155,6 +165,6 @@ endif
 # Hide specified modules
 setenv LMOD_MODULERCFILE $util_path/hidden-modules
 EOF
-fi
 
 mv $tm_file $util_path/localinit.csh
+fi
