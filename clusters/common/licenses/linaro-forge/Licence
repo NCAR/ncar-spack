@@ -1,0 +1,6 @@
+type=2
+serial_number=8617
+hostname=armforge-lic.hpc.ucar.edu
+serverport=4241
+features=ddt,map,perf-report,cuda,metrics-pack
+hash2=1e28851fc4b55ac234eace41c5ffb5101cc0c77c

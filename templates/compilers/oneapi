@@ -1,18 +1,24 @@
+if [[ ${version%%.*} -ge 2024 ]]; then
+    subdir=bin
+    fcomp=ifx
+else
+    subdir=linux/bin
+    fcomp=intel64/ifort
+fi
+
 cat << EOF
   - compiler:
       spec: $comp_spec 
       paths:
-        cc: $root/compiler/latest/linux/bin/icx
-        cxx: $root/compiler/latest/linux/bin/icpx
-        f77: $root/compiler/latest/linux/bin/intel64/ifort
-        fc: $root/compiler/latest/linux/bin/intel64/ifort
+        cc: $root/compiler/latest/$subdir/icx
+        cxx: $root/compiler/latest/$subdir/icpx
+        f77: $root/compiler/latest/$subdir/$fcomp
+        fc: $root/compiler/latest/$subdir/$fcomp
       operating_system: $os
       modules: []
       environment:
         set:
           NVCCFLAGS: -allow-unsupported-compiler
-        prepend_path:
-          LD_LIBRARY_PATH: $root/compiler/latest/linux/compiler/lib/intel64
 EOF
 
 if [[ $install_modifier == cray ]]; then

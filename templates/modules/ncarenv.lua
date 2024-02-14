@@ -122,6 +122,9 @@ setenv("OMP_STACKSIZE", "64000K")
 -- System-wide dask settings
 -- setenv("DASK_ROOT_CONFIG", "/glade/u/apps/config/dask")
 
+-- System-wide MPI settings
+setenv("FI_CXI_RX_MATCH_MODE", "hybrid")
+
 -- Model-specific settings
 setenv("WRFIO_NCD_LARGE_FILE_SUPPORT", "1")
 setenv("CESMDATAROOT", "/glade/campaign/cesm/cesmdata")

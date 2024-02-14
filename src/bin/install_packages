@@ -5,7 +5,7 @@
 #   buildout of stacks.
 #
 #   Author:         Brian Vanderwende
-#   Last Revised:   16:16, 25 Nov 2023
+#   Last Revised:   11:31, 26 Jan 2024
 #
 
 
@@ -66,12 +66,7 @@ while [[ $# -gt 0 ]]; do
 done
 
 spec_cmd="spack spec -I -N -t -L"
-
-if [[ -n $build_jobs ]]; then
-    build_cmd="spack install -j $build_jobs --include-build-deps"
-else
-    build_cmd="spack install --include-build-deps"
-fi
+build_cmd="spack install --include-build-deps"
 
 function add_spec_to_view {
 view_block=$(sed -n "/^  view:/,/^  [a-z]*:/=" $1 | xargs | awk '{ print $1","$NF }')
@@ -125,6 +120,11 @@ function prepare_spec {
                 elif [[ $opt_type == publish ]]; then
                     publish_pkg=$opt_body
                     tsecho " >> package will not be published to public env" 1
+                elif [[ $opt_type == maxjobs ]]; then
+                    if [[ $pkg_jobs -lt $build_jobs ]]; then
+                        pkg_jobs=$opt_body
+                        tsecho " >> package will be built with jobs=$opt_body" 1
+                    fi
                 fi
             fi
         done
@@ -174,7 +174,6 @@ function compiler_checks {
     if [[ $current_comps != *${comp_spec}* ]]; then
         tsecho "Registering $comp_spec as a compiler in spack.yaml"
         comp_template=$NCAR_SPACK_ENV_BUILD/templates/compilers/${comp_spec%%@*}
-        root=/usr
 
         if [[ ! -f $comp_template ]]; then
             tsecho "Error: no compiler template found for $comp_spec"
@@ -192,6 +191,12 @@ function compiler_checks {
         if [[ ${install_build:-true} == true ]]; then
             read -r root version <<< $(spack find --format "{prefix} {version}" $spec)
         else
+            if [[ $install_modifier == cray ]]; then
+                root=/opt/cray
+            else
+                root=/usr
+            fi
+
             version=${comp_spec#*@}
         fi
 
@@ -204,7 +209,7 @@ function compiler_checks {
 function check_spec {
     if [[ $install_type == mpi ]]; then
         if [[ -n $comp ]]; then
-            mpi_spec="${mpis[$comp]} ${spec//[[:blank:]]/}"
+            mpi_spec="${spec//[[:blank:]]/}"
             mpis[$comp]="${mpis[$comp]} $mpi_spec"
         else
             tsecho "Error: cannot install an MPI without setting a compiler!"
@@ -307,7 +312,7 @@ function check_spec {
         unset cache_label
     fi
 
-    unset use_cache trust_src publish_pkg
+    unset use_cache trust_src publish_pkg pkg_jobs
 }
 
 function install_spec {
@@ -328,6 +333,8 @@ function install_spec {
     if [[ ${trust_src:-${install_trust:-no}} == yes ]]; then
         spec_build_cmd="$spec_build_cmd --no-checksum --deprecated"
     fi
+
+    spec_build_cmd="$spec_build_cmd -j ${pkg_jobs:-${build_jobs:-1}}"
 
     # Install the package and view pertinent log information
     log_cmd "$build_cmd $spec" >> $log_installs

@@ -16,21 +16,35 @@ cray_network=ofi
 
 ofi_version=$(basename $(ls -d --color=never /opt/cray/libfabric/*))
 core="  craype/2.7.20
+        craype/2.7.23
         gcc/12.2.0
         perftools-base/23.03.0
+        perftools-base/23.09.0
         atp/3.14.18
+        atp/3.15.1
         cray-ccdb/4.12.13
+        cray-ccdb/5.0.1
         cray-dyninst/12.1.1
+        cray-dyninst/12.3.0
         cray-stat/4.11.13
+        cray-stat/4.12.1
         gdb4hpc/4.14.7
+        gdb4hpc/4.15.1
         cray-mrnet/5.0.4
+        cray-mrnet/5.1.1
         papi/7.0.0.1
+        papi/7.0.1.1
         sanitizers4hpc/1.0.4
-        valgrind4hpc/2.12.11"
+        sanitizers4hpc/1.1.1
+        valgrind4hpc/2.12.11
+        valgrind4hpc/2.13.1"
 cdep="  cray-libsci/23.02.1.1
-        cray-mpich/8.1.25"
+        cray-libsci/23.09.1.1
+        cray-mpich/8.1.25
+        cray-mpich/8.1.27"
+mdep="  cray-mpixlate/1.0.2"
 
-hide_list=" */*/openmpi/* */*/mvapich/*"
+hide_list=" */*/openmpi/* */*/mvapich/* */*/vasp/* */*/intel-mpi/*"
 
 
 if [[ $SPACK_ENV == $NCAR_SPACK_ENV_PUBLIC ]]; then
@@ -58,6 +72,10 @@ if [[ ! -d $mod_deployment ]] || [[ -n $spack_flags ]]; then
     spack module lmod refresh -y $spack_flags
 fi
 
+# Then, let's make sure utils and localrc exist
+tsecho "Refreshing module init scripts"
+. $my_dir/tools/make_localinit.sh $NCAR_SPACK_ENV_TYPE
+
 # ===== CRAY PROGRAMMING ENVIRONMENT INTEGRATION =====
 
 function get_cpe_version {
@@ -77,18 +95,27 @@ function get_cpe_version {
 }
 
 function get_package_version {
-    def_file=/opt/cray/pe/cpe/${1}/set_default_release_${1}.sh
+    my_cpe_versions=$(sed "s/.*\($1.*\)/\1/" <<< $cpe_versions)
 
-    for my_name in $2 ${2#cray-}; do
-        my_version=$(sed -n "s/.*${my_name}_\([0-9.]*\)$/\1/p" $def_file)
+    for cpe in $my_cpe_versions; do
+        def_file=/opt/cray/pe/cpe/$cpe/set_default_release_$cpe.sh
 
-        if [[ -n $my_version ]]; then
-            echo $my_version
-            return
+        for my_name in $2 ${2#cray-}; do
+            my_version=$(sed -n "s/.*${my_name}_\([0-9.]*\)$/\1/p" $def_file)
+
+            if [[ -n $my_version ]]; then
+                echo $my_version
+                return
+            fi
+        done
+
+        if [[ $3 == strict ]]; then
+            tsecho "Error: package $2 not found in CPE $cpe"
+            exit 1
         fi
     done
 
-    tsecho "Error: package $2 not found in CPE ${1}"
+    tsecho "Error: package $2 not found in any CPE release"
     exit 1
 }
 
@@ -125,9 +152,16 @@ EOF
 
 if [[ $mod_name == cce ]]; then
 cat >> $1 << EOF
+setenv("NCAR_ROOT_CCE",             CCE_M_CURPATH)
+setenv("NCAR_ROOT_COMPILER",        CCE_M_CURPATH)
 
 -- Always try loading cray-libsci, since crayftn will use it (but not link!)
 depends_on("cray-libsci")
+EOF
+elif [[ $mod_name == gcc ]]; then
+cat >> $1 << EOF
+setenv("NCAR_ROOT_GCC",             PE_DIR)
+setenv("NCAR_ROOT_COMPILER",        PE_DIR)
 EOF
 fi
 }
@@ -220,6 +254,8 @@ local my_ncar_env   = "$NCAR_SPACK_HOST-$comp_name-$comp_version-" .. my_ncar_id
 setenv("NCAR_ID_MPI",           my_ncar_id)
 setenv("NCAR_BUILD_ENV_MPI",    my_ncar_env)
 pushenv("NCAR_BUILD_ENV",       my_ncar_env)
+setenv("NCAR_ROOT_CRAY_MPICH",  MPICH_DIR)
+setenv("NCAR_ROOT_MPI",         MPICH_DIR)
 
 -- If GPUs available, depend on CUDA
 local num_gpus = os.getenv("NGPUS")
@@ -284,6 +320,17 @@ function reverse_mods {
     sed -i '/MODULEPATH/ s/^prepend_path/append_path/' $1
 }
 
+function get_module_dir {
+    result=$(module --raw show $1 |& grep -m1 /opt/cray/pe | sed 's| *\(.*\)/.*|\1|' | sed 's|crayclang/[^/]*|%CMP%/\*|')
+    
+    # Try non-specific query if versioned fails
+    if [[ -z $result ]]; then
+        result=$(module --raw show ${1%/*} |& grep -m1 /opt/cray/pe | sed 's| *\(.*\)/.*|\1|' | sed 's|crayclang/[^/]*|%CMP%/\*|')
+    fi
+
+    echo $result
+}
+
 function copy_mods {
     mod_list=(${!1})
     for mod_entry in ${mod_list[@]}; do
@@ -291,6 +338,7 @@ function copy_mods {
         mod=${mod_entry/(D)}
         mod_name=${mod%/*}
         mod_version=${mod#*/}
+        mod_dir=$(get_module_dir $mod)
 
         tsecho "Package: $GCOL$mod$DCOL"
         
@@ -300,21 +348,19 @@ function copy_mods {
                 comp_name=${comp%/*}
                 comp_version=${comp#*/}
 
-                if [[ ${comp_dep[$comp_name]} == intel ]]; then
-                    comp_version=19
-                fi
-
-                if [[ -f $cray_core/${mod}.lua ]]; then
-                    src_file=$cray_core/${mod}.lua
+                if [[ -f $mod_dir/${mod_version}.lua ]]; then
+                    src_file=$mod_dir/${mod_version}.lua
                 else
-                    src_dirs="$(echo $(sed "s/%CMP%/${comp_dep[$comp_name]}/" <<< $cray_comnet))"
+                    src_dirs="$(echo $(sed "s/%CMP%/${comp_dep[$comp_name]}/" <<< $mod_dir))"
 
                     for src_dir in $src_dirs; do
                         src_compat=$(sed "s|.*${comp_dep[$comp_name]}/\([^./]*\).*|\1|" <<< $src_dir)
                         
                         if [[ $src_compat -gt $src_version ]] && [[ $src_compat -le ${comp_version%%.*} ]]; then
-                            src_version=$src_compat
-                            src_file=$src_dir/${mod}.lua
+                            if [[ -f $src_dir/${mod_version}.lua ]]; then
+                                src_version=$src_compat
+                                src_file=$src_dir/${mod_version}.lua
+                            fi
                         fi
                     done
 
@@ -341,6 +387,7 @@ function copy_mods {
 
                 mod_path=$mod_deployment/$comp
                 mkdir -p $mod_path/$mod_name
+                tsecho "    copying module from ${PCOL}${src_file}$DCOL (${PCOL}comp=$comp$DCOL)"
                 cp $src_file $mod_path/$mod_name
 
                 if [[ $mod != $mod_entry ]]; then
@@ -349,17 +396,18 @@ function copy_mods {
 
                 if [[ " $mpis " == *" $mod_name "* ]]; then
                     modify_mpi $mod_path/${mod}.lua
-                    tsecho "    modified $GCOL$mod$DCOL (${PCOL}compat=$src_version$DCOL) for use as MPI library (${PCOL}comp=$comp$DCOL)"
+                    tsecho "    modified $GCOL$mod$DCOL (${PCOL}compat=$src_version$DCOL) for use as MPI library"
                 elif [[ $mod_name == cray-libsci ]]; then
                     modify_libsci $mod_path/${mod}.lua
                 fi
                 
                 set_dependency $mod_path/${mod}.lua
             done
-        elif [[ -f $cray_core/${mod}.lua ]]; then
+        elif [[ -f $mod_dir/${mod_version}.lua ]]; then
             mod_path=$mod_deployment/Core
             mkdir -p $mod_path/$mod_name
-            cp $cray_core/${mod}.lua $mod_path/$mod_name
+            cp $mod_dir/${mod_version}.lua $mod_path/$mod_name
+            tsecho "    copying module from ${PCOL}$mod_dir/${mod_version}.lua$DCOL"
 
             if [[ $mod != $mod_entry ]]; then
                 ln -sf ${mod_version}.lua $mod_path/$mod_name/default
@@ -383,7 +431,7 @@ function copy_mods {
                 set_dependency $mod_path/${mod}.lua
             fi
         else
-            tsecho "Error: no module file found at $cray_core/${mod}.lua!"
+            tsecho "Error: no module file found at $mod_dir/${mod_version}.lua!"
             exit 1
         fi
     done
@@ -394,11 +442,10 @@ cpe_root=/opt/cray/pe/cpe
 cpe_versions="$(ls --color=never -rd /opt/cray/pe/cpe/*.* | xargs -n1 basename | xargs)"
 
 # Cray module paths
-cray_core=/opt/cray/pe/lmod/modulefiles/core
-cray_comnet=/opt/cray/pe/lmod/modulefiles/comnet/%CMP%/*/ofi/1.0
 cray_mpath=/opt/cray/pe/lmod/modulefiles/core:/opt/cray/modulefiles:/opt/cray/pe/lmod/modulefiles/craype-targets/default
 
 tsecho "Copying core modules to $mod_root"
+module -q load PrgEnv-cray
 
 tm_file=$SPACK_ENV/.tempmod
 
@@ -432,6 +479,8 @@ done
 tsecho "Copying cdep modules to $mod_root"
 copy_mods cdep
 
+module -q purge
+
 # ===== INTEL ONEAPI MODULE TRIO =====
 
 tsecho "Populating Intel compiler module set"
@@ -455,6 +504,60 @@ if [[ -d Core/intel-classic ]]; then
         sed -i "/MODULEPATH/ s|${ccver}|${onever}|" $icver
     done
 fi
+
+# ===== GCC TOOLCHAIN MODULES =====
+
+# These modules allow users to use vendor compilers like Intel, NVIDIA with newer
+# GCC toolchains than the system-default 7.5.0, enabling use of newer standards
+# like C++ 17/20.
+
+function write_toolchain_module {
+cat > $1 << EOF
+-- -*- lua -*-
+-- Module file created manually on $(date)
+--
+
+whatis([[Name : gcc-toolchain]])
+whatis([[Version : ${gcc_version}]])
+whatis([[Short description : GCC toolchain including C++ standard library]])
+
+help([[GCC toolchain: Includes major components from GCC install for use
+with other compilers. This allows you to use newer components than provided
+by the system $core_gcc (e.g., newer C++ standards)]])
+
+-- Requires ncarcompilers to function (insert modifier flag)
+depends_on("ncarcompilers")
+
+-- Does not work with older versions of Cray wrappers
+conflict("craype/2.7.20")
+
+local gcc_root = "${gcc_dirs[$gcc_version]}"
+
+setenv("NCAR_ROOT_GCC_TOOLCHAIN", gcc_root)
+prepend_path("NCAR_MFLAGS_COMPILER", "--gcc-toolchain=" .. gcc_root, " ")
+EOF
+}
+
+tsecho "Populating GCC toolchain modules for vendor compilers"
+
+declare -A gcc_dirs
+gcc_dirs[12.2.0]=/opt/cray/pe/gcc/12.2.0/snos
+
+for comp_name in cce aocc nvhpc oneapi; do
+    if [[ -d $comp_name ]]; then
+        for comp_vers in $(ls -1 --color=never $comp_name/); do
+            for gcc_version in ${!gcc_dirs[*]}; do
+                mod_file=$comp_name/$comp_vers/gcc-toolchain/${gcc_version}.lua
+
+                if [[ ! -f $mod_file ]]; then
+                    tsecho "    creating ${GCOL}gcc-toolchain/${gcc_version}$DCOL for vendor compiler ${PCOL}$comp_name/$comp_vers${DCOL}"
+                    mkdir -p $comp_name/$comp_vers/gcc-toolchain
+                    write_toolchain_module $comp_name/$comp_vers/gcc-toolchain/${gcc_version}.lua
+                fi
+            done
+        done
+    fi
+done
 
 # ===== CREATE META-MODULES =====
 
@@ -551,14 +654,17 @@ tsecho "Adding external utilities to the shell environment"
 
 # Add utilities to the base environment when using ncarenv
 util_root=/glade/u/apps/opt; cd $util_root
+suse_major=15
 
 declare -A ncar_utils
 ncar_utils[qstat]=qstat-cache
 ncar_utils[qinteractive]=pbstools
 ncar_utils[execcasper]=pbstools
 ncar_utils[qcmd]=pbstools
+ncar_utils[launch_cf]=pbstools
 ncar_utils[qhist]=qhist
 ncar_utils[gladequota]=gladequota
+ncar_utils[snapls]=gladequota
 ncar_utils[set_gpu_rank]=mpitools
 ncar_utils[mpibind]=mpitools
 ncar_utils[cpu_bind]=mpitools
@@ -568,8 +674,13 @@ ncar_utils[compare_env_yaml]=ncar-conda
 ncar_utils[spack-downstream]=csg-spack-downstreams
 ncar_utils[sudox]=termtools
 ncar_utils[licstatus]=termtools
+ncar_utils[dumpenv]=termtools
+ncar_utils[vncmgr]=vncmgr
+ncar_utils[gedit]=leap-container/$suse_major
+ncar_utils[gv]=leap-container/$suse_major
+ncar_utils[evince]=leap-container/$suse_major
 
-skip_clone="gladequota"
+skip_clone="gladequota leap-container/$suse_major"
 
 if [[ $SPACK_ENV == $NCAR_SPACK_ENV_PUBLIC ]]; then
     mkdir -p $NCAR_SPACK_ROOT_BASE/utils/bin
@@ -592,13 +703,15 @@ if [[ $SPACK_ENV == $NCAR_SPACK_ENV_PUBLIC ]]; then
 
         if [[ ! -e $NCAR_SPACK_ROOT_BASE/utils/bin/$util ]]; then
             # First, let's make sure the repo is up to date (and submodules pulled)
-            cd $util_root/${ncar_utils[$util]}
-            git pull > /dev/null
+            if [[ " $skip_clone " != *" ${ncar_utils[$util]} "* ]]; then
+                cd $util_root/${ncar_utils[$util]}
+                git pull > /dev/null
 
-            if [[ -f .gitmodules ]]; then
-                git submodule update --init --remote --recursive > /dev/null
+                if [[ -f .gitmodules ]]; then
+                    git submodule update --init --remote --recursive > /dev/null
+                fi
+                cd - > /dev/null
             fi
-            cd - > /dev/null
 
             if [[ -e $util_root/${ncar_utils[$util]}/bin/$util ]]; then
                 tsecho "    adding $GCOL$util$DCOL"
@@ -622,6 +735,7 @@ fi
 # ===== SET UP PERL LIBRARY =====
 
 perl_mod_list="Pod::Parser HTML::Entities"
+#perl_mod_list="Pod::Parser HTML::Entities XML::LibXML"
 perl_lib_root=$NCAR_SPACK_ROOT_BASE/perl
 
 if [[ $NCAR_SPACK_ENV_TYPE == public ]]; then
@@ -631,18 +745,25 @@ if [[ $NCAR_SPACK_ENV_TYPE == public ]]; then
     if [[ $? == 0 ]]; then
         tsecho "Populating Perl library"
         echo
-        spack load /$perl_hash
+        spack load /$perl_hash libxml2
 
         for pmod in $perl_mod_list; do
-            cpanm install -L $perl_lib_root $pmod
+            if [[ $pmod == *LibXML ]]; then
+                # One test fails currently...
+                cpanm install --force -L $perl_lib_root $pmod || true
+            else
+                cpanm install -L $perl_lib_root $pmod
+            fi
         done
 
-        spack unload /$perl_hash
+        spack unload /$perl_hash libxml2
         echo
     fi
 fi
 
 # ===== CREATE LMOD AVAIL HOOK =====
+
+tsecho "Creating Lmod functionality extensions"
 
 function create_sp {
 cat > $tm_file << EOF
@@ -748,3 +869,5 @@ propT = {
 EOF
 
 mv $tm_file $rc_file
+
+tsecho "Postprocessing successful"
