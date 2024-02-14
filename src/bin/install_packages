@@ -5,7 +5,7 @@
 #   buildout of stacks.
 #
 #   Author:         Brian Vanderwende
-#   Last Revised:   11:31, 26 Jan 2024
+#   Last Revised:   10:11, 14 Feb 2024
 #
 
 
@@ -201,7 +201,7 @@ function compiler_checks {
         fi
 
         sed -i 's/^\(  compilers:\)[ ]*\[\]/\1/' $SPACK_ENV/spack.yaml
-        block_end=$(expr $(sed -n '1,/^  compilers:/d;/^  [^- ].*/ {=;q}' $SPACK_ENV/spack.yaml) - 1)
+        block_end=$(expr $(sed -n "1,/^  '*compilers[:']*/d;/^  [^- ].*/ {=;q}" spack.yaml) - 1)
         . $comp_template | sed -i "$block_end r /dev/stdin" $SPACK_ENV/spack.yaml
     fi
 }
@@ -258,8 +258,9 @@ function check_spec {
         set -e
 
         if [[ $skip_spec == false ]] && [[ $dry_run != true ]]; then
-            spack_spec_out=$($spec_cmd $spec)
+            spack_spec_out=$(eval $spec_cmd $spec)
             spec_hash=$(grep -A2 ^Concretized <<< "$spack_spec_out" | tail -n1 | awk '{print $2}')
+            sed -i "/.*:${spec_hash}.*/d" $SPACK_ENV/.installs
 
             if [[ " $start_hashes " == *" $spec_hash "* ]]; then
                 echo "${spec}:$spec_hash:${use_cache:-yes}:${publish_pkg:-yes}" >> $SPACK_ENV/.installs
@@ -338,7 +339,7 @@ function install_spec {
 
     # Install the package and view pertinent log information
     log_cmd "$build_cmd $spec" >> $log_installs
-    spack add $spec > /dev/null; spack concretize -q > /dev/null
+    eval spack add $spec > /dev/null; spack concretize -q > /dev/null
     $spec_build_cmd |& tee -a $log_installs | sed -u 's/^/   /' | (grep --line-buffered             \
             -e "Executing phase" -e "Successfully installed" -e "already installed" -e " Total: "   \
             -e " from binary cache" -e " Error: " -e "^See build log" -e "spack-build-out.txt"      \
@@ -347,7 +348,7 @@ function install_spec {
     if [[ ${PIPESTATUS[0]} -ne 0 ]]; then
         # Remove spec to avoid uninstalled package in spack.yaml
         echo
-        spack remove $spec
+        eval spack remove $spec
         tsecho "\nError: install of package $spec failed! Aborting installs ...\n"
         exit 1
     fi
@@ -544,7 +545,3 @@ while read pkg; do
         esac
     fi
 done < <(awk 'NF' $pkg_manifest)
-
-if [[ $dry_run != true ]] && [[ $SPACK_ENV == $NCAR_SPACK_ENV_BUILD ]]; then
-    . $my_dir/tools/make_localinit.sh build
-fi

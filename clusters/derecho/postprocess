@@ -17,6 +17,7 @@ cray_network=ofi
 ofi_version=$(basename $(ls -d --color=never /opt/cray/libfabric/*))
 core="  craype/2.7.20
         craype/2.7.23
+        cce/16.0.1
         gcc/12.2.0
         perftools-base/23.03.0
         perftools-base/23.09.0
@@ -47,7 +48,7 @@ mdep="  cray-mpixlate/1.0.2"
 hide_list=" */*/openmpi/* */*/mvapich/* */*/vasp/* */*/intel-mpi/*"
 
 
-if [[ $SPACK_ENV == $NCAR_SPACK_ENV_PUBLIC ]]; then
+if [[ $NCAR_SPACK_ENV_TYPE == public ]]; then
     mod_root=$NCAR_SPACK_ROOT_MODULES
     base_root=$NCAR_SPACK_ROOT_BASE
 else
@@ -74,7 +75,7 @@ fi
 
 # Then, let's make sure utils and localrc exist
 tsecho "Refreshing module init scripts"
-. $my_dir/tools/make_localinit.sh $NCAR_SPACK_ENV_TYPE
+. $my_dir/tools/make_localinit.sh ${NCAR_SPACK_ENV_TYPE:-build}
 
 # ===== CRAY PROGRAMMING ENVIRONMENT INTEGRATION =====
 
@@ -263,12 +264,25 @@ if num_gpus and tonumber(num_gpus) > 0 then
     depends_on("cuda")
 end
 
--- Add site customizations (see "man intro_mpi" for details)
-setenv("FI_CXI_RX_MATCH_MODE", "hybrid")
-
 -- HPE suggests this setting to reduce RPC launch timeouts
 setenv("PALS_FANOUT", "32")
 EOF
+
+if [[ $mod_version == 8.1.25 ]]; then
+    cuda_versions=$(ls $mod_deployment/Core/cuda/*.lua | sed 's|.*/\(.*\).lua|\1|')
+
+    for cuda in $cuda_versions; do
+        if [[ ${cuda%%.*} -ge 12 ]]; then
+            conflicts="${conflicts:+${conflicts},}\"cuda/$cuda\""
+        fi
+    done
+
+    if [[ -n $conflicts ]]; then
+        echo -e "\n-- Add cuda conflicts" >> $1
+        echo "conflict($conflicts)" >> $1
+        unset conflicts
+    fi
+fi
 }
 
 function modify_craype {
@@ -490,9 +504,18 @@ if [[ -d Core/intel-oneapi ]]; then
 
     for icver in $(find Core/intel-oneapi/ -type f); do
         sed '/INTEL_COMPILER_TYPE/ s/ONEAPI/RECOMMENDED/' $icver > ${icver/-oneapi}
-        sed -i 's|/ifx|/intel64/ifort|' ${icver/-oneapi}
-        sed -i 's|"ifx|"ifort|' ${icver/-oneapi}
+
+        if [[ $(sed 's|.*/\([^.]*\).*|\1|' <<< $icver) -ge 2024 ]]; then
+            sed -i 's|\([/"]\)ifx|\1ifort|' ${icver/-oneapi}
+        else
+            sed -i 's|\([/"]\)ifx|\1intel64/ifort|' ${icver/-oneapi}
+        fi
     done
+
+    if [[ -f Core/intel-oneapi/default ]]; then
+        def_imod=$(basename $(readlink -f Core/intel-oneapi/default))
+        ln -sfn $def_imod Core/intel/default
+    fi
 fi
 
 if [[ -d Core/intel-classic ]]; then
@@ -539,8 +562,16 @@ EOF
 }
 
 tsecho "Populating GCC toolchain modules for vendor compilers"
+gcc_spack=$(spack find --format '{version} {prefix}' gcc)
 
 declare -A gcc_dirs
+
+while read gcc_version gcc_root; do
+    if [[ gcc@$gcc_version != $core_gcc ]]; then
+        gcc_dirs[$gcc_version]=$gcc_root
+    fi
+done <<< "$gcc_spack"
+
 gcc_dirs[12.2.0]=/opt/cray/pe/gcc/12.2.0/snos
 
 for comp_name in cce aocc nvhpc oneapi; do
@@ -597,10 +628,6 @@ for mod_type in ncarenv ncarenv-basic; do
     sed -i "s|%CCROOT%|${cc_root}|g" $tm_file
     sed -i "s|%MODRC%|$hl_file|g" $tm_file
     mv $tm_file $mm_file
-
-    if [[ $mod_type != ncarenv ]] && [[ $NCAR_SPACK_HOST == derecho ]]; then
-        hide_module $mm_file
-    fi
 done
 
 # All crayenv deployments
@@ -624,11 +651,15 @@ for cpe_version in $(find /opt/cray/pe/cpe -mindepth 1 -maxdepth 1 -type d -exec
     sed -i "s|%DEFMODS%|crayenv/${cpe_version}:$my_defmods|g" $tm_file
     sed -i "s|%TMPROOT%|$NCAR_SPACK_TMPROOT|g" $tm_file
     mv $tm_file $mm_file
-
-    if [[ $NCAR_SPACK_HOST == derecho ]]; then
-        hide_module $mm_file
-    fi
 done
+
+if [[ $SPACK_ENV == $NCAR_SPACK_ENV_PUBLIC ]]; then
+    for mod_type in ncarenv-basic crayenv; do
+        for mm_file in $(echo $mod_root/environment/$mod_type/*); do
+            hide_module $mm_file
+        done
+    done
+fi
 
 # Create developer addon modules and hide them
 mkdir -p $mod_root/environment/cesmdev
@@ -741,11 +772,12 @@ perl_lib_root=$NCAR_SPACK_ROOT_BASE/perl
 if [[ $NCAR_SPACK_ENV_TYPE == public ]]; then
     tsecho "Checking for Spack-installed Perl"
     perl_hash=$(spack find -x --format '{hash}' perl)
+    perl_deps="/$perl_hash libxml2"
 
     if [[ $? == 0 ]]; then
         tsecho "Populating Perl library"
         echo
-        spack load /$perl_hash libxml2
+        spack load $perl_deps
 
         for pmod in $perl_mod_list; do
             if [[ $pmod == *LibXML ]]; then
@@ -756,7 +788,7 @@ if [[ $NCAR_SPACK_ENV_TYPE == public ]]; then
             fi
         done
 
-        spack unload /$perl_hash libxml2
+        spack unload $perl_deps
         echo
     fi
 fi

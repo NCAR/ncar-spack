@@ -16,7 +16,7 @@
 #           shell script. So we must activate in the script!
 #
 #   Author:         Brian Vanderwende
-#   Last Revised:   11:28, 20 Nov 2023
+#   Last Revised:   11:45, 14 Feb 2024
 #
 
 function remove_lock {
@@ -70,15 +70,15 @@ singleton:
 EOF
 
 while read spec; do
-    spec_hash=$(spack find --format '{hash}' $spec 2> /dev/null || true)
+    spec_hash=$(eval spack find --format '{hash}' $spec 2> /dev/null || true)
 
     if [[ -z $spec_hash ]]; then
         tsecho "Error: package $spec not found in build environment!"
         exit 1
     fi
 
-    use_cache=$(awk -F: -v spec="$spec_hash" '$2 == spec {print $3}' $NCAR_SPACK_ENV_BUILD/.installs)
-    publish_pkg=$(awk -F: -v spec="$spec_hash" '$2 == spec {print $4}' $NCAR_SPACK_ENV_BUILD/.installs)
+    use_cache=$(awk -F: -v spec="$spec_hash" '$2 == spec {print $3; exit}' $NCAR_SPACK_ENV_BUILD/.installs)
+    publish_pkg=$(awk -F: -v spec="$spec_hash" '$2 == spec {print $4; exit}' $NCAR_SPACK_ENV_BUILD/.installs)
 
     if [[ ${publish_pkg:-yes} == yes ]]; then
         if [[ $use_cache == yes ]]; then
@@ -130,6 +130,13 @@ EOF
 # Perform common script setup including environment checks
 export my_dir="$( cd "$(dirname "$0")" ; pwd )"
 . $my_dir/tools/init.sh
+
+# Check for "freeze" file - if exists, we cannot publish changes
+if [[ -f $NCAR_SPACK_ENV_BUILD/freeze ]]; then
+    tsecho "Error:  Deployment is frozen. Reason given in freeze file:"
+    cat $NCAR_SPACK_ENV_BUILD/freeze
+    exit 1
+fi
 
 # Create lockfile to block other actions during publishing
 trap remove_lock EXIT
@@ -332,10 +339,10 @@ if [[ -n $rm_pkgs ]]; then
     tsecho "Removing packages that have been uninstalled from build"
 
     while read -r spec; do
-        if [[ $(spack location -i $spec) == ${NCAR_SPACK_ROOT_DEPLOYMENT}* ]]; then
-            spack uninstall --dependents --remove -y $spec
+        if [[ $(eval spack location -i $spec) == ${NCAR_SPACK_ROOT_DEPLOYMENT}* ]]; then
+            eval spack uninstall --dependents --remove -y $spec
         elif sed -n '/^[ ]*specs:/,$ p' $SPACK_ENV/spack.yaml | grep -q "$spec"; then
-            spack remove $spec
+            eval spack remove $spec
         fi
     done < <(sed 's/[ ]*- //' <<< $rm_pkgs | tac)
 fi
@@ -364,9 +371,6 @@ tsecho "Ensure specs list is flow-style YAML"
 if grep -q -E '^ +specs: +\[' $SPACK_ENV/spack.yaml; then
     spack python $my_dir/tools/fix_specs.py
 fi
-
-tsecho "Refreshing module init scripts"
-. $my_dir/tools/make_localinit.sh public
 
 tsecho "Creating split configuration files for community use"
 mkdir -p $SPACK_ENV/config
