@@ -25,8 +25,8 @@ setenv("NCAR_HOST",         "%HOST%")
 append_path("MODULEPATH", "%MODPATH%")
 
 -- Add Lmod settings
-setenv("LMOD_PACKAGE_PATH", "%UTILPATH%")
-setenv("LMOD_AVAIL_STYLE", "grouped:system")
+pushenv("LMOD_PACKAGE_PATH", "%UTILPATH%")
+pushenv("LMOD_AVAIL_STYLE", "grouped:system")
 pushenv("LMOD_SYSTEM_DEFAULT_MODULES", "ncarenv-basic/%VERSION%")
 
 -- Ensure modules load in subshells

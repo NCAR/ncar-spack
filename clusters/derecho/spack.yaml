@@ -64,16 +64,18 @@ spack:
       require:
         # This should force packages to use the vendor-preferred solution
         # for BLAS and LAPACK without needing to set it on each package
-      - any_of:
+      - one_of:
         - '%gcc@7 ^openblas %gcc@7'
-        - '%gcc@11: ^cray-libsci %gcc@11:'
+        - '%gcc@12 ^cray-libsci %gcc@12'
+        - '%gcc@13 ^openblas %gcc@13'
         - '%cce ^cray-libsci'
         - '%oneapi ^intel-oneapi-mkl'
         - '%nvhpc ^nvhpc'
         when: ^blas
-      - any_of:
+      - one_of:
         - '%gcc@7 ^openblas %gcc@7'
-        - '%gcc@11: ^cray-libsci %gcc@11:'
+        - '%gcc@12 ^cray-libsci %gcc@12'
+        - '%gcc@13 ^openblas %gcc@13'
         - '%cce ^cray-libsci'
         - '%oneapi ^intel-oneapi-mkl'
         - '%nvhpc ^nvhpc'
@@ -205,6 +207,9 @@ spack:
     doxygen:
       variants:
       - +graphviz
+      require:
+      - '%gcc@7.5.0'
+    ecbuild:
       require:
       - '%gcc@7.5.0'
     eccodes:
@@ -382,7 +387,6 @@ spack:
       - +fortran
       - +szip
     hdf5:
-      require: '@:1.12'
       variants:
       - +cxx
       - +fortran
@@ -402,6 +406,9 @@ spack:
       variants:
       - +ghostscript
     intel-oneapi-compilers:
+      require:
+      - '%gcc@7.5.0'
+    intel-oneapi-inspector:
       require:
       - '%gcc@7.5.0'
     intel-oneapi-mpi:
@@ -425,6 +432,9 @@ spack:
     julia:
       require: ^llvm~clang~gold~polly ^openblas threads=openmp
     krb5:
+      require:
+      - '%gcc@7.5.0'
+    libaec:
       require:
       - '%gcc@7.5.0'
     libarchive:
@@ -549,6 +559,13 @@ spack:
     motif:
       require:
       - ^autoconf@2.69
+    mpich:
+      require:
+      - device=ch4
+      - netmod=ofi
+      - pmi=pmi2
+      variants:
+      - ~cuda
     mpifileutils:
       variants:
       - +gpfs
@@ -557,16 +574,23 @@ spack:
     mvapich:
       variants:
       - file_systems=lustre,gpfs,nfs,ufs
-      - process_managers=hydra
-      - ~cuda
+      - process_managers=auto
       require:
       - netmod=ofi
+      - +pbs
+      - one_of:
+        - ~cuda
+        when: '%oneapi'
+      - one_of:
+        - +cuda
+        when: '%nvhpc'
     ncl:
       # Newer ESMF versions cause issues for NCL
       # TODO - bake this into recipe?
       require:
       - ^esmf@:8.0.1 ~external-lapack
       - ^hdf5~mpi
+      - '%gcc@7.5.0'
       variants:
       - +eemd
       - +gdal
@@ -662,6 +686,10 @@ spack:
       - +ncint
       - +pnetcdf
       - ~logging
+      require:
+      - any_of:
+        - ~pnetcdf
+        when: ~mpi
     parallelio1:
       variants:
       - +pnetcdf
@@ -699,7 +727,7 @@ spack:
       require:
       - any_of:
         - ^openblas symbol_suffix=none
-        when: +blas
+        when: ^openblas
     py-setuptools:
       # Newer versions cannot be used by py-numpy as of Aug 2023
       require:
@@ -903,13 +931,12 @@ spack:
               DARSHAN_SHARED_LIB: '{prefix}/lib/libdarshan.so'
         defaults:
         - netcdf@4.9.2
-        - parallel-netcdf@1.12.3
-        - fftw@3.3.10
         - nvhpc@23.7
         - parallelio+mpi
         - esmf+mpi
-        - cuda@11.7.1
-        - cudnn@8.5.0.96-11.7
+        - cuda@12.2.1
+        - intel-oneapi-compilers@2023.2.1
+        - gcc@12.2.0
         esmf:
           autoload: none
         exclude:
@@ -922,10 +949,13 @@ spack:
         gcc:
           environment:
             set:
+              GNU_PATH: '{prefix}'
+              GNU_VERSION: '{version}'
               NCAR_BUILD_ENV: derecho-{name}-{version}
               NCAR_BUILD_ENV_COMPILER: derecho-{name}-{version}
               NCAR_ID_COMPILER: '{name}-{version}'
               NCAR_ROOT_COMPILER: '{prefix}'
+              PE_ENV: GNU
         hash_length: 0
         hdf5+mpi:
           template: conflict-mpi.lua
@@ -1099,6 +1129,7 @@ spack:
         openmpi:
           environment:
             set:
+              OMPI_MCA_rmaps_default_mapping_policy: :hwtcpus
               OMPI_MCA_shmem_mmap_enable_nfs_warning: '0'
             prepend_path:
               LD_LIBRARY_PATH: '{prefix}/lib'
@@ -1137,6 +1168,8 @@ spack:
           intel-oneapi-vtune: vtune/{version}
           miniconda3: conda/latest
           parallelio1: parallelio/{version}
+          mvapich~cuda: mvapich/{version}-cpu
+          mvapich+cuda: mvapich/{version}-cuda
         rstudio:
           filter:
             exclude_env_vars:
