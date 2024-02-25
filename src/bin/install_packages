@@ -5,7 +5,7 @@
 #   buildout of stacks.
 #
 #   Author:         Brian Vanderwende
-#   Last Revised:   10:11, 14 Feb 2024
+#   Last Revised:   13:41, 25 Feb 2024
 #
 
 
@@ -260,7 +260,10 @@ function check_spec {
         if [[ $skip_spec == false ]] && [[ $dry_run != true ]]; then
             spack_spec_out=$(eval $spec_cmd $spec)
             spec_hash=$(grep -A2 ^Concretized <<< "$spack_spec_out" | tail -n1 | awk '{print $2}')
-            sed -i "/.*:${spec_hash}.*/d" $SPACK_ENV/.installs
+            
+            if [[ -f $SPACK_ENV/.installs ]]; then
+                sed -i "/.*:${spec_hash}.*/d" $SPACK_ENV/.installs
+            fi
 
             if [[ " $start_hashes " == *" $spec_hash "* ]]; then
                 echo "${spec}:$spec_hash:${use_cache:-yes}:${publish_pkg:-yes}" >> $SPACK_ENV/.installs
