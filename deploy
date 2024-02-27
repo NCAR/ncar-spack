@@ -4,7 +4,7 @@
 #   a specified cluster definition. 
 #
 #   Author:         Brian Vanderwende
-#   Last Revised:   10:30, 25 Jan 2024
+#   Last Revised:   21:40, 26 Feb 2024
 #
 
 set -e
@@ -158,6 +158,11 @@ if [[ $NCAR_SPACK_ROOT != $spack_clone_path ]]; then
     # Set different core compiler if requested
     if [[ -n $NCAR_SPACK_GCC_ROOT ]]; then
         sed -i "s|^\(CORE_GCC_ROOT=\)|\1$NCAR_SPACK_GCC_ROOT|" $spack_clone_path/share/ncar/init.sh
+    fi
+
+    # If exists, use Spack utils repo for Python
+    if [[ -d $NCAR_SPACK_PYTHON_ROOT ]]; then
+        sed -i "s|^\(NCAR_SPACK_PYTHON_ROOT=\)|\1$NCAR_SPACK_PYTHON_ROOT|" $spack_clone_path/share/ncar/init.sh
     fi
 
     # Add custom cluster source files if found

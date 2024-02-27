@@ -2,11 +2,11 @@
 
 function usage {
 cat << EOF
-Usage: $0 [-m MIRRORPATH]
+Usage: $0 [-j JOBS] [-m MIRROR]
 
 Options
     -j, --jobs      number of concurrent pkgs to cache (default 1)
-    -m, --mirror    specify a custom path to a mirror
+    -m, --mirror    specify name or path to custom mirror
 
 EOF
 exit
@@ -34,9 +34,9 @@ while [[ $# -gt 0 ]]; do
             ;;
         -m|--mirror)
             if [[ $1 == *=* ]]; then
-                mirror_path=${1#*=}
+                mirror=${1#*=}
             else
-                mirror_path=$2; shift
+                mirror=$2; shift
             fi
             ;;
         *)
@@ -55,9 +55,9 @@ log_file=$log_dir/cache.$start_time
 cache_cmd="spack buildcache push -a"
 
 if [[ $NCAR_SPACK_DEPLOY_TYPE == production ]]; then
-    mirror_path=${mirror_path:-$NCAR_SPACK_MIRROR_GLOBAL}
+    mirror=${mirror:-$NCAR_SPACK_MIRROR_GLOBAL}
 else
-    mirror_path=${mirror_path:-$NCAR_SPACK_MIRROR_LOCAL}
+    mirror=${mirror:-$NCAR_SPACK_MIRROR_LOCAL}
 fi
 
 # Job tracking by PIDs
@@ -71,13 +71,46 @@ function wait_for_jobs {
             fi
         done
     done
+
+    if [[ -f $log_file ]] && grep -q Error $log_file; then
+        tsecho "Error: pushed failed! See $log_file for details."
+        tsecho "Waiting for jobs to finish"
+        wait
+        exit 1
+    fi
 }
 
 tsecho "Using up to $max_jobs threads to populate cache"
+tsecho "Pushing to cache: ${PCOL}${mirror}${DCOL}"
 
 raw_list=$(spack find --format "{prefix} {hash} {name}@{version}%{compiler}{variants}")
 pkg_list=$(awk -v envpath=${SPACK_ENV}/opt '$1~envpath { print $2" "$3 }' <<< "$raw_list")
-cache_list=$(ls $mirror_path/build_cache/ 2> /dev/null || true)
+
+while [[ ${cache_list+set} != set ]]; do
+    case $mirror in
+        file://*|/*)
+            cache_list=$(ls ${mirror#file://}/build_cache/ 2> /dev/null || true)
+            ;;
+        s3://*)
+            cache_list=$(spack python $my_dir/tools/list_cache_s3.py ${mirror#s3://})
+
+            if [[ $? == 1 ]]; then
+                tsecho "Error: S3 cache could not be accessed. See above error."
+                exit 1
+            fi
+            ;;
+        *)
+            mirror_path=$(spack mirror list --scope env:$SPACK_ENV | awk -v mirror=$mirror '$1 == mirror {print $3}')
+
+            if [[ -z $mirror_path ]]; then
+                tsecho "Error: specified mirror not found in environment"
+                exit 1
+            else
+                mirror=$mirror_path
+            fi
+            ;;
+    esac
+done
 
 while read pkg spec; do
     if [[ $cache_list != *$pkg* ]]; then
@@ -86,9 +119,9 @@ while read pkg spec; do
         fi
 
         if [[ $use_cache != no ]]; then
-            tsecho "Caching package:  ${GCOL}$spec${DCOL}"
-            log_cmd "$cache_cmd --only=package $mirror_path /$pkg" >> $log_file
-            $cache_cmd --only=package $mirror_path /$pkg &>> $log_file &
+            tsecho "Caching package:  ${GCOL}${spec}${DCOL}"
+            log_cmd "$cache_cmd --only=package $mirror /$pkg" >> $log_file
+            $cache_cmd --only=package $mirror /$pkg &>> $log_file &
             job_pids[$!]=running
         fi
     fi
