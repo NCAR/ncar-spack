@@ -4,7 +4,7 @@
 #   a specified cluster definition. 
 #
 #   Author:         Brian Vanderwende
-#   Last Revised:   21:40, 26 Feb 2024
+#   Last Revised:   19:16, 28 Feb 2024
 #
 
 set -e
@@ -48,6 +48,9 @@ while [[ $# -gt 0 ]]; do
             ;;
         -k|--no-keygen|--nokeygen)
             skip_keygen=yes
+            ;;
+        -m|--no-mirror|--nomirror)
+            skip_mirror=yes
             ;;
         -n|--no-pkgs|--nopkgs)
             skip_pkgs=yes
@@ -290,31 +293,33 @@ function trust_keys {
     done
 }
 
-for mtype in LOCAL GLOBAL; do
-    mirror=NCAR_SPACK_MIRROR_${mtype} add_mirror=yes
+if [[ ${skip_mirror:-no} == no ]]; then
+    for mtype in LOCAL GLOBAL; do
+        mirror=NCAR_SPACK_MIRROR_${mtype} add_mirror=yes
 
-    if [[ -d ${!mirror}/build_cache/_pgp ]]; then
-        trust_keys
-    elif [[ $(sed 's/production/GLOBAL/;s/testing/LOCAL/' <<< $NCAR_SPACK_DEPLOY_TYPE) == $mtype ]]; then
-        if [[ -n $cache_path ]]; then
-            echo "Importing existing mirror from $cache_path ..."
-            cp -r $cache_path ${!mirror}
+        if [[ -d ${!mirror}/build_cache/_pgp ]]; then
             trust_keys
-        else
-            spack mirror create -d ${!mirror} -a
+        elif [[ $(sed 's/production/GLOBAL/;s/testing/LOCAL/' <<< $NCAR_SPACK_DEPLOY_TYPE) == $mtype ]]; then
+            if [[ -n $cache_path ]]; then
+                echo "Importing existing mirror from $cache_path ..."
+                cp -r $cache_path ${!mirror}
+                trust_keys
+            else
+                spack mirror create -d ${!mirror} -a
 
-            if [[ ${skip_keygen:-no} == no ]]; then
-                spack gpg publish -d ${!mirror}
+                if [[ ${skip_keygen:-no} == no ]]; then
+                    spack gpg publish -d ${!mirror}
+                fi
             fi
+        else
+            add_mirror=no
         fi
-    else
-        add_mirror=no
-    fi
 
-    if [[ $add_mirror == yes ]]; then
-        spack mirror add ncar_mirror_${mtype,,} ${!mirror}
-    fi
-done
+        if [[ $add_mirror == yes ]]; then
+            spack mirror add ncar_mirror_${mtype,,} ${!mirror}
+        fi
+    done
+fi
 
 # Add custom repos
 if [[ -f clusters/$NCAR_SYS/repos.cfg ]]; then
