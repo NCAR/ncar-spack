@@ -4,7 +4,7 @@
 #   a specified cluster definition. 
 #
 #   Author:         Brian Vanderwende
-#   Last Revised:   23:34, 06 Mar 2024
+#   Last Revised:   23:36, 06 Mar 2024
 #
 
 set -e
@@ -241,6 +241,7 @@ if [[ $NCAR_SPACK_ROOT != $spack_clone_path ]]; then
                 export_gpg_key
             fi
         else
+            mkdir -p $key_root
             export_gpg_key
         fi
     elif [[ -n $gpg_key ]]; then
