@@ -4,7 +4,7 @@
 #   a specified cluster definition. 
 #
 #   Author:         Brian Vanderwende
-#   Last Revised:   00:18, 07 Mar 2024
+#   Last Revised:   09:41, 07 Mar 2024
 #
 
 set -e
@@ -26,7 +26,6 @@ Options
                                     none    - don't generate or import keys
     -n, --no-pkgs               don't install packages, only set up deployment
     -p, --production            create a production deployment (must be csgteam)
-    --import-cache PATH         use cache at specified path (in addition to defaults)
     --set-version VERSION       override version set in cluster definition
 
 EOF
@@ -126,7 +125,7 @@ if [[ -n $NCAR_SPACK_GITHUB ]] && [[ $skip_github != yes ]]; then
 fi
 
 # Check key status
-if [[ ! $gpg_opt ~= (auto|new|none) ]]; then
+if [[ ! $gpg_opt =~ (auto|new|none) ]]; then
     if [[ ! -f $gpg_opt ]]; then
         >&2 echo "Error:  No GPG key found at ${gpg_opt}."
         >&2 echo "        Check input and try again."
