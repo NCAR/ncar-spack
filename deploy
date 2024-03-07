@@ -4,7 +4,7 @@
 #   a specified cluster definition. 
 #
 #   Author:         Brian Vanderwende
-#   Last Revised:   23:36, 06 Mar 2024
+#   Last Revised:   00:18, 07 Mar 2024
 #
 
 set -e
@@ -77,16 +77,6 @@ while [[ $# -gt 0 ]]; do
                 >&2 echo "Error: cannot create production deployment as $my_user"
                 exit 1
             fi
-            ;;
-        --import-cache)
-            cache_path=$2
-
-            if [[ ! -d $cache_path ]]; then
-                >&2 echo "Error: specified cache cannot be found"
-                exit 1
-            fi
-
-            shift
             ;;
         --set-version)
             custom_version=$2
@@ -195,7 +185,7 @@ if [[ $NCAR_SPACK_ROOT != $spack_clone_path ]]; then
 
     # If exists, use Spack utils repo for Python
     if [[ -d $NCAR_SPACK_PYTHON_ROOT ]]; then
-        sed -i "s|^\(NCAR_SPACK_PYTHON_ROOT=\)|\1$NCAR_SPACK_PYTHON_ROOT|" $spack_clone_path/share/ncar/init.sh
+        sed -i "s|^\(NCAR_SPACK_PYTHON_ROOT=\).*|\1$NCAR_SPACK_PYTHON_ROOT|" $spack_clone_path/share/ncar/init.sh
     fi
 
     # Add custom cluster source files if found
@@ -340,34 +330,26 @@ if [[ $NCAR_SPACK_PAD_LENGTH != 0 ]]; then
     spack config add "config:install_tree:padded_length:${NCAR_SPACK_PAD_LENGTH:-128}"
 fi
 
-function trust_keys {
-    for gpg_key in ${!mirror}/build_cache/_pgp/*.pub; do
-        spack gpg trust $gpg_key
-    done
-}
-
 if [[ ${skip_mirror:-no} == no ]]; then
     for mtype in LOCAL GLOBAL; do
-        mirror=NCAR_SPACK_MIRROR_${mtype} add_mirror=yes
+        mirror_variable=NCAR_SPACK_MIRROR_${mtype}
+        mirror=${!mirror_variable}
 
-        if [[ -d ${!mirror}/build_cache/_pgp ]]; then
-            trust_keys
-        elif [[ $(sed 's/production/GLOBAL/;s/testing/LOCAL/' <<< $NCAR_SPACK_DEPLOY_TYPE) == $mtype ]]; then
-            if [[ -n $cache_path ]]; then
-                echo "Importing existing mirror from $cache_path ..."
-                cp -r $cache_path ${!mirror}
-                trust_keys
-            else
-                spack mirror create -d ${!mirror} -a
+        if [[ $mirror == /* ]] && [[ ! -d $mirror ]]; then
+            if [[ $(sed 's/production/GLOBAL/;s/testing/LOCAL/' <<< $NCAR_SPACK_DEPLOY_TYPE) == $mtype ]]; then
+                spack mirror create -d $mirror -a
             fi
-        else
-            add_mirror=no
         fi
 
-        if [[ $add_mirror == yes ]]; then
-            spack mirror add ncar_mirror_${mtype,,} ${!mirror}
+        # Only use S3 as writable cache in production
+        if [[ $NCAR_SPACK_DEPLOY_TYPE != production ]]; then
+            mirror=$(sed 's|s3://|https://stratus.ucar.edu/|' <<< $mirror)
         fi
+
+        spack mirror add ncar_mirror_${mtype,,} $mirror
     done
+
+    spack buildcache keys --install --trust
 fi
 
 # Add custom repos
