@@ -4,7 +4,7 @@
 #   a specified cluster definition. 
 #
 #   Author:         Brian Vanderwende
-#   Last Revised:   19:16, 28 Feb 2024
+#   Last Revised:   23:34, 06 Mar 2024
 #
 
 set -e
@@ -19,7 +19,11 @@ Usage: $0 [OPTIONS] CLUSTER
 Options
     -h, --help                  show this help message
     -b, --spack-branch          override the branch of the CSG Spack fork to use
-    -k, --no-keygen             do not create a new GPG key
+    -k, --key OPTION            determines behavior for GPG keys. options include:
+                                    auto    - generate if not found at normal path
+                                    PATH    - specify the path to a private GPG key
+                                    new     - force generation of a new key
+                                    none    - don't generate or import keys
     -n, --no-pkgs               don't install packages, only set up deployment
     -p, --production            create a production deployment (must be csgteam)
     --import-cache PATH         use cache at specified path (in addition to defaults)
@@ -29,12 +33,21 @@ EOF
 exit ${1:-0}
 }
 
+function export_gpg_key {
+    spack gpg export $key_root/${key_user}-key.pub
+    spack gpg export --secret $key_root/${key_user}-key.priv
+    chmod 640 $key_root/${key_user}-key.*
+}
+
 #
 ## ---- INITIALIZATION ----
 #
 
 # Handle arguments
 user_args=( "$@" )
+gpg_opt=auto
+key_root=/glade/work/$USER/operations/spack-keys
+key_user=$(whoami | sed 's/csgteam/csg/')
 
 while [[ $# -gt 0 ]]; do
     key="$1"
@@ -46,8 +59,8 @@ while [[ $# -gt 0 ]]; do
         -b|--spack-branch)
             custom_branch=$2
             ;;
-        -k|--no-keygen|--nokeygen)
-            skip_keygen=yes
+        -k|--key)
+            gpg_opt=$2
             ;;
         -m|--no-mirror|--nomirror)
             skip_mirror=yes
@@ -122,6 +135,23 @@ if [[ -n $NCAR_SPACK_GITHUB ]] && [[ $skip_github != yes ]]; then
     fi
 fi
 
+# Check key status
+if [[ ! $gpg_opt ~= (auto|new|none) ]]; then
+    if [[ ! -f $gpg_opt ]]; then
+        >&2 echo "Error:  No GPG key found at ${gpg_opt}."
+        >&2 echo "        Check input and try again."
+        exit 1
+    else
+        gpg_key=$gpg_opt
+    fi
+elif [[ $gpg_opt == auto ]]; then
+    if [[ -f $key_root/${key_user}-key.priv ]]; then
+        gpg_key=$key_root/${key_user}-key.priv
+    else
+        gpg_opt=new
+    fi
+fi
+
 #
 ## ---- INSTALL/CLONE SPACK FOR CLUSTER ----
 #
@@ -190,9 +220,31 @@ if [[ $NCAR_SPACK_ROOT != $spack_clone_path ]]; then
     . $spack_clone_path/share/spack/setup-env.sh
 
     # Create trusted GPG key in spack install
-    if [[ ${skip_keygen:-no} == no ]]; then
+    if [[ $gpg_opt == new ]]; then
+        if [[ $key_user == csg ]]; then
+            key_person="NCAR HPC Consulting"
+        else
+            key_person="$(getent passwd csgteam | awk -F[,:] '{ print $5 }')"
+        fi
+
         echo -e "\nCreating trusted GPG key for build cache creation ..."
-        spack gpg create "NCAR BUILD Spack" "<csg@ucar.edu>"
+        spack gpg create "$key_person" "<$key_user@ucar.edu>"
+
+        if [[ -f $key_root/${key_user}-key.priv ]]; then
+            read -p "GPG key already exists. Overwrite (y/N)? " clobber_key
+            clobber_key=${clobber_key:-no}
+
+            if [[ yes == ${clobber_key,,}* ]]; then
+                echo "Backing up old key ..."
+                mkdir $key_root/backup.$NCAR_SPACK_DEPLOY_TIME
+                mv $key_root/${key_user}-key.* $key_root/backup.$NCAR_SPACK_DEPLOY_TIME
+                export_gpg_key
+            fi
+        else
+            export_gpg_key
+        fi
+    elif [[ -n $gpg_key ]]; then
+        spack gpg trust $gpg_key
     fi
 
     # Make sure environment is clean
@@ -306,10 +358,6 @@ if [[ ${skip_mirror:-no} == no ]]; then
                 trust_keys
             else
                 spack mirror create -d ${!mirror} -a
-
-                if [[ ${skip_keygen:-no} == no ]]; then
-                    spack gpg publish -d ${!mirror}
-                fi
             fi
         else
             add_mirror=no
