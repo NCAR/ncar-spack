@@ -14,7 +14,7 @@ compilers="gcc nvhpc oneapi intel"
 mpis="openmpi"
 hide_list=""
 
-if [[ $SPACK_ENV == $NCAR_SPACK_ENV_PUBLIC ]]; then
+if [[ $NCAR_SPACK_ENV_TYPE == public ]]; then
     mod_root=$NCAR_SPACK_ROOT_MODULES
     base_root=$NCAR_SPACK_ROOT_BASE
 else
@@ -39,6 +39,10 @@ if [[ ! -d $mod_deployment ]] || [[ -n $spack_flags ]]; then
     spack module lmod refresh -y $spack_flags
 fi
 
+# Then, let's make sure utils and localrc exist
+tsecho "Refreshing module init scripts"
+. $my_dir/tools/make_localinit.sh ${NCAR_SPACK_ENV_TYPE:-build}
+
 # ===== INTEL ONEAPI MODULE TRIO =====
 
 tsecho "Populating Intel compiler module set"
@@ -50,8 +54,18 @@ if [[ -d Core/intel-oneapi ]]; then
 
     for icver in $(find Core/intel-oneapi/ -type f); do
         sed '/INTEL_COMPILER_TYPE/ s/ONEAPI/RECOMMENDED/' $icver > ${icver/-oneapi}
-        sed -i 's|\([/"]\)ifx|\1intel64/ifort|' ${icver/-oneapi}
+
+        if [[ $(sed 's|.*/\([^.]*\).*|\1|' <<< $icver) -ge 2024 ]]; then
+            sed -i 's|\([/"]\)ifx|\1ifort|' ${icver/-oneapi}
+        else
+            sed -i 's|\([/"]\)ifx|\1intel64/ifort|' ${icver/-oneapi}
+        fi
     done
+
+    if [[ -f Core/intel-oneapi/default ]]; then
+        def_imod=$(basename $(readlink -f Core/intel-oneapi/default))
+        ln -sfn $def_imod Core/intel/default
+    fi
 fi
 
 if [[ -d Core/intel-classic ]]; then
@@ -63,6 +77,66 @@ if [[ -d Core/intel-classic ]]; then
         sed -i "/MODULEPATH/ s|${ccver}|${onever}|" $icver
     done
 fi
+
+# ===== GCC TOOLCHAIN MODULES =====
+
+# These modules allow users to use vendor compilers like Intel, NVIDIA with newer
+# GCC toolchains than the system-default 7.5.0, enabling use of newer standards
+# like C++ 17/20.
+
+function write_toolchain_module {
+cat > $1 << EOF
+-- -*- lua -*-
+-- Module file created manually on $(date)
+--
+
+whatis([[Name : gcc-toolchain]])
+whatis([[Version : ${gcc_version}]])
+whatis([[Short description : GCC toolchain including C++ standard library]])
+
+help([[GCC toolchain: Includes major components from GCC install for use
+with other compilers. This allows you to use newer components than provided
+by the system $core_gcc (e.g., newer C++ standards)]])
+
+-- Requires ncarcompilers to function (insert modifier flag)
+depends_on("ncarcompilers")
+
+-- Does not work with older versions of Cray wrappers
+conflict("craype/2.7.20")
+
+local gcc_root = "${gcc_dirs[$gcc_version]}"
+
+setenv("NCAR_ROOT_GCC_TOOLCHAIN", gcc_root)
+prepend_path("NCAR_MFLAGS_COMPILER", "--gcc-toolchain=" .. gcc_root, " ")
+EOF
+}
+
+tsecho "Populating GCC toolchain modules for vendor compilers"
+gcc_spack=$(spack find --format '{version} {prefix}' gcc)
+
+declare -A gcc_dirs
+
+while read gcc_version gcc_root; do
+    if [[ gcc@$gcc_version != $core_gcc ]]; then
+        gcc_dirs[$gcc_version]=$gcc_root
+    fi
+done <<< "$gcc_spack"
+
+for comp_name in aocc nvhpc oneapi; do
+    if [[ -d $comp_name ]]; then
+        for comp_vers in $(ls -1 --color=never $comp_name/); do
+            for gcc_version in ${!gcc_dirs[*]}; do
+                mod_file=$comp_name/$comp_vers/gcc-toolchain/${gcc_version}.lua
+
+                if [[ ! -f $mod_file ]]; then
+                    tsecho "    creating ${GCOL}gcc-toolchain/${gcc_version}$DCOL for vendor compiler ${PCOL}$comp_name/$comp_vers${DCOL}"
+                    mkdir -p $comp_name/$comp_vers/gcc-toolchain
+                    write_toolchain_module $comp_name/$comp_vers/gcc-toolchain/${gcc_version}.lua
+                fi
+            done
+        done
+    fi
+done
 
 # ===== CREATE META-MODULES =====
 
@@ -113,6 +187,7 @@ done
 mkdir -p $mod_root/environment/cesmdev
 mm_file=$mod_root/environment/cesmdev/1.0.lua
 sed "s|%DATE%|$(date)|g" $NCAR_SPACK_ENV_BUILD/templates/modules/cesmdev.lua > $tm_file
+sed -i "s|%HOST%|$NCAR_SPACK_HOST|g" $tm_file
 mv $tm_file $mm_file
 hide_module $mm_file
 
@@ -132,26 +207,36 @@ tsecho "Adding external utilities to the shell environment"
 
 # Add utilities to the base environment when using ncarenv
 util_root=/glade/u/apps/opt; cd $util_root
+suse_major=15
 
 declare -A ncar_utils
 ncar_utils[qstat]=qstat-cache
 ncar_utils[qinteractive]=pbstools
 ncar_utils[execcasper]=pbstools
 ncar_utils[qcmd]=pbstools
+ncar_utils[launch_cf]=pbstools
 ncar_utils[qhist]=qhist
 ncar_utils[gladequota]=gladequota
+ncar_utils[snapls]=gladequota
 ncar_utils[set_gpu_rank]=mpitools
 ncar_utils[mpibind]=mpitools
 ncar_utils[cpu_bind]=mpitools
 ncar_utils[gpu_bind]=mpitools
 ncar_utils[create_conda_kernel]=ncar-conda
 ncar_utils[compare_env_yaml]=ncar-conda
+ncar_utils[start-jupyter]=ncar-conda
 ncar_utils[spack-downstream]=csg-spack-downstreams
 ncar_utils[sudox]=termtools
 ncar_utils[licstatus]=termtools
+ncar_utils[dumpenv]=termtools
 ncar_utils[vncmgr]=vncmgr
+ncar_utils[gedit]=leap-container/$suse_major
+ncar_utils[gv]=leap-container/$suse_major
+ncar_utils[evince]=leap-container/$suse_major
+ncar_utils[diffmerge]=precise-container
+ncar_utils[diffuse]=precise-container
 
-skip_clone="gladequota"
+skip_clone="gladequota leap-container/$suse_major precise-container"
 
 if [[ $SPACK_ENV == $NCAR_SPACK_ENV_PUBLIC ]]; then
     mkdir -p $NCAR_SPACK_ROOT_BASE/utils/bin
@@ -174,13 +259,15 @@ if [[ $SPACK_ENV == $NCAR_SPACK_ENV_PUBLIC ]]; then
 
         if [[ ! -e $NCAR_SPACK_ROOT_BASE/utils/bin/$util ]]; then
             # First, let's make sure the repo is up to date (and submodules pulled)
-            cd $util_root/${ncar_utils[$util]}
-            git pull > /dev/null
+            if [[ " $skip_clone " != *" ${ncar_utils[$util]} "* ]]; then
+                cd $util_root/${ncar_utils[$util]}
+                git pull > /dev/null
 
-            if [[ -f .gitmodules ]]; then
-                git submodule update --init --remote --recursive > /dev/null
+                if [[ -f .gitmodules ]]; then
+                    git submodule update --init --remote --recursive > /dev/null
+                fi
+                cd - > /dev/null
             fi
-            cd - > /dev/null
 
             if [[ -e $util_root/${ncar_utils[$util]}/bin/$util ]]; then
                 tsecho "    adding $GCOL$util$DCOL"
@@ -201,25 +288,43 @@ if [[ ! -e $view_root/include/rpc ]] && [[ -d $view_root/include/tirpc/rpc ]]; t
     ln -s $view_root/include/tirpc/* $view_root/include/
 fi
 
+# Symlink nedit
+if [[ ! -e $view_root/bin/nedit ]] && [[ -e $view_root/bin/xnedit ]]; then
+    cd $view_root/bin
+    ln -s xnedit nedit
+    cd - > /dev/null
+fi
+
 # ===== SET UP PERL LIBRARY =====
 
-perl_mod_list="Pod::Parser HTML::Entities"
+perl_mod_list="Pod::Parser HTML::Entities DBD::Pg DBD::mysql"
+#perl_mod_list="Pod::Parser HTML::Entities DBD::Pg DBD::mysql XML::LibXML"
 perl_lib_root=$NCAR_SPACK_ROOT_BASE/perl
 
 if [[ $NCAR_SPACK_ENV_TYPE == public ]]; then
     tsecho "Checking for Spack-installed Perl"
     perl_hash=$(spack find -x --format '{hash}' perl)
+    perl_deps="/$perl_hash postgresql mysql libxml2"
 
     if [[ $? == 0 ]]; then
         tsecho "Populating Perl library"
         echo
-        spack load /$perl_hash
+        spack load $perl_deps
+
+        # Need to set this to fix socket error
+        # See: https://github.com/bucardo/dbdpg/issues/78
+        export DBDPG_TEMPDIR=/tmp
 
         for pmod in $perl_mod_list; do
-            cpanm install -L $perl_lib_root $pmod
+            if [[ $pmod == *LibXML ]]; then
+                # One test fails currently...
+                cpanm install --force -L $perl_lib_root $pmod || true
+            else
+                cpanm install -L $perl_lib_root $pmod
+            fi
         done
 
-        spack unload /$perl_hash
+        spack unload $perl_deps
         echo
     fi
 fi
@@ -328,3 +433,5 @@ propT = {
 EOF
 
 mv $tm_file $rc_file
+
+tsecho "Postprocessing successful"

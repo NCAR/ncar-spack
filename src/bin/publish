@@ -16,7 +16,7 @@
 #           shell script. So we must activate in the script!
 #
 #   Author:         Brian Vanderwende
-#   Last Revised:   09:15, 07 Mar 2024
+#   Last Revised:   17:41, 07 Mar 2024
 #
 
 function remove_lock {
@@ -380,7 +380,7 @@ for cfg_file in config packages compilers modules mirrors repos; do
 
     case $cfg_file in
         mirrors)
-            sed -i 's|s3://|https://stratus.ucar.edu/|' $cfg_file
+            sed -i 's|s3://|https://stratus.ucar.edu/|' $SPACK_ENV/config/${cfg_file}.yaml
             ;;
     esac
 done

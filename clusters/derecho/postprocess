@@ -14,7 +14,7 @@ compilers="cce gcc nvhpc oneapi intel"
 mpis="cray-mpich"
 cray_network=ofi
 
-ofi_version=$(basename $(ls -d --color=never /opt/cray/libfabric/*))
+ofi_version=$(basename $(ls -1 -d --color=never /opt/cray/libfabric/* | tail -1))
 core="  craype/2.7.20
         craype/2.7.23
         cce/16.0.1
@@ -178,6 +178,13 @@ tsecho "    using CPE=$mpich_cpe, PALS=$pals_version, PMI=$pmi_version, CTI=$cti
 log_me=no
 fi
 
+# CUDA 12 is not supported by 8.1.25
+if [[ $mod_version == 8.1.25 ]]; then
+    cuda_dependency='between("cuda","1.0","<12.0")'
+else
+    cuda_dependency='"cuda"'
+fi
+
 sed -i '/--.*Lmod hierarchy/Q; /pend_path[ ("]*MODULEPATH/d' $1
 cat >> $1 << EOF
 -- Find custom moduleroots
@@ -261,28 +268,12 @@ setenv("NCAR_ROOT_MPI",         MPICH_DIR)
 -- If GPUs available, depend on CUDA
 local num_gpus = os.getenv("NGPUS")
 if num_gpus and tonumber(num_gpus) > 0 then
-    depends_on("cuda")
+    depends_on($cuda_dependency)
 end
 
 -- HPE suggests this setting to reduce RPC launch timeouts
 setenv("PALS_FANOUT", "32")
 EOF
-
-if [[ $mod_version == 8.1.25 ]]; then
-    cuda_versions=$(ls $mod_deployment/Core/cuda/*.lua | sed 's|.*/\(.*\).lua|\1|')
-
-    for cuda in $cuda_versions; do
-        if [[ ${cuda%%.*} -ge 12 ]]; then
-            conflicts="${conflicts:+${conflicts},}\"cuda/$cuda\""
-        fi
-    done
-    
-    if [[ -n $conflicts ]]; then
-        echo -e "\n-- Add cuda conflicts" >> $1
-        echo "conflict($conflicts)" >> $1
-        unset conflicts
-    fi
-fi
 }
 
 function modify_craype {
@@ -763,6 +754,13 @@ view_root=$base_root/view
 # Make sure RPC is available for WRF
 if [[ ! -e $view_root/include/rpc ]] && [[ -d $view_root/include/tirpc/rpc ]]; then
     ln -s $view_root/include/tirpc/* $view_root/include/
+fi
+
+# Symlink nedit
+if [[ ! -e $view_root/bin/nedit ]] && [[ -e $view_root/bin/xnedit ]]; then
+    cd $view_root/bin
+    ln -s xnedit nedit
+    cd - > /dev/null
 fi
 
 # ===== SET UP PERL LIBRARY =====
