@@ -4,7 +4,7 @@
 #   a specified cluster definition. 
 #
 #   Author:         Brian Vanderwende
-#   Last Revised:   09:41, 07 Mar 2024
+#   Last Revised:   14:16, 07 Mar 2024
 #
 
 set -e
@@ -33,9 +33,11 @@ exit ${1:-0}
 }
 
 function export_gpg_key {
+    echo -e "\nExporting new GPG key to $key_root ..."
     spack gpg export $key_root/${key_user}-key.pub
     spack gpg export --secret $key_root/${key_user}-key.priv
     chmod 640 $key_root/${key_user}-key.*
+    echo
 }
 
 #
@@ -213,7 +215,7 @@ if [[ $NCAR_SPACK_ROOT != $spack_clone_path ]]; then
         if [[ $key_user == csg ]]; then
             key_person="NCAR HPC Consulting"
         else
-            key_person="$(getent passwd csgteam | awk -F[,:] '{ print $5 }')"
+            key_person="$(getent passwd $key_user | awk -F[,:] '{ print $5 }')"
         fi
 
         echo -e "\nCreating trusted GPG key for build cache creation ..."
