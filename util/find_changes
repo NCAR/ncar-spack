@@ -1,0 +1,111 @@
+#!/bin/bash
+#
+#   This script compares files in this repo to their versions in a
+#   specified deployment directory and outputs changes to assist in
+#   incorporating those changes to this repo.
+#
+#   Author:         Brian Vanderwende
+#   Last Revised:   14:00, 26 Mar 2024
+#
+
+set -e
+my_root="$( cd "$(dirname "$0")"/.. ; pwd )"
+
+function usage {
+cat << EOF
+Usage: $0 [OPTIONS] BUILD_ENV_PATH
+
+Options
+    -h, --help                  show this help message
+    -v, --verbose               provide detail on the differences in each file
+
+EOF
+exit ${1:-0}
+}
+
+#
+## ---- INITIALIZATION ----
+#
+
+# Pretty colors
+export PCOL="\033[1;35m" RCOL="\033[1;31m" DCOL="\033[0m"
+
+# Handle arguments
+user_args=( "$@" )
+output_mode=brief
+
+while [[ $# -gt 0 ]]; do
+    key="$1"
+
+    case $key in
+        -h|--help)
+            usage
+            ;;
+        -v|--verbose)
+            output_mode=verbose
+            ;;
+        *)
+            env_path=$1
+            ;;
+    esac
+
+    shift
+done
+
+if [[ -z $env_path ]]; then
+    >&2 echo "Error: a path to an active deployment build environment must be given"
+    usage 1
+elif [[ ! -f $env_path/main.cfg ]]; then
+    >&2 echo "Error: path given does not appear to be a deployment build environment"
+    exit 1
+else
+    . $env_path/main.cfg
+fi
+
+cat << EOF
+
+============================================================
+
+Comparing changes from active deployment
+
+Path:   $env_path
+Host:   $NCAR_SPACK_HOST
+Type:   $NCAR_SPACK_DEPLOY_TYPE
+
+Output mode:    $output_mode
+
+============================================================
+
+Comparing each tracked file from that in the specified deployment ...
+
+EOF
+
+declare -A path_map
+path_map[templates]=templates
+path_map[src]=.
+path_map[clusters/${NCAR_SPACK_HOST}]=bin
+
+cd $my_root
+
+for src_path in ${!path_map[@]}; do
+    case $src_path in
+        clusters*)
+            src_files="$src_path/postprocess"
+            ;;
+        *)
+            src_files="$(find $src_path -type f)"
+            ;;
+    esac
+
+    for src_file in $src_files; do
+        dep_file=$(sed "s|$src_path|${path_map[$src_path]}|" <<< $src_file)
+        
+        if cmp -s $my_root/$src_file $env_path/$dep_file; then
+            echo -e " - $src_file"
+        else
+            echo -e "${RCOL} - $src_file (changed)$DCOL\n"
+            echo -e "   Source file:   $my_root/$src_file"
+            echo -e "   Deployed file: $env_path/$dep_file\n"
+        fi
+    done
+done

@@ -45,7 +45,7 @@ cdep="  cray-libsci/23.02.1.1
         cray-mpich/8.1.27"
 mdep="  cray-mpixlate/1.0.2"
 
-hide_list=" */*/openmpi/* */*/mvapich/* */*/vasp/* */*/intel-mpi/* */*/mpich/* "
+hide_list=" */*/openmpi/* */*/mvapich/* */*/vasp/* */*/intel-mpi/* */*/mpich/* */libtorch/*"
 
 
 if [[ $NCAR_SPACK_ENV_TYPE == public ]]; then
@@ -326,14 +326,17 @@ function reverse_mods {
 }
 
 function get_module_dir {
-    result=$(module --raw show $1 |& grep -m1 /opt/cray/pe | sed 's| *\(.*\)/.*|\1|' | sed 's|crayclang/[^/]*|%CMP%/\*|')
-    
-    # Try non-specific query if versioned fails
-    if [[ -z $result ]]; then
-        result=$(module --raw show ${1%/*} |& grep -m1 /opt/cray/pe | sed 's| *\(.*\)/.*|\1|' | sed 's|crayclang/[^/]*|%CMP%/\*|')
+    if [[ $2 == cdep ]]; then
+        my_cpe=$(get_cpe_version $mod_name $mod_version)
+        my_cce=$(get_package_version $my_cpe cce)
+
+        if [[ $my_cce != $cce_version ]]; then
+            cce_version=$my_cce
+            module -q load cce/$cce_version
+        fi
     fi
 
-    echo $result
+    module --raw show $1 |& grep -m1 /opt/cray/pe | sed 's| *\(.*\)/.*|\1|' | sed 's|crayclang/[^/]*|%CMP%/\*|'
 }
 
 function copy_mods {
@@ -343,7 +346,7 @@ function copy_mods {
         mod=${mod_entry/(D)}
         mod_name=${mod%/*}
         mod_version=${mod#*/}
-        mod_dir=$(get_module_dir $mod)
+        mod_dir=$(get_module_dir $mod $1)
 
         tsecho "Package: $GCOL$mod$DCOL"
         
@@ -762,6 +765,71 @@ if [[ ! -e $view_root/bin/nedit ]] && [[ -e $view_root/bin/xnedit ]]; then
     ln -s xnedit nedit
     cd - > /dev/null
 fi
+
+# ===== SET UP PYTHON PROGRAM WRAPPERS =====
+
+# These programs have runtime dependencies on Python packages. Since we don't expose Python
+# packages via modules, we need to inject these at runtime in as simple and non-obtrusive way as
+# possible
+wrapped_progs="charliecloud"
+
+function write_pyprog_wrapper {
+cat > $tm_file << EOF
+#!/bin/bash
+# This is a wrapper designed to ensure Python environment contains the runtime package
+# dependencies that the program expects
+
+my_root=$wrapper_root
+
+if [[ -n \$NCAR_PYTHON_LIBRARY_DIRTY ]]; then
+    export PYTHONPATH=$py_path:\$PYTHONPATH
+else
+    export PYTHONPATH=$py_path
+fi
+
+# Remove self from the PATH
+PATH=\${PATH/\${my_root}:}
+
+exec $1 \$@
+EOF
+}
+
+tsecho "Creating wrappers for packages with runtime Python dependencies"
+
+for prog in $wrapped_progs; do
+    while read spec_name spec_version spec_hash spec_root; do
+        tsecho "    creating wrapper for $GCOL$spec_name@$spec_version$DCOL"
+        py_deps=$(spack dependencies -i -t --deptype run $prog | grep py-)
+
+        while read py_pkg_hash py_pkg_name py_pkg_version; do
+            if [[ -d $py_pkg_root ]]; then
+                py_pkg_library=$(find $py_pkg_root/$py_pkg_name/$py_pkg_version -type d -name site-packages)
+            else
+                py_pkg_path=$(spack location -i /${py_pkg_hash})
+                py_pkg_root=${py_pkg_path%/${py_pkg_name}/*}
+                py_pkg_library=$(find $py_pkg_path -type d -name site-packages)
+            fi
+
+            if [[ -n $py_pkg_library ]]; then
+                py_path=${py_path:+${py_path}:}$py_pkg_library
+            else
+                tsecho "Error: site-library could not be found for $py_pkg_name@$py_pkg_version"
+                exit 1
+            fi
+        done < <(tr '@' ' ' <<< $py_deps)
+
+        wrapper_root=$base_root/wrappers/$spec_name/$spec_version/$spec_hash/bin
+        mkdir -p $wrapper_root
+
+        for bin_name in $(find $spec_root/bin -type f -executable -printf "%f\n"); do
+            write_pyprog_wrapper $bin_name
+            mv $tm_file $wrapper_root/$bin_name
+            chmod +x $wrapper_root/$bin_name
+        done
+
+        unset py_path
+    done < <(spack find --format "{name} {version} {hash:4} {prefix}" $prog)
+done
 
 # ===== SET UP PERL LIBRARY =====
 

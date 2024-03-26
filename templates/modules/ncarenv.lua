@@ -67,7 +67,7 @@ local was_set   = os.getenv("__NCARENV_MODULEROOT_USER")
 local old_value = os.getenv("__NCAR_MODULEROOT_USER")
 
 if was_set or not is_set then
-    mroot = pathJoin("/glade/work", user, "spack-downstreams/modules/%VERSION%")
+    mroot = pathJoin("/glade/work", user, "spack-downstreams/%HOST%/modules/%VERSION%")
     setenv("__NCARENV_MODULEROOT_USER", 1)
     
     -- Only unset if user has not changed value in the interim
@@ -198,6 +198,9 @@ prepend_path("ACLOCAL_PATH",    "/usr/share/aclocal")
 
 -- Add PERL library from the base
 append_path("PERL5LIB", pathJoin(basepath, "perl/lib/perl5"))
+
+-- Make sure Spack Vim uses system vim defaults
+pushenv("VIM", "/glade/u/apps/config/vim")
 
 -- Set number of GPUs (analogous to NCPUS)
 if os.getenv("PBS_JOBID") then
