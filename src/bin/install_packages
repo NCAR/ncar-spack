@@ -5,7 +5,7 @@
 #   buildout of stacks.
 #
 #   Author:         Brian Vanderwende
-#   Last Revised:   20:08, 29 Mar 2024
+#   Last Revised:   09:32, 30 Mar 2024
 #
 
 
@@ -477,13 +477,28 @@ function handle_interrupt {
     fi
 }
 
-function create_registry {
+function initialize_registry {
     for width in ${field_widths[@]}; do
-        printf "%-${width}s | " "${field_labels[${field_vars[$width]}]}" >> $SPACK_ENV/registry
+        printf "%-${width}s | " "${field_labels[${field_vars[$width]}]}" >> $SPACK_ENV/.registry.tmp
     done
 
-    printf "%s\n" "Descriptive Spec" >> $SPACK_ENV/registry
-    printf "%170s\n" | tr " " "-" >> $SPACK_ENV/registry
+    printf "%s\n" "Descriptive Spec" >> $SPACK_ENV/.registry.tmp
+    printf "%170s\n" | tr " " "-" >> $SPACK_ENV/.registry.tmp
+
+    if [[ -f $SPACK_ENV/registry ]]; then
+        while read entry; do
+            spec_hash=$(awk '{print $1}' <<< "$entry")
+
+            if [[ " $start_hashes " == *" $spec_hash "* ]]; then
+                echo "$entry" >> $SPACK_ENV/.registry.tmp
+            else
+                spec="$(awk '{print $NF}' <<< "$entry")"
+                tsecho "Removing missing spec $PCOL$spec$DCOL from registry" 1
+            fi
+        done < <(tail -n +3 $SPACK_ENV/registry)
+    fi
+
+    mv $SPACK_ENV/.registry.tmp $SPACK_ENV/registry
 }
 
 # Ensure log directory exists
@@ -524,10 +539,7 @@ EOF
 
 echo "Querying current explicit packages ..."
 start_hashes=$(spack find -x --format '{hash}' | xargs)
-
-if [[ ! -f $SPACK_ENV/registry ]]; then
-    create_registry
-fi
+initialize_registry
 
 echo -e "Processing install manifest ...\n"
 
