@@ -259,14 +259,16 @@ if [[ $SPACK_ENV == $NCAR_SPACK_ENV_PUBLIC ]]; then
 
         if [[ ! -e $NCAR_SPACK_ROOT_BASE/utils/bin/$util ]]; then
             # First, let's make sure the repo is up to date (and submodules pulled)
-            if [[ " $skip_clone " != *" ${ncar_utils[$util]} "* ]]; then
-                cd $util_root/${ncar_utils[$util]}
-                git pull > /dev/null
+            if [[ -O $util_root ]]; then
+                if [[ " $skip_clone " != *" ${ncar_utils[$util]} "* ]]; then
+                    cd $util_root/${ncar_utils[$util]}
+                    git pull > /dev/null
 
-                if [[ -f .gitmodules ]]; then
-                    git submodule update --init --remote --recursive > /dev/null
+                    if [[ -f .gitmodules ]]; then
+                        git submodule update --init --remote --recursive > /dev/null
+                    fi
+                    cd - > /dev/null
                 fi
-                cd - > /dev/null
             fi
 
             if [[ -e $util_root/${ncar_utils[$util]}/bin/$util ]]; then

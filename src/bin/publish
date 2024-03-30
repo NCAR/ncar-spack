@@ -16,7 +16,7 @@
 #           shell script. So we must activate in the script!
 #
 #   Author:         Brian Vanderwende
-#   Last Revised:   19:27, 13 Mar 2024
+#   Last Revised:   22:31, 28 Mar 2024
 #
 
 function remove_lock {
@@ -28,7 +28,6 @@ function remove_lock {
 function create_gitignore {
 cat > $NCAR_SPACK_ENV_PUBLIC/.gitignore << EOF
 .spack-env
-.installs
 cache
 logs
 modules
@@ -77,8 +76,8 @@ while read spec; do
         exit 1
     fi
 
-    use_cache=$(awk -F: -v spec="$spec_hash" '$2 == spec {print $3; exit}' $NCAR_SPACK_ENV_BUILD/.installs)
-    publish_pkg=$(awk -F: -v spec="$spec_hash" '$2 == spec {print $4; exit}' $NCAR_SPACK_ENV_BUILD/.installs)
+    use_cache=$(sed -n '3,$ s/ *| */|/gp' $SPACK_ENV/registry | awk -F\| -v spec="$spec" '$NF == spec {print $4; exit}')
+    publish_pkg=$(sed -n '3,$ s/ *| */|/gp' $SPACK_ENV/registry | awk -F\| -v spec="$spec" '$NF == spec {print $5; exit}')
 
     if [[ ${publish_pkg:-yes} == yes ]]; then
         if [[ $use_cache == yes ]]; then
@@ -193,6 +192,23 @@ $conc_test
 Error:  Modifications to $SPACK_ENV/spack.yaml are not properly installed!
         Resolve spack.yaml <-> spack.lock inconsistency before attempting
         to push to the public environment.
+
+EOF
+exit 1
+fi
+
+tsecho "Checking Spack repo for uncommitted changes"
+spack_test=$(cd $SPACK_ROOT; git status --porcelain | grep var/spack/repos/builtin || true)
+
+if [[ -n $spack_test ]]; then
+>&2 cat << EOF
+
+Error:  Uncommitted package changes detected in the deployment's Spack repo.
+        Publishing a build from an uncommitted package recipe reduces
+        reproducibility and is not allowed. The following files must be
+        committed:
+
+$spack_test
 
 EOF
 exit 1
@@ -411,7 +427,7 @@ fi
 
 tsecho "Committing YAML, lock, util and config changes to Git repo"
 echo
-git add spack.yaml spack.lock config
+git add spack.yaml spack.lock config registry
 
 if [[ -d util ]]; then
     git add util

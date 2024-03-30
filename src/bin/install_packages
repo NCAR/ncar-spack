@@ -5,7 +5,7 @@
 #   buildout of stacks.
 #
 #   Author:         Brian Vanderwende
-#   Last Revised:   13:41, 25 Feb 2024
+#   Last Revised:   20:08, 29 Mar 2024
 #
 
 
@@ -38,6 +38,21 @@ pkg_manifest=$SPACK_ENV/packages.cfg
 build_jobs=$(spack config get config | sed -n 's/^[ ]*build_jobs: \(.*\)/\1/p')
 header_cmd='tee $log_installs'
 
+# Registry setup
+declare -A field_vars field_labels
+field_widths=( 32 19 40 6 8 )
+field_vars[32]=spec_hash
+field_vars[19]=date
+field_vars[40]=spack_commit
+field_vars[6]=use_cache
+field_vars[8]=publish_pkg
+field_labels[spec_hash]="Package Hash"
+field_labels[date]="Date Installed"
+field_labels[spack_commit]="Spack Git Repo Commit"
+field_labels[use_cache]="Cache?"
+field_labels[publish_pkg]="Publish?"
+
+# Handle user input
 while [[ $# -gt 0 ]]; do
     case $1 in
         -c|--prefer-cache)
@@ -114,6 +129,7 @@ function prepare_spec {
                 elif [[ $opt_type == cache ]]; then
                     use_cache=${opt_body/never/no}
                     tsecho " >> public environment will use cached version? $use_cache" 1
+                    use_cache=${use_cache/dependencies/deps}
                 elif [[ $opt_type == trust ]]; then
                     trust_src=${opt_body/always/yes}
                     tsecho " >> package download check is bypassed" 1
@@ -206,6 +222,45 @@ function compiler_checks {
     fi
 }
 
+function add_spec_to_registry {
+    registry=( $spec_hash ${pkg_date:-unknown} $spack_commit ${use_cache:-yes} ${publish_pkg:-yes} "$spec" )
+
+    for n in ${!field_widths[@]}; do
+        printf "%-${field_widths[$n]}s | " ${registry[$n]} >> $SPACK_ENV/registry
+    done
+
+    printf "%s\n" "${registry[-1]}" >> $SPACK_ENV/registry
+}
+
+function check_registry {
+    # Check whether certain settings on package have changed
+    for n in ${!registry[@]}; do
+        # The last entry is always the spec, which has variable length and is not checked
+        if [[ ${registry[$n]} != ${registry[-1]} ]]; then
+            width=$(($(wc -c <<< "${registry[$n]}") - 1))
+
+            if [[ -n ${field_vars[$width]} ]]; then
+                if [[ ${field_vars[$width]} =~ (use_cache|publish_pkg) ]]; then
+                    if [ ${!field_vars[$width]:-yes} != ${registry[$n]} ]; then
+                        modify_registry=true
+                    fi
+                fi
+
+                declare ${field_vars[$width]}=${registry[$n]}
+            else
+                tsecho "Error: invalid registry entry with field width $width!"
+                exit 1
+            fi
+        fi
+    done
+
+    if [[ ${modify_registry:-false} == true ]]; then
+        sed -i "/^${spec_hash} .*/d" $SPACK_ENV/registry
+        add_spec_to_registry
+        unset modify_registry
+    fi
+}
+
 function check_spec {
     if [[ $install_type == mpi ]]; then
         if [[ -n $comp ]]; then
@@ -243,15 +298,18 @@ function check_spec {
         skip_spec=false spec_hash=
         set +e
 
-        if [[ -f $SPACK_ENV/.installs ]]; then
-            spec_hash=$(awk -F: -v spec="$spec" '$1 == spec {print $2}' .installs)
+        registry_data=$(sed -n '3,$ s/ | /|/gp' $SPACK_ENV/registry | awk -F\| -v spec="$spec"      \
+                '$NF == spec {print $0}')
 
-            if [[ -n $spec_hash ]]; then
-                if [[ " $start_hashes " == *" $spec_hash "* ]]; then
-                    skip_spec=true
-                else
-                    sed -i "/.*:${spec_hash}.*/d" $SPACK_ENV/.installs
-                fi
+        if [[ -n $registry_data ]]; then
+            IFS='|' read -a registry <<< $registry_data
+            spec_hash=${registry[0]}
+
+            if [[ " $start_hashes " == *" $spec_hash "* ]]; then
+                check_registry
+                skip_spec=true
+            else
+                sed -i "/^${spec_hash} .*/d" $SPACK_ENV/registry
             fi
         fi
         
@@ -260,13 +318,10 @@ function check_spec {
         if [[ $skip_spec == false ]] && [[ $dry_run != true ]]; then
             spack_spec_out=$(eval $spec_cmd $spec)
             spec_hash=$(grep -A2 ^Concretized <<< "$spack_spec_out" | tail -n1 | awk '{print $2}')
-            
-            if [[ -f $SPACK_ENV/.installs ]]; then
-                sed -i "/.*:${spec_hash}.*/d" $SPACK_ENV/.installs
-            fi
+            sed -i "/^${spec_hash} .*/d" $SPACK_ENV/registry
 
             if [[ " $start_hashes " == *" $spec_hash "* ]]; then
-                echo "${spec}:$spec_hash:${use_cache:-yes}:${publish_pkg:-yes}" >> $SPACK_ENV/.installs
+                add_spec_to_registry
                 skip_spec=true
             fi
         fi
@@ -283,7 +338,7 @@ function check_spec {
 
             if [[ ${use_cache:-${prefer_cache:-no}} == yes ]]; then
                 cache_label=" (cached)"
-            elif [[ $use_cache == dependencies ]]; then
+            elif [[ $use_cache == deps ]]; then
                 cache_label=" (cached dependencies)"
             fi
         else
@@ -305,7 +360,7 @@ function check_spec {
                 echo "$spack_spec_out" &>> $log_specs
                 unset spack_spec_out
                 install_spec
-                echo "${spec}:$spec_hash:${use_cache:-yes}:${publish_pkg:-yes}" >> $SPACK_ENV/.installs
+                pkg_date=$(date +%FT%T) add_spec_to_registry
             fi
 
             if [[ $spec == lmod* ]]; then
@@ -322,7 +377,7 @@ function check_spec {
 function install_spec {
     if [[ $use_cache == no ]]; then
         spec_build_cmd="${build_cmd} --use-buildcache never"
-    elif [[ $use_cache == dependencies ]]; then
+    elif [[ $use_cache == deps ]]; then
         if [[ $prefer_cache == yes ]]; then
             spec_build_cmd="${build_cmd} --use-buildcache package:never,dependencies:only"
         else
@@ -422,6 +477,15 @@ function handle_interrupt {
     fi
 }
 
+function create_registry {
+    for width in ${field_widths[@]}; do
+        printf "%-${width}s | " "${field_labels[${field_vars[$width]}]}" >> $SPACK_ENV/registry
+    done
+
+    printf "%s\n" "Descriptive Spec" >> $SPACK_ENV/registry
+    printf "%170s\n" | tr " " "-" >> $SPACK_ENV/registry
+}
+
 # Ensure log directory exists
 log_dir=$SPACK_ENV/logs
 mkdir -p $log_dir
@@ -440,12 +504,6 @@ current_comps=$(spack config get compilers | grep spec | cut -d: -f2)
 tsecho "Detect Spack and repo versions"
 spack_commit=$(cd $NCAR_SPACK_ROOT_DEPLOYMENT/spack; git rev-parse HEAD)
 
-if [[ -d $NCAR_SPACK_ENV_BUILD/repos/builtin ]]; then
-    builtin_commit=$(cd $NCAR_SPACK_ENV_BUILD/repos/builtin; git rev-parse HEAD)
-else
-    builtin_commit=$spack_commit
-fi
-
 if [[ $dry_run == true ]]; then
 cat << EOF
 
@@ -459,7 +517,6 @@ Start time          = $start_time
 Spack environment   = $SPACK_ENV
 Package manifest    = $pkg_manifest
 Spack version       = $spack_commit
-Builtin version     = $builtin_commit
 Build jobs          = $build_jobs
 System GCC          = gcc@$sys_gcc
 
@@ -467,6 +524,11 @@ EOF
 
 echo "Querying current explicit packages ..."
 start_hashes=$(spack find -x --format '{hash}' | xargs)
+
+if [[ ! -f $SPACK_ENV/registry ]]; then
+    create_registry
+fi
+
 echo -e "Processing install manifest ...\n"
 
 # Associative arrays to store mpis and requested hashes
