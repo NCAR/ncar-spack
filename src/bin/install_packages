@@ -5,7 +5,7 @@
 #   buildout of stacks.
 #
 #   Author:         Brian Vanderwende
-#   Last Revised:   23:54, 01 Apr 2024
+#   Last Revised:   12:11, 02 Apr 2024
 #
 
 
@@ -161,7 +161,7 @@ function mask_spec {
 
 function prepare_spec {
     # Get package-specific configuration
-    declare -g spec="$entry"
+    spec="$entry"
 
     while IFS=: read opt_types opt_body; do
         opt_types="${opt_types//,/ }"
@@ -191,10 +191,10 @@ function prepare_spec {
         if [[ -n ${config[$opt]} ]]; then
             case $opt in
                 compiler)
-                    declare -g comp=${config[$opt]}
+                    comp=${config[$opt]}
                     ;;
                 mpi)
-                    declare -g mpi=${config[$mpi]}
+                    mpi=${config[$mpi]}
                     ;;
                 compilers)
                     spec_check=${spec_check:-$(mask_spec compilers $comp)}
@@ -283,11 +283,11 @@ function prepare_spec {
         fi
     done
 
-    if [[ ${#queue_config[@]} -gt 0 ]] || [[ $dry_run == true ]]; then
+    if [[ ${#queue_config[@]} -gt 0 ]]; then
         for opt in ${install_triggers//|/ }; do
             if [[ ${#active_config[@]} -gt 0 ]] && [[ ${config[$opt]} != ${active_config[$opt]} ]]; then
-                declare -g start_installs=true
-                tsecho " >> INSTALL TRIGGER - impending change in package install config: $opt=${config[$opt]:-default}" 2
+                start_installs=true
+                tsecho " >> INSTALL TRIGGER - impending change in package install config: ${BCOL}$opt=${config[$opt]:-default}$DCOL" 2
             fi
         done
     fi
@@ -362,7 +362,15 @@ function check_registry {
         sed -i "/^${spec_hash} .*/d" $SPACK_ENV/registry
         add_spec_to_queue $spec_hash "$spec"
         add_spec_to_registry $spec_hash
+        remove_spec_from_queue $spec_hash
         unset modify_registry
+    fi
+}
+
+function print_queue_status {
+    if [[ $strategy == concurrent ]]; then
+        tsecho "Beginning installs with ${#queue_config[@]} specs in the queue"
+        tsecho " >> active config = $(declare -p active_config | cut -d= -f2-)"
     fi
 }
 
@@ -401,8 +409,6 @@ function check_spec {
         compiler_checks
     else
         skip_spec=false spec_hash=
-        set +e
-
         registry_data=$(sed -n '3,$ s/ | /|/gp' $SPACK_ENV/registry | awk -F\| -v spec="$spec"      \
                 '$NF == spec {print $0}')
 
@@ -413,21 +419,25 @@ function check_spec {
             skip_spec=true
         fi
 
-        set -e
+        if [[ $skip_spec == false ]]; then
+            if [[ $dry_run != true ]]; then
+                spack_spec_out=$(eval $spec_cmd $spec)
+                spec_hash=$(grep -A2 ^Concretized <<< "$spack_spec_out" | tail -n1 | awk '{print $2}')
 
-        if [[ $skip_spec == false ]] && [[ $dry_run != true ]]; then
-            spack_spec_out=$(eval $spec_cmd $spec)
-            spec_hash=$(grep -A2 ^Concretized <<< "$spack_spec_out" | tail -n1 | awk '{print $2}')
+                if [[ " $start_hashes " == *" $spec_hash "* ]]; then
+                    install_date=N/A add_spec_to_queue $spec_hash "$spec"
+                    add_spec_to_registry $spec_hash
+                    remove_spec_from_queue $spec_hash
+                    skip_spec=true
 
-            if [[ " $start_hashes " == *" $spec_hash "* ]]; then
-                install_date=N/A add_spec_to_queue $spec_hash "$spec"
-                add_spec_to_registry $spec_hash
-                skip_spec=true
-
-                # Make sure spec is in spack.yaml
-                eval spack add $spec > /dev/null
+                    # Make sure spec is in spack.yaml
+                    eval spack add $spec > /dev/null
+                else
+                    install_date=$(date +%FT%T) add_spec_to_queue $spec_hash "$spec"
+                fi
             else
-                install_date=$(date +%FT%T) add_spec_to_queue $spec_hash "$spec"
+                spec_hash=$((++fake_hash))
+                add_spec_to_queue $spec_hash "$spec"
             fi
         fi
 
@@ -451,26 +461,39 @@ function check_spec {
             active_config[cache]=no
         fi
 
-        if [[ $dry_run != true ]] && [[ ${start_installs:-false} == true ]]; then
-            install_specs
+        if [[ ${#queue_config[@]} -gt 0 ]] && [[ ${start_installs:-false} == true ]]; then
+            print_queue_status
+
+            if [[ $dry_run != true ]]; then
+                install_specs
+            else
+                while read queued_hash; do
+                    if [[ $queued_hash != $spec_hash ]]; then
+                        remove_spec_from_queue $queued_hash
+                    fi
+                done < <(tr '|' '\n' <<< "$install_queue")
+
+                unset start_installs
+            fi
         fi
 
         if [[ $skip_spec == true ]]; then
             tsecho "Skipping spec   $PCOL$spec$BCOL$type_msg$DCOL (reason: already installed)" 1
             compiler_checks
-            remove_spec_from_queue $spec_hash
         else
             if [[ -n ${config[type]} ]]; then
-                tsecho "$spack_action spec $GCOL$spec $BCOL(${config[type]})$DCOL$cache_label"
+                tsecho "$spack_action $GCOL$spec $BCOL(${config[type]})$DCOL$cache_label"
             else
-                tsecho "$spack_action spec $GCOL$spec$DCOL$cache_label"
+                tsecho "$spack_action $GCOL$spec$DCOL$cache_label"
             fi
 
             if [[ $strategy == concurrent ]]; then
                 if [[ ${config[type]} == compiler ]] && [[ ${config[register]} != no ]]; then
-                    declare -g start_installs=true
+                    start_installs=true
                     tsecho " >> INSTALL TRIGGER - spec is a compiler and will be registered" 2
                 fi
+            else
+                start_installs=true
             fi
 
             if [[ $dry_run != true ]]; then
@@ -478,10 +501,6 @@ function check_spec {
                 echo "$spack_spec_out" &>> $log_specs
                 unset spack_spec_out
                 eval spack add $spec > /dev/null
-
-                if [[ $strategy == sequential ]]; then
-                    declare -g start_installs=true
-                fi
 
                 if [[ $spec == lmod* ]]; then
                     new_lmod=true
@@ -596,18 +615,21 @@ function initialize_registry {
     printf "%170s\n" | tr " " "-" >> $SPACK_ENV/.registry.tmp
 
     if [[ -f $SPACK_ENV/registry ]]; then
-        echo
         while read entry; do
             spec_hash=$(awk '{print $1}' <<< "$entry")
 
             if [[ " $start_hashes " == *" $spec_hash "* ]]; then
                 echo "$entry" >> $SPACK_ENV/.registry.tmp
             else
+                if [[ -z $buffer_me ]]; then
+                    echo; buffer_me=true
+                fi
+
                 spec="$(awk '{print $NF}' <<< "$entry")"
                 tsecho "Removing missing spec $PCOL$spec$DCOL from registry" 1
             fi
         done < <(tail -n +3 $SPACK_ENV/registry)
-        echo
+        [[ $buffer_me ]] && echo
     fi
 
     mv $SPACK_ENV/.registry.tmp $SPACK_ENV/registry
@@ -639,13 +661,17 @@ spack_commit=$(cd $NCAR_SPACK_ROOT_DEPLOYMENT/spack; git rev-parse HEAD)
 reuse_packages=$(spack config get concretizer | grep reuse | awk -F": " '{print $2}')
 
 if [[ -z $strategy ]]; then
-    if [[ ${reuse_pkgs,,} == false ]]; then
+    if [[ ${reuse_packages,,} == false ]]; then
         strategy=concurrent
-        spack_action=Adding
     else
         strategy=sequential
-        spack_action=Installing
     fi
+fi
+
+if [[ $strategy == concurrent ]]; then
+    spack_action="Adding spec    "
+else
+    spack_action="Installing spec"
 fi
 
 if [[ $dry_run == true ]]; then
@@ -677,6 +703,9 @@ echo -e "Processing install manifest ...\n"
 
 # Associative arrays to store mpis and requested hashes
 declare -A mpis ref_list config queue_config active_config
+
+# Create some global tracking variables
+spec= comp= mpi= start_installs= trigger_active=
 
 while read entry; do
     if [[ ${skip_checks:-false} == false ]]; then
@@ -745,8 +774,11 @@ while read entry; do
 done < <(awk 'NF' $manifest_file)
 
 # Perform any remaining installs
-if [[ $dry_run != true ]]; then
-    if [[ ${#queue_config[@]} -gt 0 ]]; then
+if [[ ${#queue_config[@]} -gt 0 ]]; then
+    echo D2
+    print_queue_status
+
+    if [[ $dry_run != true ]]; then
         unset spec_hash
         install_specs
     fi
