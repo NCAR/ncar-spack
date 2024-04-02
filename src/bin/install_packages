@@ -5,7 +5,7 @@
 #   buildout of stacks.
 #
 #   Author:         Brian Vanderwende
-#   Last Revised:   09:32, 30 Mar 2024
+#   Last Revised:   23:54, 01 Apr 2024
 #
 
 
@@ -18,6 +18,7 @@ Options
     -c, --prefer-cache      specify that cached versions of packages should be used
     -d, --dry-run           show what would be installed but do not make any changes
     -j, --buildjobs         number of build jobs to run (otherwise will use env default)
+    -s, --install-strategy  override default install strategy (concurrent or sequential)
     -v, --verbose           provide details on actions *not* taken
 
 EOF
@@ -34,23 +35,34 @@ export my_dir="$( cd "$(dirname "$0")" ; pwd )"
 my_host=$(hostname)
 
 # Defaults
-pkg_manifest=$SPACK_ENV/packages.cfg
+manifest_file=$SPACK_ENV/packages.cfg
 build_jobs=$(spack config get config | sed -n 's/^[ ]*build_jobs: \(.*\)/\1/p')
 header_cmd='tee $log_installs'
 
+default_trust=no
+default_cache=yes
+default_publish=yes
+
 # Registry setup
 declare -A field_vars field_labels
-field_widths=( 32 19 40 6 8 )
+field_widths=( 32 19 40 4 6 7 8 )
 field_vars[32]=spec_hash
-field_vars[19]=date
+field_vars[19]=install_date
 field_vars[40]=spack_commit
-field_vars[6]=use_cache
-field_vars[8]=publish_pkg
+field_vars[4]="config[maxjobs]"
+field_vars[6]="config[trust]"
+field_vars[7]="config[cache]"
+field_vars[8]="config[publish]"
 field_labels[spec_hash]="Package Hash"
-field_labels[date]="Date Installed"
+field_labels[install_date]="Date Installed"
 field_labels[spack_commit]="Spack Git Repo Commit"
-field_labels[use_cache]="Cache?"
-field_labels[publish_pkg]="Publish?"
+field_labels["config[maxjobs]"]="Jobs"
+field_labels["config[trust]"]="Trust?"
+field_labels["config[cache]"]="Cached?"
+field_labels["config[publish]"]="Publish?"
+
+# Changes in these variables will trigger a block install
+install_triggers="cache|trust|maxjobs|access"
 
 # Handle user input
 while [[ $# -gt 0 ]]; do
@@ -62,18 +74,22 @@ while [[ $# -gt 0 ]]; do
             header_cmd="cat"
             dry_run=true
             ;;
-        -j|--buildjobs)
+        -j|--build-jobs|--buildjobs)
             build_jobs=$2
             shift
             ;;
+        -s|--install-strategy)
+            strategy=$2
+            shift
+            ;;
         -v|--verbose)
-            export log_verbosity=1
+            export log_verbosity=$((log_verbosity + 1))
             ;;
         --skip-checks)
             skip_checks=true
             ;;
         *)
-            pkg_manifest=$1
+            manifest_file=$1
             ;;
     esac
 
@@ -84,75 +100,159 @@ spec_cmd="spack spec -I -N -t -L"
 build_cmd="spack install --include-build-deps"
 
 function add_spec_to_view {
-view_block=$(sed -n "/^  view:/,/^  [a-z]*:/=" $1 | xargs | awk '{ print $1","$NF }')
+view_block=$(sed -n "/^  view:/,/^  [a-z]*:/=" $SPACK_ENV/spack.yaml | xargs | awk '{ print $1","$NF }')
 if [[ $view_block != ',' ]]; then
-select_start=$(sed -n "$view_block {/select:/=}" $1)
+select_start=$(sed -n "$view_block {/select:/=}" $SPACK_ENV/spack.yaml)
 if [[ -z $select_start ]]; then
-cat << EOF | sed -i "$(($(cut -d, -f2 <<< $view_block) - 1)) r /dev/stdin" $1
+cat << EOF | sed -i "$(($(cut -d, -f2 <<< $view_block) - 1)) r /dev/stdin" $SPACK_ENV/spack.yaml
       select:
-      - $spec
+      - $1
 EOF
-elif [[ $(sed -n "$view_block s/[ ]*- ${spec}$/true/p" $1) != true ]]; then
-cat << EOF | sed -i "$select_start r /dev/stdin" $1
-      - $spec
+elif [[ $(sed -n "$view_block s/[ ]*- ${1}$/true/p" $SPACK_ENV/spack.yaml) != true ]]; then
+cat << EOF | sed -i "$select_start r /dev/stdin" $SPACK_ENV/spack.yaml
+      - $1
 EOF
 fi
 else
-tsecho "Error: no view defined but $spec requests view access"
+tsecho "Error: no view defined but $1 requests view access"
 exit 1
 fi
 }
 
-function prepare_spec {
-    declare -g spec="$pkg" comp=${comp:-${install_compiler}} mpi=${mpi:-$install_mpi}
+function add_spec_to_queue {
+    for width in ${field_widths[@]}; do
+        queue_config[$1]="${queue_config[$1]:+${queue_config[$1]}|}${!field_vars[$width]}"
+    done
 
-    while [[ $spec == *:* ]]; do
-        spec_opt="$(sed 's|.*<\([^>]*\)>.*|\1|' <<< "$spec")"
-        IFS=: read opt_types opt_body <<< "$spec_opt"
+    queue_config[$1]="${queue_config[$1]}|$2"
+    install_queue="${install_queue:+${install_queue}|}$1"
+}
+
+function remove_spec_from_queue {
+    unset queue_config[$1]
+    install_queue=$(sed "s/${1}|*//; s/|$//" <<< $install_queue)
+}
+
+function add_spec_to_registry {
+    IFS='|' read -a registry <<< ${queue_config[$1]}
+
+    for n in ${!field_widths[@]}; do
+        printf "%-${field_widths[$n]}s | " ${registry[$n]} >> $SPACK_ENV/registry
+    done
+
+    printf "%s\n" "${registry[-1]}" >> $SPACK_ENV/registry
+}
+
+function refresh_config {
+    for opt in ${install_triggers//|/ }; do
+        active_config[$opt]=${config[$opt]}
+    done
+}
+
+function mask_spec {
+    for my_mask in ${config[$1]}; do
+        if [[ $2 == ${my_mask}* ]]; then
+            return
+        fi
+    done
+
+    echo fail
+}
+
+function prepare_spec {
+    # Get package-specific configuration
+    declare -g spec="$entry"
+
+    while IFS=: read opt_types opt_body; do
         opt_types="${opt_types//,/ }"
 
         for opt_type in $opt_types; do
-            if [[ $comp == ${opt_type}* ]] || [[ $mpi == ${opt_type}* ]]; then
-                spec="${spec/<$spec_opt>/$opt_body}"
-            else
-                if [[ $opt_type == hash-ref ]]; then
-                    hash_ref="$opt_body"
-                    [[ -n $comp ]] && hash_ref="$hash_ref $comp"
-                    [[ -n $mpi ]]  && hash_ref="$hash_ref $mpi"
-                    tsecho " >> package will be stored using hash-reference" 1
-                elif [[ $opt_type == spec-ref ]]; then
-                    if [[ -z ${specs[$opt_body]} ]]; then
-                        # Make sure white space is trimmed using xargs
-                        specs[$opt_body]="$(xargs -0 <<< ${spec/<$spec_opt>})"
-                        tsecho " >> package will be stored using spec-reference" 1
-                    fi
-                elif [[ $opt_type == cache ]]; then
-                    use_cache=${opt_body/never/no}
-                    tsecho " >> public environment will use cached version? $use_cache" 1
-                    use_cache=${use_cache/dependencies/deps}
-                elif [[ $opt_type == trust ]]; then
-                    trust_src=${opt_body/always/yes}
-                    tsecho " >> package download check is bypassed" 1
-                elif [[ $opt_type == publish ]]; then
-                    publish_pkg=$opt_body
-                    tsecho " >> package will not be published to public env" 1
-                elif [[ $opt_type == maxjobs ]]; then
-                    if [[ $pkg_jobs -lt $build_jobs ]]; then
-                        pkg_jobs=$opt_body
-                        tsecho " >> package will be built with jobs=$opt_body" 1
-                    fi
-                fi
-            fi
+            declare pkg_$opt_type="$opt_body"
         done
+    done < <(tr '<' '\n' <<< "$spec" | sed -n 's/\([^>]*\)>.*/\1/p')
 
-        spec="${spec/<$spec_opt>}"
+    # Compile all block-level and package-level configurations
+    config=()
+
+    for opt_class in default block pkg; do
+        opt_lookup=\${\!${opt_class}_*}
+        opt_list="$(eval echo $opt_lookup)"
+
+        for opt_var in $opt_list; do
+            key=${opt_var#*_}
+            config[$key]="${!opt_var}"
+        done
     done
 
-    for spec_ref in $(xargs -n1 <<< ${!specs[@]} | tac | xargs); do
-        spec="$(sed "s|%${spec_ref}%|^${specs[$spec_ref]}|g" <<< "$spec")"
+    unset ${!pkg_*}
+
+    # Check for implications of compiler/mpi flags here
+    for opt in compiler mpi compilers mpis exclude; do
+        if [[ -n ${config[$opt]} ]]; then
+            case $opt in
+                compiler)
+                    declare -g comp=${config[$opt]}
+                    ;;
+                mpi)
+                    declare -g mpi=${config[$mpi]}
+                    ;;
+                compilers)
+                    spec_check=${spec_check:-$(mask_spec compilers $comp)}
+                    ;;
+                mpis)
+                    spec_check=${spec_check:-$(mask_spec mpis $mpi)}
+                    ;;
+                exclude)
+                    for exclusion in ${config[$opt]//,/ }; do
+                        if [[ $exclusion == [a-z]*%[a-z]* ]]; then
+                            if [[ $mpi == ${exclusion%\%*}* ]] && [[ $comp == ${exclusion#*%}* ]]; then
+                                spec_check=fail
+                            fi
+                        else
+                            for condition in $comp $mpi; do
+                                if [[ $condition == ${exclusion}* ]]; then
+                                    spec_check=fail
+                                fi
+                            done
+                        fi
+                    done
+                    ;;
+            esac
+
+            unset config[$opt]
+        fi
     done
 
-    # Remove any duplicate dependency references from the spec
+    # Skip this spec if any checks fail
+    if [[ $spec_check == fail ]]; then
+        unset spec_check
+        return 1
+    fi
+
+    # Substitute compilers and MPIs
+    [[ -n $comp ]] && spec="$(sed "s|\^%CMP%|\^$comp|g" <<< "$spec")"
+    [[ -n $comp ]] && spec="$(sed "s|%CMP%|%$comp|g;t;s|$| %$comp|" <<< "$spec")"
+    [[ -n $mpi ]]  && spec="$(sed "s|%MPI%|^$mpi|g;t;s|$| ^$mpi|" <<< "$spec")"
+    spec="$(sed -r "s/%gcc( |$)/%gcc@${sys_gcc}\1/g" <<< "$spec")"
+
+    # Substitute compiler/mpi-specific modifier flags
+    for mod_type in $comp ${comp%@*} $mpi ${mpi%@*}; do
+        if [[ -n ${config[$mod_type]} ]]; then
+            spec="$(sed "s|<[^>]*${config[$mod_type]}>|${config[$mod_type]}|" <<< "$spec")"
+        fi
+    done
+
+    # Remove all remaining package modifiers
+    spec="$(sed 's/[ ]*<[^>]*>//g' <<< "$spec")"
+
+    # Substitute spec and hash references and remove any duplicate dependencies
+    while [[ $spec == *[/^]%* ]]; do
+        declare {ref_label,ref_key}="$(sed 's|.*\([/^]%[^%]*%\).*|\1|' <<< "$spec")"
+        [[ -n $comp ]] && ref_key="$ref_key $comp"
+        [[ -n $mpi ]]  && ref_key="$ref_key $mpi"
+        spec="$(sed "s/${ref_label}/${ref_dict["${ref_key}"]}/g" <<< "$spec")"
+    done
+
     for spec_element in $spec; do
         if [[ $spec_element != ^* ]] || [[ " ${filter_spec[@]} " != *" $spec_element "* ]]; then
             filter_spec+=( $spec_element )
@@ -162,28 +262,40 @@ function prepare_spec {
     spec="${filter_spec[@]}"
     unset filter_spec
 
-    [[ -n $comp ]] && spec="$(sed "s|\^%CMP%|\^$comp|g" <<< "$spec")"
-    [[ -n $comp ]] && spec="$(sed "s|%CMP%|%$comp|g;t;s|$| %$comp|" <<< "$spec")"
-    [[ -n $mpi ]]  && spec="$(sed "s|%MPI%|^$mpi|g;t;s|$| ^$mpi|" <<< "$spec")"
-    spec="$(sed -r "s/%gcc( |$)/%gcc@${sys_gcc}\1/g" <<< "$spec")"
-
-    while [[ $spec == */%* ]]; do
-        declare {hash_var,hash_ref}="$(sed 's|.*/%\([^%]*\).*|\1|' <<< "$spec")"
-        [[ -n $comp ]] && hash_ref="$hash_ref $comp"
-        [[ -n $mpi ]]  && hash_ref="$hash_ref $mpi"
-        spec="$(sed "s/%${hash_var}%/${hashes["${hash_ref}"]}/g" <<< "$spec")"
-        unset hash_var hash_ref
-    done
-
     if [[ $spec == */%* ]]; then
         tsecho "\nError: spec still contains reference! ($spec)"
         exit 1
+    fi
+
+    # Some other settings have side-effects. Handle them here.
+    for opt in spec_ref hash_ref; do
+        if [[ -n ${config[$opt]} ]]; then
+            config[$opt]="%${config[$opt]}%"
+            [[ -n $comp ]] && config[$opt]="${config[$opt]} $comp"
+            [[ -n $mpi ]]  && config[$opt]="${config[$opt]} $mpi"
+
+            if [[ $opt == spec_ref ]]; then
+                ref_list["^${config[$opt]}"]="^$spec"
+                tsecho " >> package will be stored using spec-reference" 2
+            else
+                tsecho " >> package will be stored using hash-reference" 2
+            fi
+        fi
+    done
+
+    if [[ ${#queue_config[@]} -gt 0 ]] || [[ $dry_run == true ]]; then
+        for opt in ${install_triggers//|/ }; do
+            if [[ ${#active_config[@]} -gt 0 ]] && [[ ${config[$opt]} != ${active_config[$opt]} ]]; then
+                declare -g start_installs=true
+                tsecho " >> INSTALL TRIGGER - impending change in package install config: $opt=${config[$opt]:-default}" 2
+            fi
+        done
     fi
 }
 
 function compiler_checks {
     # Check if this spec is indeed a compiler and whether we are making changes
-    if [[ $install_type != compiler ]] || [[ $install_register == no ]] || [[ $dry_run == true ]]; then
+    if [[ ${config[type]} != compiler ]] || [[ ${config[register]} == no ]] || [[ $dry_run == true ]]; then
         return
     fi
 
@@ -204,10 +316,10 @@ function compiler_checks {
             os=$(spack arch -o)
         fi
 
-        if [[ ${install_build:-true} == true ]]; then
+        if [[ ${config[build]:-true} == true ]]; then
             read -r root version <<< $(spack find --format "{prefix} {version}" $spec)
         else
-            if [[ $install_modifier == cray ]]; then
+            if [[ ${config[modifier]} == cray ]]; then
                 root=/opt/cray
             else
                 root=/usr
@@ -222,16 +334,6 @@ function compiler_checks {
     fi
 }
 
-function add_spec_to_registry {
-    registry=( $spec_hash ${pkg_date:-unknown} $spack_commit ${use_cache:-yes} ${publish_pkg:-yes} "$spec" )
-
-    for n in ${!field_widths[@]}; do
-        printf "%-${field_widths[$n]}s | " ${registry[$n]} >> $SPACK_ENV/registry
-    done
-
-    printf "%s\n" "${registry[-1]}" >> $SPACK_ENV/registry
-}
-
 function check_registry {
     # Check whether certain settings on package have changed
     for n in ${!registry[@]}; do
@@ -240,13 +342,14 @@ function check_registry {
             width=$(($(wc -c <<< "${registry[$n]}") - 1))
 
             if [[ -n ${field_vars[$width]} ]]; then
-                if [[ ${field_vars[$width]} =~ (use_cache|publish_pkg) ]]; then
-                    if [ ${!field_vars[$width]:-yes} != ${registry[$n]} ]; then
+                if [[ ${field_vars[$width]} == config\[*\] ]]; then
+                    if [[ ${!field_vars[$width]// } != ${registry[$n]// } ]]; then
                         modify_registry=true
                     fi
+                else
+                    stripped_value=${registry[$n]// }
+                    declare ${field_vars[$width]}=${stripped_value:-N/A}
                 fi
-
-                declare ${field_vars[$width]}=${registry[$n]}
             else
                 tsecho "Error: invalid registry entry with field width $width!"
                 exit 1
@@ -255,14 +358,16 @@ function check_registry {
     done
 
     if [[ ${modify_registry:-false} == true ]]; then
+        tsecho " >> modifying outdated or broken registry entry" 2
         sed -i "/^${spec_hash} .*/d" $SPACK_ENV/registry
-        add_spec_to_registry
+        add_spec_to_queue $spec_hash "$spec"
+        add_spec_to_registry $spec_hash
         unset modify_registry
     fi
 }
 
 function check_spec {
-    if [[ $install_type == mpi ]]; then
+    if [[ ${config[type]} == mpi ]]; then
         if [[ -n $comp ]]; then
             mpi_spec="${spec//[[:blank:]]/}"
             mpis[$comp]="${mpis[$comp]} $mpi_spec"
@@ -270,19 +375,19 @@ function check_spec {
             tsecho "Error: cannot install an MPI without setting a compiler!"
             exit 1
         fi
-    elif [[ $install_type == compiler ]]; then
+    elif [[ ${config[type]} == compiler ]]; then
         comp_spec=$(sed "s/^\([^@+~ ]*\)[^@]*\(@[^+~ ]*\).*/\1\2/" <<< "$spec")
 
         if [[ $comp_spec == intel-oneapi-compilers-classic* ]]; then
             comp_spec="${comp_spec/intel-oneapi-compilers-classic/intel}"
-            use_cache=no
+            config[cache]=no
         elif [[ $comp_spec == intel-oneapi-compilers* ]]; then
             comp_spec="${comp_spec/intel-oneapi-compilers/oneapi}"
         elif [[ $comp_spec == llvm* ]]; then
             comp_spec="${comp_spec/llvm/clang}"
         fi
 
-        if [[ ${install_register:-yes} == yes ]]; then
+        if [[ ${config[register]:-yes} == yes ]]; then
             if [[ $comp_spec == gcc* ]]; then
                 compilers="$comp_spec $compilers"
             else
@@ -290,10 +395,10 @@ function check_spec {
             fi
         fi
     fi
-    
-    if [[ $install_build == false ]]; then
+
+    if [[ ${config[build]} == false ]]; then
         tsecho "Skipping spec   $PCOL$spec$BCOL$type_msg$DCOL (reason: build=false specified)" 1
-        compiler_checks 
+        compiler_checks
     else
         skip_spec=false spec_hash=
         set +e
@@ -304,80 +409,97 @@ function check_spec {
         if [[ -n $registry_data ]]; then
             IFS='|' read -a registry <<< $registry_data
             spec_hash=${registry[0]}
-
-            if [[ " $start_hashes " == *" $spec_hash "* ]]; then
-                check_registry
-                skip_spec=true
-            else
-                sed -i "/^${spec_hash} .*/d" $SPACK_ENV/registry
-            fi
+            check_registry
+            skip_spec=true
         fi
-        
+
         set -e
 
         if [[ $skip_spec == false ]] && [[ $dry_run != true ]]; then
             spack_spec_out=$(eval $spec_cmd $spec)
             spec_hash=$(grep -A2 ^Concretized <<< "$spack_spec_out" | tail -n1 | awk '{print $2}')
-            sed -i "/^${spec_hash} .*/d" $SPACK_ENV/registry
 
             if [[ " $start_hashes " == *" $spec_hash "* ]]; then
-                add_spec_to_registry
+                install_date=N/A add_spec_to_queue $spec_hash "$spec"
+                add_spec_to_registry $spec_hash
                 skip_spec=true
+
+                # Make sure spec is in spack.yaml
+                eval spack add $spec > /dev/null
+            else
+                install_date=$(date +%FT%T) add_spec_to_queue $spec_hash "$spec"
             fi
         fi
 
         # Register the hash if requested
-        if [[ -n $hash_ref ]]; then
-            hashes["$hash_ref"]=$spec_hash
-            unset hash_ref 
+        if [[ -n ${config[hash_ref]} ]]; then
+            ref_list["/${config[$opt]}"]="/$spec_hash"
         fi
-       
+
+        if [[ ${#active_config[@]} -eq 0 ]]; then
+            refresh_config
+        fi
+
         # Finalize cache status
         if [[ $NCAR_SPACK_PAD_LENGTH != 0 ]]; then
-            use_cache=${use_cache:-$install_cache}
-
-            if [[ ${use_cache:-${prefer_cache:-no}} == yes ]]; then
+            if [[ ${config[cache]:-${prefer_cache:-no}} == yes ]]; then
                 cache_label=" (cached)"
-            elif [[ $use_cache == deps ]]; then
+            elif [[ ${config[cache]} == deps ]]; then
                 cache_label=" (cached dependencies)"
             fi
         else
-            use_cache=no
+            active_config[cache]=no
+        fi
+
+        if [[ $dry_run != true ]] && [[ ${start_installs:-false} == true ]]; then
+            install_specs
         fi
 
         if [[ $skip_spec == true ]]; then
             tsecho "Skipping spec   $PCOL$spec$BCOL$type_msg$DCOL (reason: already installed)" 1
             compiler_checks
+            remove_spec_from_queue $spec_hash
         else
-            if [[ -n $install_type ]]; then
-                tsecho "Installing spec $GCOL$spec $BCOL(${install_type})$DCOL$cache_label"
+            if [[ -n ${config[type]} ]]; then
+                tsecho "$spack_action spec $GCOL$spec $BCOL(${config[type]})$DCOL$cache_label"
             else
-                tsecho "Installing spec $GCOL$spec$DCOL$cache_label"
+                tsecho "$spack_action spec $GCOL$spec$DCOL$cache_label"
+            fi
+
+            if [[ $strategy == concurrent ]]; then
+                if [[ ${config[type]} == compiler ]] && [[ ${config[register]} != no ]]; then
+                    declare -g start_installs=true
+                    tsecho " >> INSTALL TRIGGER - spec is a compiler and will be registered" 2
+                fi
             fi
 
             if [[ $dry_run != true ]]; then
                 log_cmd "$spec_cmd $spec" >> $log_specs
                 echo "$spack_spec_out" &>> $log_specs
                 unset spack_spec_out
-                install_spec
-                pkg_date=$(date +%FT%T) add_spec_to_registry
-            fi
+                eval spack add $spec > /dev/null
 
-            if [[ $spec == lmod* ]]; then
-                new_lmod=true
+                if [[ $strategy == sequential ]]; then
+                    declare -g start_installs=true
+                fi
+
+                if [[ $spec == lmod* ]]; then
+                    new_lmod=true
+                fi
             fi
         fi
-        
+
         unset cache_label
     fi
 
-    unset use_cache trust_src publish_pkg pkg_jobs
+    # Activate new config for next block of installs
+    refresh_config
 }
 
-function install_spec {
-    if [[ $use_cache == no ]]; then
+function install_specs {
+    if [[ ${active_config[cache]} == no ]]; then
         spec_build_cmd="${build_cmd} --use-buildcache never"
-    elif [[ $use_cache == deps ]]; then
+    elif [[ ${active_config[cache]} == deps ]]; then
         if [[ $prefer_cache == yes ]]; then
             spec_build_cmd="${build_cmd} --use-buildcache package:never,dependencies:only"
         else
@@ -389,83 +511,71 @@ function install_spec {
         spec_build_cmd="$build_cmd"
     fi
 
-    if [[ ${trust_src:-${install_trust:-no}} == yes ]]; then
+    if [[ ${active_config[trust]:-no} == yes ]]; then
         spec_build_cmd="$spec_build_cmd --no-checksum --deprecated"
     fi
 
-    spec_build_cmd="$spec_build_cmd -j ${pkg_jobs:-${build_jobs:-1}}"
+    spec_build_cmd="$spec_build_cmd -j ${active_config[maxjobs]:-${build_jobs:-1}}"
 
     # Install the package and view pertinent log information
-    log_cmd "$build_cmd $spec" >> $log_installs
-    eval spack add $spec > /dev/null; spack concretize -q > /dev/null
+    build_steps="$spec_build_cmd"
+
+    while read queued_hash; do
+        if [[ $queued_hash != $spec_hash ]]; then
+            queued_spec=$(awk -F'|' '{print $NF}' <<< ${queue_config[$queued_hash]})
+            build_steps="spack add ${queued_spec}${sep}$build_steps"
+        fi
+    done < <(tr '|' '\n' <<< "$install_queue")
+
+    log_cmd "$build_steps" >> $log_installs
+    spack concretize -j ${active_config[maxjobs]:-${build_jobs:-1}} -q > /dev/null
     $spec_build_cmd |& tee -a $log_installs | sed -u 's/^/   /' | (grep --line-buffered             \
             -e "Executing phase" -e "Successfully installed" -e "already installed" -e " Total: "   \
             -e " from binary cache" -e " Error: " -e "^See build log" -e "spack-build-out.txt"      \
             -e "Installing" | grep -v "Skipping external package" || true)
 
-    if [[ ${PIPESTATUS[0]} -ne 0 ]]; then
-        # Remove spec to avoid uninstalled package in spack.yaml
-        echo
-        eval spack remove $spec
-        tsecho "\nError: install of package $spec failed! Aborting installs ...\n"
-        exit 1
-    fi
+    if [[ ${PIPESTATUS[0]} -eq 0 ]]; then
+        while read queued_hash; do
+            if [[ $queued_hash != $spec_hash ]]; then
+                add_date=$(date +%FT%T) add_spec_to_registry $queued_hash
+                queued_spec=$(awk -F'|' '{print $NF}' <<< ${queue_config[$queued_hash]})
+                remove_spec_from_queue $queued_hash
 
-    # Register the hash if requested
-    if [[ -n $hash_ref ]]; then
-        hashes["$hash_ref"]=$spec_hash
-        unset hash_ref 
+                # Modify spack.yaml based on access settings
+                case ${active_config[access]:-module} in
+                    core)
+                        spec_name=$(spack find --format "{name}" $queued_hash)
+                        spack config add "modules:default:lmod:core_specs:$spec_name"
+                        ;;
+                    view)
+                        spack config add "modules:default:lmod:exclude:$queued_spec"
+                        add_spec_to_view "$queued_spec"
+                        ;;
+                    none)
+                        spack config add "modules:default:lmod:exclude:$queued_spec"
+                        ;;
+                esac
+            fi
+        done < <(tr '|' '\n' <<< "$install_queue")
+    else
+        # Remove specs to avoid uninstalled package in spack.yaml
+        bad_pkg=$(grep -e "==> Installing" -e "==> Error" $log_installs | tail -n 2                 \
+                | sed -n 's/.*Installing \(.*\) .*/\1/p')
+        tsecho "\nError: install of package $bad_pkg failed! Aborting installs ...\n"
+
+        while read queued_spec; do
+            if [[ $queued_hash != $spec_hash ]]; then
+                eval spack remove $queued_spec
+            fi
+        done < <(tr '|' '\n' <<< "$install_queue")
+
+        exit 1
     fi
 
     # Register the compiler in the YAML file
     compiler_checks
 
-    # Modify spack.yaml based on access settings
-    case ${install_access:-module} in
-        core)
-            spec_name=$(spack find --format "{name}" $spec)
-            spack config add "modules:default:lmod:core_specs:$spec_name"
-            ;;
-        view)
-            spack config add "modules:default:lmod:exclude:$spec"
-            add_spec_to_view $SPACK_ENV/spack.yaml
-            ;;
-        none)
-            spack config add "modules:default:lmod:exclude:$spec"
-            ;;
-    esac
-}
-
-function check_exclusions {
-    for espec in ${install_exclude//,/ }; do
-        if [[ $1 == ${espec}* ]]; then
-            return 1
-        fi
-    done
-}
-
-function define_items {
-    list_var=my_$1; unset $list_var
-    restrict_var=install_$1
-    my_items=${2//,/ }
-
-    if [[ -n ${!restrict_var} ]]; then
-        my_limits=${!restrict_var//,/ }
-
-        for item in $my_items; do
-            for limit in $my_limits; do
-                if [[ $item == ${limit}* ]]; then
-                    if [[ -n $list_var ]]; then
-                        declare -g $list_var="${!list_var} $item"
-                    else
-                        declare -g $list_var="$item"
-                    fi
-                fi
-            done
-        done
-    else
-        declare -g $list_var="${my_items# }"
-    fi
+    unset start_installs
 }
 
 function handle_interrupt {
@@ -486,6 +596,7 @@ function initialize_registry {
     printf "%170s\n" | tr " " "-" >> $SPACK_ENV/.registry.tmp
 
     if [[ -f $SPACK_ENV/registry ]]; then
+        echo
         while read entry; do
             spec_hash=$(awk '{print $1}' <<< "$entry")
 
@@ -496,16 +607,21 @@ function initialize_registry {
                 tsecho "Removing missing spec $PCOL$spec$DCOL from registry" 1
             fi
         done < <(tail -n +3 $SPACK_ENV/registry)
+        echo
     fi
 
     mv $SPACK_ENV/.registry.tmp $SPACK_ENV/registry
 }
+
+# Set up signal handler to cleanly deal with interrupts
+trap handle_interrupt SIGINT
 
 # Ensure log directory exists
 log_dir=$SPACK_ENV/logs
 mkdir -p $log_dir
 log_specs=$log_dir/specs.$start_time.${SUDO_USER:-$USER}
 log_installs=$log_dir/installs.$start_time.${SUDO_USER:-$USER}
+sep=$'\n'
 
 # Make sure environment reports current state
 tsecho "Verify current environment concretization"
@@ -519,6 +635,19 @@ current_comps=$(spack config get compilers | grep spec | cut -d: -f2)
 tsecho "Detect Spack and repo versions"
 spack_commit=$(cd $NCAR_SPACK_ROOT_DEPLOYMENT/spack; git rev-parse HEAD)
 
+# Are we using sequential or concurrent install strategy?
+reuse_packages=$(spack config get concretizer | grep reuse | awk -F": " '{print $2}')
+
+if [[ -z $strategy ]]; then
+    if [[ ${reuse_pkgs,,} == false ]]; then
+        strategy=concurrent
+        spack_action=Adding
+    else
+        strategy=sequential
+        spack_action=Installing
+    fi
+fi
+
 if [[ $dry_run == true ]]; then
 cat << EOF
 
@@ -530,10 +659,13 @@ eval $header_cmd << EOF
 
 Start time          = $start_time
 Spack environment   = $SPACK_ENV
-Package manifest    = $pkg_manifest
+Package manifest    = $manifest_file
 Spack version       = $spack_commit
+Concretizer reuse   = $reuse_packages
+
 Build jobs          = $build_jobs
 System GCC          = gcc@$sys_gcc
+Install strategy    = $strategy
 
 EOF
 
@@ -544,17 +676,14 @@ initialize_registry
 echo -e "Processing install manifest ...\n"
 
 # Associative arrays to store mpis and requested hashes
-declare -A mpis hashes specs
+declare -A mpis ref_list config queue_config active_config
 
-# Set up signal handler to cleanly deal with interrupts
-trap handle_interrupt SIGINT
-
-while read pkg; do
+while read entry; do
     if [[ ${skip_checks:-false} == false ]]; then
         if [[ $new_lmod == true ]] && ! module -v 2> /dev/null; then
             echo -e "\n====="
             echo "Notice: module command not in environment but Lmod just installed"
-            echo "        to avoid install failures, halting installs at $pkg"
+            echo "        to avoid install failures, halting installs at $entry"
             failed_checks=true
         else
             unset new_lmod
@@ -566,59 +695,59 @@ while read pkg; do
         fi
     fi
 
-    if [[ $pkg == \#* ]] || [[ $user_stop == true ]]; then
-        if [[ $pkg == \#break ]] || [[ $user_stop == true ]]; then
+    if [[ $entry == \#* ]] || [[ $user_stop == true ]]; then
+        if [[ $entry == \#break ]] || [[ $user_stop == true ]]; then
             echo -e "\nUser-requested early stop in manifest"
             exit
         fi
-    elif [[ $pkg != *'<'* ]] && [[ $pkg == *:* ]]; then
-        for ivar in ${!install_*}; do
-            unset $ivar
-        done
-        
-        install_build=true
+    elif [[ $entry != *'<'* ]] && [[ $entry == *:* ]]; then
+        unset ${!block_*}
+        block_build=true
 
-        for mflag in $pkg; do
+        for mflag in $entry; do
             case $mflag in
                 *:)
-                    install_mode=${mflag%:}
+                    spec_type=${mflag%:}
                     ;;
                 *=*)
-                    declare install_${mflag%=*}=${mflag#*=}
+                    declare block_${mflag%=*}=${mflag#*=}
                     ;;
             esac
         done
     else
         unset comp mpi
-        case $install_mode in
+
+        case $spec_type in
             mdep)
-                define_items compilers "${install_compiler:-$compilers}"
-                for comp in $my_compilers; do
-                    check_exclusions $comp || continue
-                    define_items mpis "${mpis[$comp]}"
-                    for mpi in $my_mpis; do
-                        check_exclusions $mpi || continue
-                        prepare_spec
+                for comp in $compilers; do
+                    for mpi in ${mpis[$comp]}; do
+                        prepare_spec || continue
                         check_spec
                     done
                 done
                 ;;
             cdep)
-                define_items compilers "${install_compiler:-$compilers}"
-                for comp in $my_compilers; do
-                    check_exclusions $comp || continue
-                    prepare_spec
+                for comp in $compilers; do
+                    prepare_spec || continue
                     check_spec
                 done
                 ;;
             singleton)
-                prepare_spec
+                prepare_spec || continue
                 check_spec
                 ;;
             *)
-                tsecho "Error: unrecognized install mode: $install_mode\n       halting installs at $pkg\n"
+                tsecho "Error: unrecognized spec type: $spec_type\n       halting installs at $entry\n"
                 exit 1
                 ;;
         esac
     fi
-done < <(awk 'NF' $pkg_manifest)
+done < <(awk 'NF' $manifest_file)
+
+# Perform any remaining installs
+if [[ $dry_run != true ]]; then
+    if [[ ${#queue_config[@]} -gt 0 ]]; then
+        unset spec_hash
+        install_specs
+    fi
+fi
