@@ -21,6 +21,27 @@ EOF
 my_name=$(basename "$0")
 . $my_dir/../main.cfg
 
+# Registry setup
+declare -A field_vars field_labels
+field_widths=( 32 19 40 4 6 7 8 )
+field_vars[32]=spec_hash
+field_vars[19]=install_date
+field_vars[40]=spack_commit
+field_vars[4]="config[maxjobs]"
+field_vars[6]="config[trust]"
+field_vars[7]="config[cache]"
+field_vars[8]="config[publish]"
+field_labels[spec_hash]="Package Hash"
+field_labels[install_date]="Date Installed"
+field_labels[spack_commit]="Spack Git Repo Commit"
+field_labels["config[maxjobs]"]="Jobs"
+field_labels["config[trust]"]="Trust?"
+field_labels["config[cache]"]="Cached?"
+field_labels["config[publish]"]="Publish?"
+
+# These variables are used for package install config in install_packages and publish
+install_params="cache|trust|maxjobs|access"
+
 # Make sure nobody else is publishing to public
 if [[ -f $NCAR_SPACK_ENV_BUILD/.publock ]]; then
     if [[ $(cat $NCAR_SPACK_ENV_BUILD/.publock) != $NCAR_SPACK_LOCK_PID ]]; then

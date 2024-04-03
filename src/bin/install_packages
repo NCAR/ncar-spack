@@ -4,8 +4,11 @@
 #   Use this script instead of "spack install" to increasing logging, and simplify
 #   buildout of stacks.
 #
+#   Note:   Registry setup has been moved to tools/init.sh to be shared with publish
+#           and any other packages that need it
+#
 #   Author:         Brian Vanderwende
-#   Last Revised:   12:11, 02 Apr 2024
+#   Last Revised:   11:30, 03 Apr 2024
 #
 
 
@@ -17,8 +20,8 @@ Options
     -h                      show this help message
     -c, --prefer-cache      specify that cached versions of packages should be used
     -d, --dry-run           show what would be installed but do not make any changes
-    -j, --buildjobs         number of build jobs to run (otherwise will use env default)
-    -s, --install-strategy  override default install strategy (concurrent or sequential)
+    -j, --buildjobs N       number of build jobs to run (otherwise will use env default)
+    -p, --package-limit N   max number of packages to be installed at once (1 for sequential)
     -v, --verbose           provide details on actions *not* taken
 
 EOF
@@ -43,27 +46,6 @@ default_trust=no
 default_cache=yes
 default_publish=yes
 
-# Registry setup
-declare -A field_vars field_labels
-field_widths=( 32 19 40 4 6 7 8 )
-field_vars[32]=spec_hash
-field_vars[19]=install_date
-field_vars[40]=spack_commit
-field_vars[4]="config[maxjobs]"
-field_vars[6]="config[trust]"
-field_vars[7]="config[cache]"
-field_vars[8]="config[publish]"
-field_labels[spec_hash]="Package Hash"
-field_labels[install_date]="Date Installed"
-field_labels[spack_commit]="Spack Git Repo Commit"
-field_labels["config[maxjobs]"]="Jobs"
-field_labels["config[trust]"]="Trust?"
-field_labels["config[cache]"]="Cached?"
-field_labels["config[publish]"]="Publish?"
-
-# Changes in these variables will trigger a block install
-install_triggers="cache|trust|maxjobs|access"
-
 # Handle user input
 while [[ $# -gt 0 ]]; do
     case $1 in
@@ -78,8 +60,8 @@ while [[ $# -gt 0 ]]; do
             build_jobs=$2
             shift
             ;;
-        -s|--install-strategy)
-            strategy=$2
+        -p|--package-limit)
+            package_limit=$2
             shift
             ;;
         -v|--verbose)
@@ -144,7 +126,7 @@ function add_spec_to_registry {
 }
 
 function refresh_config {
-    for opt in ${install_triggers//|/ }; do
+    for opt in ${install_params//|/ }; do
         active_config[$opt]=${config[$opt]}
     done
 }
@@ -284,7 +266,7 @@ function prepare_spec {
     done
 
     if [[ ${#queue_config[@]} -gt 0 ]]; then
-        for opt in ${install_triggers//|/ }; do
+        for opt in ${install_params//|/ }; do
             if [[ ${#active_config[@]} -gt 0 ]] && [[ ${config[$opt]} != ${active_config[$opt]} ]]; then
                 start_installs=true
                 tsecho " >> INSTALL TRIGGER - impending change in package install config: ${BCOL}$opt=${config[$opt]:-default}$DCOL" 2
@@ -368,7 +350,7 @@ function check_registry {
 }
 
 function print_queue_status {
-    if [[ $strategy == concurrent ]]; then
+    if [[ $package_limit -ne 1 ]]; then
         tsecho "Beginning installs with ${#queue_config[@]} specs in the queue"
         tsecho " >> active config = $(declare -p active_config | cut -d= -f2-)"
     fi
@@ -424,14 +406,16 @@ function check_spec {
                 spack_spec_out=$(eval $spec_cmd $spec)
                 spec_hash=$(grep -A2 ^Concretized <<< "$spack_spec_out" | tail -n1 | awk '{print $2}')
 
-                if [[ " $start_hashes " == *" $spec_hash "* ]]; then
+                if [[ " $start_hashes_all " == *" $spec_hash "* ]]; then
                     install_date=N/A add_spec_to_queue $spec_hash "$spec"
                     add_spec_to_registry $spec_hash
                     remove_spec_from_queue $spec_hash
                     skip_spec=true
 
                     # Make sure spec is in spack.yaml
-                    eval spack add $spec > /dev/null
+                    if [[ " $start_hashes " != *" $spec_hash "* ]]; then
+                        eval spack add $spec > /dev/null
+                    fi
                 else
                     install_date=$(date +%FT%T) add_spec_to_queue $spec_hash "$spec"
                 fi
@@ -487,13 +471,11 @@ function check_spec {
                 tsecho "$spack_action $GCOL$spec$DCOL$cache_label"
             fi
 
-            if [[ $strategy == concurrent ]]; then
-                if [[ ${config[type]} == compiler ]] && [[ ${config[register]} != no ]]; then
-                    start_installs=true
-                    tsecho " >> INSTALL TRIGGER - spec is a compiler and will be registered" 2
-                fi
-            else
+            if [[ $package_limit -gt 0 ]] && [[ ${#queue_config[@]} -ge $package_limit ]]; then
                 start_installs=true
+            elif [[ ${config[type]} == compiler ]] && [[ ${config[register]} != no ]]; then
+                start_installs=true
+                tsecho " >> INSTALL TRIGGER - spec is a compiler and will be registered" 2
             fi
 
             if [[ $dry_run != true ]]; then
@@ -577,14 +559,17 @@ function install_specs {
             fi
         done < <(tr '|' '\n' <<< "$install_queue")
     else
-        # Remove specs to avoid uninstalled package in spack.yaml
-        bad_pkg=$(grep -e "==> Installing" -e "==> Error" $log_installs | tail -n 2                 \
+        # Remove failed specs to avoid uninstalled packages in spack.yaml
+        bad_pkg=$(grep -e "==> Installing" -e "==> Error" $log_installs | grep -m1 -B1 "==> Error"  \
                 | sed -n 's/.*Installing \(.*\) .*/\1/p')
-        tsecho "\nError: install of package $bad_pkg failed! Aborting installs ...\n"
+        tsecho "Error: install of package $bad_pkg$ failed! Aborting installs ...\n"
 
-        while read queued_spec; do
+        while read queued_hash; do
             if [[ $queued_hash != $spec_hash ]]; then
-                eval spack remove $queued_spec
+                if ! grep -q "Successful.*$queued_hash" $log_installs; then
+                    queued_spec=$(awk -F'|' '{print $NF}' <<< ${queue_config[$queued_hash]})
+                    eval spack remove $queued_spec
+                fi
             fi
         done < <(tr '|' '\n' <<< "$install_queue")
 
@@ -625,7 +610,7 @@ function initialize_registry {
                     echo; buffer_me=true
                 fi
 
-                spec="$(awk '{print $NF}' <<< "$entry")"
+                spec="$(awk -F\| '{print $NF}' <<< "$entry")"
                 tsecho "Removing missing spec $PCOL$spec$DCOL from registry" 1
             fi
         done < <(tail -n +3 $SPACK_ENV/registry)
@@ -660,18 +645,22 @@ spack_commit=$(cd $NCAR_SPACK_ROOT_DEPLOYMENT/spack; git rev-parse HEAD)
 # Are we using sequential or concurrent install strategy?
 reuse_packages=$(spack config get concretizer | grep reuse | awk -F": " '{print $2}')
 
-if [[ -z $strategy ]]; then
+if [[ -z $package_limit ]]; then
     if [[ ${reuse_packages,,} == false ]]; then
-        strategy=concurrent
+        package_limit=-1
     else
-        strategy=sequential
+        package_limit=1
     fi
 fi
 
-if [[ $strategy == concurrent ]]; then
-    spack_action="Adding spec    "
-else
+if [[ $package_limit -eq 1 ]]; then
     spack_action="Installing spec"
+elif [[ $package_limit -ge -1 ]]; then
+    spack_action="Adding spec    "
+    package_limit=${package_limit/0/-1}
+else
+    tsecho "Error: invalid --package-limit setting ($package_limit)"
+    exit 1
 fi
 
 if [[ $dry_run == true ]]; then
@@ -691,12 +680,13 @@ Concretizer reuse   = $reuse_packages
 
 Build jobs          = $build_jobs
 System GCC          = gcc@$sys_gcc
-Install strategy    = $strategy
+Concurrent builds   = ${package_limit/-1/unlimited}
 
 EOF
 
 echo "Querying current explicit packages ..."
 start_hashes=$(spack find -x --format '{hash}' | xargs)
+start_hashes_all=$(spack find --format '{hash}' | xargs)
 initialize_registry
 
 echo -e "Processing install manifest ...\n"
@@ -726,8 +716,8 @@ while read entry; do
 
     if [[ $entry == \#* ]] || [[ $user_stop == true ]]; then
         if [[ $entry == \#break ]] || [[ $user_stop == true ]]; then
-            echo -e "\nUser-requested early stop in manifest"
-            exit
+            echo -e "\n >> User-requested an early stop in manifest\n"
+            break
         fi
     elif [[ $entry != *'<'* ]] && [[ $entry == *:* ]]; then
         unset ${!block_*}
@@ -775,7 +765,6 @@ done < <(awk 'NF' $manifest_file)
 
 # Perform any remaining installs
 if [[ ${#queue_config[@]} -gt 0 ]]; then
-    echo D2
     print_queue_status
 
     if [[ $dry_run != true ]]; then

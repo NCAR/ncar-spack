@@ -16,7 +16,7 @@
 #           shell script. So we must activate in the script!
 #
 #   Author:         Brian Vanderwende
-#   Last Revised:   22:31, 28 Mar 2024
+#   Last Revised:   11:42, 03 Apr 2024
 #
 
 function remove_lock {
@@ -56,40 +56,66 @@ EOF
 git add README.md
 }
 
-function create_manifest {
-spack env deactivate
-spack env activate $NCAR_SPACK_ENV_BUILD
-
-# Create package manifest for new installs
+function write_manifest_header {
 cat > $1 << EOF
 # New package installs
 # Start time: $start_time
 
 singleton:
 EOF
+}
 
-while read spec; do
-    spec_hash=$(eval spack find --format '{hash}' $spec 2> /dev/null || true)
+function create_manifest {
+    declare -A config columns
+    spack env deactivate
+    spack env activate $NCAR_SPACK_ENV_BUILD
 
-    if [[ -z $spec_hash ]]; then
-        tsecho "Error: package $spec not found in build environment!"
-        exit 1
-    fi
+    # Derive registry columns
+    for opt in ${install_params//|/ }; do
+        for n in ${!field_widths[@]}; do
+            if [[ ${field_vars[${field_widths[$n]}]} == "config[$opt]" ]]; then
+                columns[$opt]=$n
+            fi
+        done
+    done
 
-    use_cache=$(sed -n '3,$ s/ *| */|/gp' $SPACK_ENV/registry | awk -F\| -v spec="$spec" '$NF == spec {print $4; exit}')
-    publish_pkg=$(sed -n '3,$ s/ *| */|/gp' $SPACK_ENV/registry | awk -F\| -v spec="$spec" '$NF == spec {print $5; exit}')
+    # Create package manifest for new installs
+    write_manifest_header $1
 
-    if [[ ${publish_pkg:-yes} == yes ]]; then
-        if [[ $use_cache == yes ]]; then
-            echo "    $spec" >> $1
-        else
-            echo "    $spec <cache:${use_cache}>" >> $1
+    # Query all spec hashes
+    build_hashes=$(spack find -x --format '{hash}' | xargs)
+
+    while read spec; do
+        reg_line=$(sed -n '3,$ s/ *| */|/gp' $SPACK_ENV/registry | awk -F\| -v spec="$spec" '$NF == spec {print $0; exit}')
+        spec_hash=$(cut -d'|' -f1 <<< "$reg_line")
+        config=()
+
+        if [[ -z $spec_hash ]]; then
+            tsecho "Error: package $spec not found in registry file"
+            exit 1
+        elif [[ " $build_hashes " != *" $spec_hash "* ]]; then
+            tsecho "Error: package $spec not found in build environment"
+            exit 1
         fi
-    fi
-done < <(sed 's/^[ ]*- //' <<< $new_pkgs | sed '$!N; s/\n\s\s*\(.*\)/ \1/; P; D')
 
-spack env deactivate
-spack env activate $NCAR_SPACK_ENV_PUBLIC
+        for opt in ${install_params//|/ }; do
+            config[$opt]=$(cut -d'|' -f$((${column[$opt]} + 1)) <<< "$reg_line")
+        done
+
+        if [[ ${config[publish]:-yes} == yes ]]; then
+            unset config[publish]
+            entry="    $spec"
+
+            for opt in ${!config[@]}; do
+                entry="$entry <$opt:${config[$opt]}>"
+            done
+
+            echo "$entry" >> $1
+        fi
+    done < <(sed 's/^[ ]*- //' <<< $new_pkgs | sed '$!N; s/\n\s\s*\(.*\)/ \1/; P; D')
+
+    spack env deactivate
+    spack env activate $NCAR_SPACK_ENV_PUBLIC
 }
 
 function store_publish_options {
@@ -363,7 +389,7 @@ if [[ -n $rm_pkgs ]]; then
     done < <(sed 's/[ ]*- //' <<< $rm_pkgs | tac)
 fi
 
-# If there are new packages, install sequentially to ensure determinism
+# If there are new packages, install sequentially to improve determinism
 new_pkgs=$(grep -xv -f <(sed '1,/  specs:/d' spack.yaml) <(sed '1,/  specs:/d' $NCAR_SPACK_ENV_BUILD/spack.yaml) || [[ $? == 1 ]])
 
 if [[ -n $new_pkgs ]]; then
@@ -392,7 +418,7 @@ tsecho "Creating split configuration files for community use"
 mkdir -p $SPACK_ENV/config
 
 for cfg_file in config packages compilers modules mirrors repos; do
-    sed -n "/^  ${cfg_file}:/,/^  [a-z]*:/p" spack.yaml | sed '$d; s/^  //' > $SPACK_ENV/config/${cfg_file}.yaml
+    sed -n "/^  [']*${cfg_file}:[':]*/,/^  [a-z]*:/p" spack.yaml | sed '$d; s/^  //' > $SPACK_ENV/config/${cfg_file}.yaml
 
     case $cfg_file in
         mirrors)
