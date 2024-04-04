@@ -8,7 +8,7 @@
 #           and any other packages that need it
 #
 #   Author:         Brian Vanderwende
-#   Last Revised:   11:30, 03 Apr 2024
+#   Last Revised:   12:53, 04 Apr 2024
 #
 
 
@@ -22,6 +22,7 @@ Options
     -d, --dry-run           show what would be installed but do not make any changes
     -j, --buildjobs N       number of build jobs to run (otherwise will use env default)
     -p, --package-limit N   max number of packages to be installed at once (1 for sequential)
+    -r, --refresh-registry  force refresh of package recipes in the registry
     -v, --verbose           provide details on actions *not* taken
 
 EOF
@@ -42,10 +43,6 @@ manifest_file=$SPACK_ENV/packages.cfg
 build_jobs=$(spack config get config | sed -n 's/^[ ]*build_jobs: \(.*\)/\1/p')
 header_cmd='tee $log_installs'
 
-default_trust=no
-default_cache=yes
-default_publish=yes
-
 # Handle user input
 while [[ $# -gt 0 ]]; do
     case $1 in
@@ -63,6 +60,9 @@ while [[ $# -gt 0 ]]; do
         -p|--package-limit)
             package_limit=$2
             shift
+            ;;
+        -r|--refresh-registry)
+            refresh_registry=true
             ;;
         -v|--verbose)
             export log_verbosity=$((log_verbosity + 1))
@@ -106,7 +106,12 @@ function add_spec_to_queue {
         queue_config[$1]="${queue_config[$1]:+${queue_config[$1]}|}${!field_vars[$width]}"
     done
 
-    queue_config[$1]="${queue_config[$1]}|$2"
+    # Use (expensive) Spack commands to reformat into canonical Spec ordering
+    if [[ $dry_run != true ]]; then
+        spec="$(spack python -c "import spack.cmd; spack.cmd.parse_specs('$(sed "s/'/\\\'/g" <<< $spec)')[0]")"
+    fi
+
+    queue_config[$1]="${queue_config[$1]}|$spec"
     install_queue="${install_queue:+${install_queue}|}$1"
 }
 
@@ -257,7 +262,6 @@ function prepare_spec {
             [[ -n $mpi ]]  && config[$opt]="${config[$opt]} $mpi"
 
             if [[ $opt == spec_ref ]]; then
-                ref_list["^${config[$opt]}"]="^$spec"
                 tsecho " >> package will be stored using spec-reference" 2
             else
                 tsecho " >> package will be stored using hash-reference" 2
@@ -268,8 +272,17 @@ function prepare_spec {
     if [[ ${#queue_config[@]} -gt 0 ]]; then
         for opt in ${install_params//|/ }; do
             if [[ ${#active_config[@]} -gt 0 ]] && [[ ${config[$opt]} != ${active_config[$opt]} ]]; then
-                start_installs=true
-                tsecho " >> INSTALL TRIGGER - impending change in package install config: ${BCOL}$opt=${config[$opt]:-default}$DCOL" 2
+                if [[ $opt == maxjobs ]] && [[ ${config[$opt]} -lt ${build_jobs:-1} ]]; then
+                    trigger=true
+                elif [[ $opt != publish ]]; then
+                    trigger=true
+                fi
+
+                if [[ $trigger == true ]]; then
+                    start_installs=true
+                    tsecho " >> INSTALL TRIGGER - impending change in package install config: ${BCOL}$opt=${config[$opt]:-default}$DCOL" 2
+                    unset trigger
+                fi
             fi
         done
     fi
@@ -339,10 +352,10 @@ function check_registry {
         fi
     done
 
-    if [[ ${modify_registry:-false} == true ]]; then
+    if [[ ${modify_registry:-false} == true ]] || [[ ${refresh_registry:-false} == true ]]; then
         tsecho " >> modifying outdated or broken registry entry" 2
         sed -i "/^${spec_hash} .*/d" $SPACK_ENV/registry
-        add_spec_to_queue $spec_hash "$spec"
+        add_spec_to_queue $spec_hash
         add_spec_to_registry $spec_hash
         remove_spec_from_queue $spec_hash
         unset modify_registry
@@ -359,8 +372,7 @@ function print_queue_status {
 function check_spec {
     if [[ ${config[type]} == mpi ]]; then
         if [[ -n $comp ]]; then
-            mpi_spec="${spec//[[:blank:]]/}"
-            mpis[$comp]="${mpis[$comp]} $mpi_spec"
+            mpis[$comp]="${mpis[$comp]:+${mpis[$comp]}$SEP}$spec"
         else
             tsecho "Error: cannot install an MPI without setting a compiler!"
             exit 1
@@ -407,7 +419,7 @@ function check_spec {
                 spec_hash=$(grep -A2 ^Concretized <<< "$spack_spec_out" | tail -n1 | awk '{print $2}')
 
                 if [[ " $start_hashes_all " == *" $spec_hash "* ]]; then
-                    install_date=N/A add_spec_to_queue $spec_hash "$spec"
+                    install_date=N/A add_spec_to_queue $spec_hash
                     add_spec_to_registry $spec_hash
                     remove_spec_from_queue $spec_hash
                     skip_spec=true
@@ -417,15 +429,19 @@ function check_spec {
                         eval spack add $spec > /dev/null
                     fi
                 else
-                    install_date=$(date +%FT%T) add_spec_to_queue $spec_hash "$spec"
+                    install_date=$(date +%FT%T) add_spec_to_queue $spec_hash
                 fi
             else
                 spec_hash=$((++fake_hash))
-                add_spec_to_queue $spec_hash "$spec"
+                add_spec_to_queue $spec_hash
             fi
         fi
 
-        # Register the hash if requested
+        # Register the spec and/or hash if requested
+        if [[ -n ${config[spec_ref]} ]]; then
+            ref_list["^${config[$opt]}"]="^$spec"
+        fi
+
         if [[ -n ${config[hash_ref]} ]]; then
             ref_list["/${config[$opt]}"]="/$spec_hash"
         fi
@@ -628,7 +644,6 @@ log_dir=$SPACK_ENV/logs
 mkdir -p $log_dir
 log_specs=$log_dir/specs.$start_time.${SUDO_USER:-$USER}
 log_installs=$log_dir/installs.$start_time.${SUDO_USER:-$USER}
-sep=$'\n'
 
 # Make sure environment reports current state
 tsecho "Verify current environment concretization"
@@ -681,6 +696,7 @@ Concretizer reuse   = $reuse_packages
 Build jobs          = $build_jobs
 System GCC          = gcc@$sys_gcc
 Concurrent builds   = ${package_limit/-1/unlimited}
+Log verbosity       = ${log_verbosity:-0}
 
 EOF
 
@@ -739,10 +755,10 @@ while read entry; do
         case $spec_type in
             mdep)
                 for comp in $compilers; do
-                    for mpi in ${mpis[$comp]}; do
+                    while read mpi; do
                         prepare_spec || continue
                         check_spec
-                    done
+                    done <<< ${mpis[$comp]}
                 done
                 ;;
             cdep)

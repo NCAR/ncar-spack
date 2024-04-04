@@ -21,7 +21,9 @@ EOF
 my_name=$(basename "$0")
 . $my_dir/../main.cfg
 
-# Registry setup
+# The following variables are shared among multiple scripts
+# Note that shell arrays can't be exported, so we must define it here to be
+# reinstantiated for each script
 declare -A field_vars field_labels
 field_widths=( 32 19 40 4 6 7 8 )
 field_vars[32]=spec_hash
@@ -39,8 +41,10 @@ field_labels["config[trust]"]="Trust?"
 field_labels["config[cache]"]="Cached?"
 field_labels["config[publish]"]="Publish?"
 
-# These variables are used for package install config in install_packages and publish
 install_params="cache|trust|maxjobs|access"
+default_trust=no
+default_cache=yes
+default_publish=yes
 
 # Make sure nobody else is publishing to public
 if [[ -f $NCAR_SPACK_ENV_BUILD/.publock ]]; then
@@ -61,8 +65,9 @@ elif [[ -z $SPACK_ENV ]]; then
     export my_env_type=${NCAR_SPACK_ENV_TYPE:-build}
     export start_time=${NCAR_SPACK_DEPLOY_TIME:-$(date +%y%m%dT%H%M)}
 
-    # Pretty colors
+    # Pretty colors and other formatting
     export GCOL="\033[1;32m" BCOL="\033[1;34m" PCOL="\033[1;35m" RCOL="\033[1;31m" DCOL="\033[0m"
+    export SEP=$'\n'
 
     tsecho "Activating Spack $my_env_type environment"
     

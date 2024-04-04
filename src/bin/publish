@@ -16,7 +16,7 @@
 #           shell script. So we must activate in the script!
 #
 #   Author:         Brian Vanderwende
-#   Last Revised:   11:42, 03 Apr 2024
+#   Last Revised:   10:21, 04 Apr 2024
 #
 
 function remove_lock {
@@ -83,7 +83,7 @@ function create_manifest {
     write_manifest_header $1
 
     # Query all spec hashes
-    build_hashes=$(spack find -x --format '{hash}' | xargs)
+    build_hashes="$(spack find -x --format '{hash}' | xargs)"
 
     while read spec; do
         reg_line=$(sed -n '3,$ s/ *| */|/gp' $SPACK_ENV/registry | awk -F\| -v spec="$spec" '$NF == spec {print $0; exit}')
@@ -98,8 +98,8 @@ function create_manifest {
             exit 1
         fi
 
-        for opt in ${install_params//|/ }; do
-            config[$opt]=$(cut -d'|' -f$((${column[$opt]} + 1)) <<< "$reg_line")
+        for opt in ${!columns[@]}; do
+            config[$opt]=$(cut -d'|' -f$((${columns[$opt]} + 1)) <<< "$reg_line")
         done
 
         if [[ ${config[publish]:-yes} == yes ]]; then
@@ -107,7 +107,11 @@ function create_manifest {
             entry="    $spec"
 
             for opt in ${!config[@]}; do
-                entry="$entry <$opt:${config[$opt]}>"
+                def_var=default_$opt
+
+                if [[ ${config[$opt]} != ${!def_var} ]]; then
+                    entry="$entry <$opt:${config[$opt]}>"
+                fi
             done
 
             echo "$entry" >> $1
@@ -183,6 +187,9 @@ while [[ $# -gt 0 ]]; do
             ;;
         --set-default)
             set_as_default=true
+            ;;
+        -v|--verbose)
+            export log_verbosity=$((log_verbosity + 1))
             ;;
         *)
             commit_msg="$1"
