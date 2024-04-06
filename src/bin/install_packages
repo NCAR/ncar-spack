@@ -8,7 +8,7 @@
 #           and any other packages that need it
 #
 #   Author:         Brian Vanderwende
-#   Last Revised:   12:53, 04 Apr 2024
+#   Last Revised:   12:01, 06 Apr 2024
 #
 
 
@@ -81,6 +81,26 @@ done
 spec_cmd="spack spec -I -N -t -L"
 build_cmd="spack install --include-build-deps"
 
+function handle_interrupt {
+    if [[ $warned == true ]]; then
+        echo -e   "\n$RCOL >>> Second Ctrl/Cmd-c detected; forcing early exit!$DCOL\n"
+        kill -- -$shell_pid
+        wait $shell_pid 2> /dev/null
+        clear_added_specs
+        exit 1
+    else
+        echo -e   "\n$RCOL >>> User requested exit via Ctrl/Cmd-C$DCOL\n"
+
+        if [[ -n $shell_pid ]]; then
+            echo -e "$RCOL     Waiting for currently-running spack install to finish.$DCOL"
+            echo -e "$RCOL     You may enter Ctrl/Cmd-C again to exit immediately.$DCOL\n"
+            declare -g warned=true
+        else
+            exit 1
+        fi
+    fi
+}
+
 function add_spec_to_view {
 view_block=$(sed -n "/^  view:/,/^  [a-z]*:/=" $SPACK_ENV/spack.yaml | xargs | awk '{ print $1","$NF }')
 if [[ $view_block != ',' ]]; then
@@ -105,11 +125,6 @@ function add_spec_to_queue {
     for width in ${field_widths[@]}; do
         queue_config[$1]="${queue_config[$1]:+${queue_config[$1]}|}${!field_vars[$width]}"
     done
-
-    # Use (expensive) Spack commands to reformat into canonical Spec ordering
-    if [[ $dry_run != true ]]; then
-        spec="$(spack python -c "import spack.cmd; spack.cmd.parse_specs('$(sed "s/'/\\\'/g" <<< $spec)')[0]")"
-    fi
 
     queue_config[$1]="${queue_config[$1]}|$spec"
     install_queue="${install_queue:+${install_queue}|}$1"
@@ -403,6 +418,10 @@ function check_spec {
         compiler_checks
     else
         skip_spec=false spec_hash=
+
+        # Use Spack commands to reformat into canonical Spec ordering
+        parse_cmd="spack.cmd.parse_specs('$(sed "s/'/\\\'/g" <<< $spec)')[0]"
+        spec="$(PYTHONPATH=$pypath $SPACK_PYTHON -c "import spack.cmd; print($parse_cmd)")"
         registry_data=$(sed -n '3,$ s/ | /|/gp' $SPACK_ENV/registry | awk -F\| -v spec="$spec"      \
                 '$NF == spec {print $0}')
 
@@ -415,7 +434,7 @@ function check_spec {
 
         if [[ $skip_spec == false ]]; then
             if [[ $dry_run != true ]]; then
-                spack_spec_out=$(eval $spec_cmd $spec)
+                spack_spec_out=$($spec_cmd $spec)
                 spec_hash=$(grep -A2 ^Concretized <<< "$spack_spec_out" | tail -n1 | awk '{print $2}')
 
                 if [[ " $start_hashes_all " == *" $spec_hash "* ]]; then
@@ -426,7 +445,7 @@ function check_spec {
 
                     # Make sure spec is in spack.yaml
                     if [[ " $start_hashes " != *" $spec_hash "* ]]; then
-                        eval spack add $spec > /dev/null
+                        spack add $spec > /dev/null
                     fi
                 else
                     install_date=$(date +%FT%T) add_spec_to_queue $spec_hash
@@ -498,7 +517,7 @@ function check_spec {
                 log_cmd "$spec_cmd $spec" >> $log_specs
                 echo "$spack_spec_out" &>> $log_specs
                 unset spack_spec_out
-                eval spack add $spec > /dev/null
+                spack add $spec > /dev/null
 
                 if [[ $spec == lmod* ]]; then
                     new_lmod=true
@@ -511,6 +530,17 @@ function check_spec {
 
     # Activate new config for next block of installs
     refresh_config
+}
+
+function clear_added_specs {
+    while read queued_hash; do
+        if [[ $queued_hash != $spec_hash ]]; then
+            if ! grep -q "Successful.*$queued_hash" $log_installs; then
+                queued_spec=$(awk -F'|' '{print $NF}' <<< ${queue_config[$queued_hash]})
+                spack remove $queued_spec
+            fi
+        fi
+    done < <(tr '|' '\n' <<< "$install_queue")
 }
 
 function install_specs {
@@ -546,12 +576,28 @@ function install_specs {
 
     log_cmd "$build_steps" >> $log_installs
     spack concretize -j ${active_config[maxjobs]:-${build_jobs:-1}} -q > /dev/null
-    $spec_build_cmd |& tee -a $log_installs | sed -u 's/^/   /' | (grep --line-buffered             \
-            -e "Executing phase" -e "Successfully installed" -e "already installed" -e " Total: "   \
-            -e " from binary cache" -e " Error: " -e "^See build log" -e "spack-build-out.txt"      \
-            -e "Installing" | grep -v "Skipping external package" || true)
 
-    if [[ ${PIPESTATUS[0]} -eq 0 ]]; then
+    # Delayed-trapping won't work with set -e and we also enable job control
+    # for a moment to create a new process group
+    set +e -m
+
+    # If interrupt signal is active, Spack will somehow intercept; so disable in a subshell
+    (trap '' SIGINT; $spec_build_cmd |& tee -a $log_installs | sed -u 's/^/   /' |                  \
+            (grep --line-buffered -e "Executing phase" -e "Successfully installed"                  \
+            -e "already installed" -e " Total: " -e " from binary cache" -e " Error: "              \
+            -e "^See build log" -e "spack-build-out.txt" -e "Installing" |                          \
+            grep -v "Skipping external package"); exit ${PIPESTATUS[0]}) &
+
+    set +m
+    shell_pid=$!
+
+    while kill -0 $shell_pid 2> /dev/null; do
+        wait $shell_pid
+    done
+
+    set -e
+
+    if [[ $? -eq 0 ]]; then
         while read queued_hash; do
             if [[ $queued_hash != $spec_hash ]]; then
                 add_date=$(date +%FT%T) add_spec_to_registry $queued_hash
@@ -579,32 +625,19 @@ function install_specs {
         bad_pkg=$(grep -e "==> Installing" -e "==> Error" $log_installs | grep -m1 -B1 "==> Error"  \
                 | sed -n 's/.*Installing \(.*\) .*/\1/p')
         tsecho "Error: install of package $bad_pkg$ failed! Aborting installs ...\n"
-
-        while read queued_hash; do
-            if [[ $queued_hash != $spec_hash ]]; then
-                if ! grep -q "Successful.*$queued_hash" $log_installs; then
-                    queued_spec=$(awk -F'|' '{print $NF}' <<< ${queue_config[$queued_hash]})
-                    eval spack remove $queued_spec
-                fi
-            fi
-        done < <(tr '|' '\n' <<< "$install_queue")
-
+        clear_added_specs
         exit 1
     fi
 
     # Register the compiler in the YAML file
     compiler_checks
 
-    unset start_installs
-}
-
-function handle_interrupt {
-    if [[ ${user_stop:-false} == false ]]; then
-        echo -e "\n*** User stop requested. Finishing current install (C-C again to kill) ...\n"
-        user_stop=true
-    else
+    if [[ -n $warned ]]; then
+        echo -e "\n$RCOL >>> Installs are finished; proceeding with user-requested exit$DCOL\n"
         exit 1
     fi
+
+    unset start_installs shell_pid
 }
 
 function initialize_registry {
@@ -636,7 +669,6 @@ function initialize_registry {
     mv $SPACK_ENV/.registry.tmp $SPACK_ENV/registry
 }
 
-# Set up signal handler to cleanly deal with interrupts
 trap handle_interrupt SIGINT
 
 # Ensure log directory exists

@@ -46,6 +46,9 @@ default_trust=no
 default_cache=yes
 default_publish=yes
 
+# Calling Python is much faster than calling spack python but needs some setup
+pypath="$SPACK_ROOT/lib/spack/external:$SPACK_ROOT/lib/spack/external/_vendoring:$SPACK_ROOT/lib/spack"
+
 # Make sure nobody else is publishing to public
 if [[ -f $NCAR_SPACK_ENV_BUILD/.publock ]]; then
     if [[ $(cat $NCAR_SPACK_ENV_BUILD/.publock) != $NCAR_SPACK_LOCK_PID ]]; then
