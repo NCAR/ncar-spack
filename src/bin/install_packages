@@ -8,7 +8,7 @@
 #           and any other packages that need it
 #
 #   Author:         Brian Vanderwende
-#   Last Revised:   12:01, 06 Apr 2024
+#   Last Revised:   21:07, 07 Apr 2024
 #
 
 
@@ -162,6 +162,10 @@ function mask_spec {
 }
 
 function prepare_spec {
+    if [[ $manual_skip == true ]]; then
+        return 1
+    fi
+
     # Get package-specific configuration
     spec="$entry"
 
@@ -591,13 +595,14 @@ function install_specs {
     set +m
     shell_pid=$!
 
-    while kill -0 $shell_pid 2> /dev/null; do
+    while kill -0 $shell_pid 2> /dev/null || [[ -z $spack_status ]]; do
         wait $shell_pid
+        spack_status=$?
     done
 
     set -e
 
-    if [[ $? -eq 0 ]]; then
+    if [[ $spack_status -eq 0 ]]; then
         while read queued_hash; do
             if [[ $queued_hash != $spec_hash ]]; then
                 add_date=$(date +%FT%T) add_spec_to_registry $queued_hash
@@ -762,11 +767,19 @@ while read entry; do
         fi
     fi
 
-    if [[ $entry == \#* ]] || [[ $user_stop == true ]]; then
-        if [[ $entry == \#break ]] || [[ $user_stop == true ]]; then
-            echo -e "\n >> User-requested an early stop in manifest\n"
-            break
-        fi
+    if [[ $entry == \#* ]]; then
+        case $entry in
+            \#BREAK)
+                echo -e "\n >>> User-requested an early stop in manifest\n"
+                break
+                ;;
+            \#SKIP)
+                manual_skip=true
+                ;;
+            \#CONTINUE)
+                unset manual_skip
+                ;;
+        esac
     elif [[ $entry != *'<'* ]] && [[ $entry == *:* ]]; then
         unset ${!block_*}
         block_build=true
