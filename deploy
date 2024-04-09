@@ -4,7 +4,7 @@
 #   a specified cluster definition. 
 #
 #   Author:         Brian Vanderwende
-#   Last Revised:   20:09, 29 Mar 2024
+#   Last Revised:   08:58, 09 Apr 2024
 #
 
 set -e
@@ -18,7 +18,7 @@ Usage: $0 [OPTIONS] CLUSTER
 
 Options
     -h, --help                  show this help message
-    -b, --spack-branch          override the branch of the CSG Spack fork to use
+    -b, --branch                override the branch of the CSG Spack fork to use
     -k, --key OPTION            determines behavior for GPG keys. options include:
                                     auto    - generate if not found at normal path
                                     PATH    - specify the path to a private GPG key
@@ -57,7 +57,7 @@ while [[ $# -gt 0 ]]; do
         -h|--help)
             usage
             ;;
-        -b|--spack-branch)
+        -b|--branch)
             custom_branch=$2
             ;;
         -k|--key)
@@ -89,6 +89,10 @@ while [[ $# -gt 0 ]]; do
                 >&2 echo "Error: --set-version requires an argument"
                 usage 1
             fi
+            ;;
+        -*)
+            >&2 echo "Error: unrecognized option $key"
+            usage 1
             ;;
         *)
             export NCAR_SYS=$1

@@ -392,6 +392,7 @@ spack:
       variants:
       - +cuda
     hypre:
+      require:
       - one_of:
         # This should force packages to use the vendor-preferred solution
         - '%oneapi ^intel-oneapi-mkl'
@@ -537,6 +538,7 @@ spack:
       require:
       - '%gcc@7.5.0'
     magma:
+      require:
       - one_of:
         # This should force packages to use the vendor-preferred solution
         - '%oneapi ^intel-oneapi-mkl'
@@ -723,6 +725,7 @@ spack:
     perl:
       require: '%gcc@7.5.0'
     petsc:
+      require:
       - one_of:
         # This should force packages to use the vendor-preferred solution
         - '%oneapi ^intel-oneapi-mkl'
@@ -788,6 +791,7 @@ spack:
     sqlite:
       require: '%gcc@7.5.0'
     superlu:
+      require:
       - one_of:
         # This should force packages to use the vendor-preferred solution
         - '%oneapi ^intel-oneapi-mkl'
@@ -795,6 +799,7 @@ spack:
         - '%nvhpc ^nvhpc'
         - '%cce ^cray-libsci'
     superlu-dist:
+      require:
       - one_of:
         # This should force packages to use the vendor-preferred solution
         - '%oneapi ^intel-oneapi-mkl'
