@@ -8,7 +8,7 @@
 #           and any other packages that need it
 #
 #   Author:         Brian Vanderwende
-#   Last Revised:   11:52, 10 Apr 2024
+#   Last Revised:   13:55, 10 Apr 2024
 #
 
 
@@ -640,7 +640,7 @@ function install_specs {
                 # Modify spack.yaml based on access settings
                 case ${active_config[access]:-module} in
                     core)
-                        spec_name=$(spack find --format "{name}" $queued_hash)
+                        spec_name=$(spack find --format "{name}" /$queued_hash)
                         spack config add "modules:default:lmod:core_specs:$spec_name"
                         ;;
                     view)
