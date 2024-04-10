@@ -4,7 +4,7 @@
 #   a specified cluster definition. 
 #
 #   Author:         Brian Vanderwende
-#   Last Revised:   21:28, 09 Apr 2024
+#   Last Revised:   21:31, 09 Apr 2024
 #
 
 set -e
@@ -345,18 +345,20 @@ if [[ ${skip_mirror:-no} == no ]]; then
         mirror_variable=NCAR_SPACK_MIRROR_${mtype}
         mirror=${!mirror_variable}
 
-        if [[ $mirror == /* ]] && [[ ! -d $mirror ]]; then
-            if [[ $(sed 's/production/GLOBAL/;s/testing/LOCAL/' <<< $NCAR_SPACK_DEPLOY_TYPE) == $mtype ]]; then
-                spack mirror create -d $mirror -a
+        if [[ -n $mirror ]]; then
+            if [[ $mirror == /* ]] && [[ ! -d $mirror ]]; then
+                if [[ $(sed 's/production/GLOBAL/;s/testing/LOCAL/' <<< $NCAR_SPACK_DEPLOY_TYPE) == $mtype ]]; then
+                    spack mirror create -d $mirror -a
+                fi
             fi
-        fi
 
-        # Only use S3 as writable cache in production
-        if [[ $NCAR_SPACK_DEPLOY_TYPE != production ]]; then
-            mirror=$(sed 's|s3://|https://stratus.ucar.edu/|' <<< $mirror)
-        fi
+            # Only use S3 as writable cache in production
+            if [[ $NCAR_SPACK_DEPLOY_TYPE != production ]]; then
+                mirror=$(sed 's|s3://|https://stratus.ucar.edu/|' <<< $mirror)
+            fi
 
-        spack mirror add ncar_mirror_${mtype,,} $mirror
+            spack mirror add ncar_mirror_${mtype,,} $mirror
+        fi
     done
 
     spack buildcache keys --install --trust

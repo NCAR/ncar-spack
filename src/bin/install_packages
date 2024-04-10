@@ -8,7 +8,7 @@
 #           and any other packages that need it
 #
 #   Author:         Brian Vanderwende
-#   Last Revised:   21:07, 07 Apr 2024
+#   Last Revised:   11:52, 10 Apr 2024
 #
 
 
@@ -23,6 +23,7 @@ Options
     -j, --buildjobs N       number of build jobs to run (otherwise will use env default)
     -p, --package-limit N   max number of packages to be installed at once (1 for sequential)
     -r, --refresh-registry  force refresh of package recipes in the registry
+    -s, --skip-checks       don't perform certain environment sanity checks
     -v, --verbose           provide details on actions *not* taken
 
 EOF
@@ -67,7 +68,7 @@ while [[ $# -gt 0 ]]; do
         -v|--verbose)
             export log_verbosity=$((log_verbosity + 1))
             ;;
-        --skip-checks)
+        -s|--skip-checks)
             skip_checks=true
             ;;
         *)
@@ -307,45 +308,51 @@ function prepare_spec {
     fi
 }
 
-function compiler_checks {
-    # Check if this spec is indeed a compiler and whether we are making changes
-    if [[ ${config[type]} != compiler ]] || [[ ${config[register]} == no ]] || [[ $dry_run == true ]]; then
-        return
-    fi
+function store_compiler_config {
+    for opt in ${!config[@]}; do
+        compiler_config[$opt]=${config[$opt]}
+    done
 
-    if [[ $current_comps != *${comp_spec}* ]]; then
-        tsecho "Registering $comp_spec as a compiler in spack.yaml"
-        comp_template=$NCAR_SPACK_ENV_BUILD/templates/compilers/${comp_spec%%@*}
+    compiler_config[spec]="$spec"
+    compiler_config[comp_spec]="$comp_spec"
+}
+
+function compiler_checks {
+    if [[ $current_comps != *${compiler_config[comp_spec]}* ]]; then
+        tsecho "Registering ${compiler_config[comp_spec]} as a compiler in spack.yaml"
+        comp_template=$NCAR_SPACK_ENV_BUILD/templates/compilers/${compiler_config[comp_spec]%%@*}
 
         if [[ ! -f $comp_template ]]; then
-            tsecho "Error: no compiler template found for $comp_spec"
+            tsecho "Error: no compiler template found for ${compiler_config[comp_spec]}"
         fi
 
-        if [[ $current_comps == *${comp_spec}* ]]; then
-            tsecho "(replacing existing compiler $comp_spec)"
-            spack compiler remove $comp_spec
+        if [[ $current_comps == *${compiler_config[comp_spec]}* ]]; then
+            tsecho "(replacing existing compiler ${compiler_config[comp_spec]})"
+            spack compiler remove ${compiler_config[comp_spec]}
         fi
 
         if [[ -z $os ]]; then
             os=$(spack arch -o)
         fi
 
-        if [[ ${config[build]:-true} == true ]]; then
-            read -r root version <<< $(spack find --format "{prefix} {version}" $spec)
+        if [[ ${compiler_config[build]:-true} == true ]]; then
+            read -r root version <<< $(spack find --format "{prefix} {version}" ${compiler_config[spec]})
         else
-            if [[ ${config[modifier]} == cray ]]; then
+            if [[ ${compiler_config[modifier]} == cray ]]; then
                 root=/opt/cray
             else
                 root=/usr
             fi
 
-            version=${comp_spec#*@}
+            version=${compiler_config[comp_spec]#*@}
         fi
 
         sed -i 's/^\(  compilers:\)[ ]*\[\]/\1/' $SPACK_ENV/spack.yaml
         block_end=$(expr $(sed -n "1,/^  '*compilers[:']*/d;/^  [^- ].*/ {=;q}" spack.yaml) - 1)
         . $comp_template | sed -i "$block_end r /dev/stdin" $SPACK_ENV/spack.yaml
     fi
+
+    compiler_config=()
 }
 
 function check_registry {
@@ -383,7 +390,13 @@ function check_registry {
 
 function print_queue_status {
     if [[ $package_limit -ne 1 ]]; then
-        tsecho "Beginning installs with ${#queue_config[@]} specs in the queue"
+        if [[ ${#queue_config[@]} -gt 1 ]]; then
+            package_count=$((${#queue_config[@]} - 1))
+        else
+            package_count=1
+        fi
+
+        tsecho "Beginning installs with $package_count specs in the queue"
         tsecho " >> active config = $(declare -p active_config | cut -d= -f2-)"
     fi
 }
@@ -419,7 +432,11 @@ function check_spec {
 
     if [[ ${config[build]} == false ]]; then
         tsecho "Skipping spec   $PCOL$spec$BCOL$type_msg$DCOL (reason: build=false specified)" 1
-        compiler_checks
+
+        if [[ ${config[type]} == compiler ]] && [[ ${config[register]} != no ]] && [[ $dry_run != true ]]; then
+            store_compiler_config
+            compiler_checks
+        fi
     else
         skip_spec=false spec_hash=
 
@@ -475,10 +492,12 @@ function check_spec {
 
         # Finalize cache status
         if [[ $NCAR_SPACK_PAD_LENGTH != 0 ]]; then
-            if [[ ${config[cache]:-${prefer_cache:-no}} == yes ]]; then
-                cache_label=" (cached)"
-            elif [[ ${config[cache]} == deps ]]; then
-                cache_label=" (cached dependencies)"
+            if [[ ${prefer_cache:-no} == yes ]]; then
+                if [[ ${active_config[cache]} == deps ]]; then
+                    cache_label=" (require cached dependencies)"
+                else
+                    cache_label=" (require cache)"
+                fi
             fi
         else
             active_config[cache]=no
@@ -500,9 +519,16 @@ function check_spec {
             fi
         fi
 
+        if [[ ${config[type]} == compiler ]] && [[ ${config[register]} != no ]] && [[ $dry_run != true ]]; then
+            store_compiler_config
+        fi
+
         if [[ $skip_spec == true ]]; then
             tsecho "Skipping spec   $PCOL$spec$BCOL$type_msg$DCOL (reason: already installed)" 1
-            compiler_checks
+
+            if [[ ${#compiler_config[@]} -gt 0 ]]; then
+                compiler_checks
+            fi
         else
             if [[ -n ${config[type]} ]]; then
                 tsecho "$spack_action $GCOL$spec $BCOL(${config[type]})$DCOL$cache_label"
@@ -523,8 +549,10 @@ function check_spec {
                 unset spack_spec_out
                 spack add $spec > /dev/null
 
-                if [[ $spec == lmod* ]]; then
-                    new_lmod=true
+                if [[ $spec == lmod* ]] && ! module -v 2> /dev/null; then
+                    checks_lmod=true
+                    start_installs=true
+                    tsecho " >> INSTALL TRIGGER - Lmod is being installed on system with no modules" 2
                 fi
             fi
         fi
@@ -634,12 +662,30 @@ function install_specs {
         exit 1
     fi
 
-    # Register the compiler in the YAML file
-    compiler_checks
+    # If spec is a compiler, register in the YAML file
+    if [[ ${#compiler_config[@]} -gt 0 ]]; then
+        compiler_checks
+    fi
 
     if [[ -n $warned ]]; then
         echo -e "\n$RCOL >>> Installs are finished; proceeding with user-requested exit$DCOL\n"
         exit 1
+    fi
+
+    if [[ ${skip_checks:-false} == false ]]; then
+        if [[ $checks_lmod == true ]]; then
+            echo -e "\n====="
+            echo "Notice: module command not in environment but Lmod just installed"
+            echo "        to avoid install failures, halting installs at $spec"
+            failed_checks=true
+        fi
+
+        if [[ $failed_checks == true ]]; then
+            echo -e "       (use --skip-checks option to avoid this stoppage)\n"
+            exit
+        fi
+
+        unset ${!checks_*}
     fi
 
     unset start_installs shell_pid
@@ -745,28 +791,12 @@ initialize_registry
 echo -e "Processing install manifest ...\n"
 
 # Associative arrays to store mpis and requested hashes
-declare -A mpis ref_list config queue_config active_config
+declare -A mpis ref_list config queue_config active_config compiler_config
 
 # Create some global tracking variables
 spec= comp= mpi= start_installs= trigger_active=
 
 while read entry; do
-    if [[ ${skip_checks:-false} == false ]]; then
-        if [[ $new_lmod == true ]] && ! module -v 2> /dev/null; then
-            echo -e "\n====="
-            echo "Notice: module command not in environment but Lmod just installed"
-            echo "        to avoid install failures, halting installs at $entry"
-            failed_checks=true
-        else
-            unset new_lmod
-        fi
-
-        if [[ $failed_checks == true ]]; then
-            echo -e "       (use --skip-checks option to avoid this stoppage)\n"
-            exit
-        fi
-    fi
-
     if [[ $entry == \#* ]]; then
         case $entry in
             \#BREAK)
