@@ -16,7 +16,7 @@
 #           shell script. So we must activate in the script!
 #
 #   Author:         Brian Vanderwende
-#   Last Revised:   09:28, 06 Apr 2024
+#   Last Revised:   14:14, 10 Apr 2024
 #
 
 function remove_lock {
@@ -234,6 +234,7 @@ fi
 tsecho "Checking Spack repo for uncommitted changes"
 spack_test=$(cd $SPACK_ROOT; git status --porcelain | grep var/spack/repos/builtin || true)
 
+if [[ $NCAR_SPACK_DEPLOY_TYPE == production ]]; then
 if [[ -n $spack_test ]]; then
 >&2 cat << EOF
 
@@ -246,6 +247,9 @@ $spack_test
 
 EOF
 exit 1
+fi
+else
+tsecho " >> CHANGES DETECTED, but allowing as this isn't a production deployment"
 fi
 
 # Make sure build cache is up to date
