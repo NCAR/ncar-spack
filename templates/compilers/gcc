@@ -1,7 +1,7 @@
 if [[ $root == /opt/cray* ]]; then
 cat << EOF
   - compiler:
-      spec: $comp_spec
+      spec: ${compiler_config[comp_spec]}
       paths:
         cc: cc
         cxx: CC
@@ -19,7 +19,7 @@ EOF
 else
 cat << EOF
   - compiler:
-      spec: $comp_spec 
+      spec: ${compiler_config[comp_spec]}
       paths:
         cc: $root/bin/gcc
         cxx: $root/bin/g++

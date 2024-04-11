@@ -1,6 +1,6 @@
 cat << EOF
   - compiler:
-      spec: $comp_spec 
+      spec: ${compiler_config[comp_spec]}
       paths:
         cc: $root/bin/clang
         cxx: $root/bin/clang
