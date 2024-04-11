@@ -33,6 +33,10 @@ setenv("NCAR_ENV_VERSION",  "%VERSION%")
 setenv("NCAR_HOST",         "%HOST%")
 setenv("QSCACHE_SERVER",    "%HOST%")
 
+-- Spack settings
+setenv("NCAR_ENV_CONFIG",   "%CONFIG%")
+setenv("NCAR_ENV_SPACK",    "%SPACKROOT%")
+
 -- Globus collection UUIDS
 setenv("NCAR_GLOBUS_GLADE",     "d33b3614-6d04-11e5-ba46-22000b92c6ec")
 setenv("NCAR_GLOBUS_CAMPAIGN",  "6b5ab960-7bbf-11e8-9450-0a6d4e044368")

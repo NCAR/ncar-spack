@@ -8,7 +8,7 @@
 #           and any other packages that need it
 #
 #   Author:         Brian Vanderwende
-#   Last Revised:   13:55, 10 Apr 2024
+#   Last Revised:   20:28, 10 Apr 2024
 #
 
 
@@ -642,13 +642,16 @@ function install_specs {
                     core)
                         spec_name=$(spack find --format "{name}" /$queued_hash)
                         spack config add "modules:default:lmod:core_specs:$spec_name"
+                        tsecho " >> Setting package as core_spec: $queued_spec" 2
                         ;;
                     view)
                         spack config add "modules:default:lmod:exclude:$queued_spec"
                         add_spec_to_view "$queued_spec"
+                        tsecho " >> Adding package to the view:   $queued_spec" 2
                         ;;
                     none)
                         spack config add "modules:default:lmod:exclude:$queued_spec"
+                        tsecho " >> Excluding package from tree:  $queued_spec" 2
                         ;;
                 esac
             fi
