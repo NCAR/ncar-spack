@@ -8,7 +8,7 @@
 #           and any other packages that need it
 #
 #   Author:         Brian Vanderwende
-#   Last Revised:   20:28, 10 Apr 2024
+#   Last Revised:   00:38, 11 Apr 2024
 #
 
 
@@ -328,7 +328,7 @@ function compiler_checks {
 
         if [[ $current_comps == *${compiler_config[comp_spec]}* ]]; then
             tsecho "(replacing existing compiler ${compiler_config[comp_spec]})"
-            spack compiler remove ${compiler_config[comp_spec]}
+            eval spack compiler remove ${compiler_config[comp_spec]}
         fi
 
         if [[ -z $os ]]; then
@@ -336,7 +336,7 @@ function compiler_checks {
         fi
 
         if [[ ${compiler_config[build]:-true} == true ]]; then
-            read -r root version <<< $(spack find --format "{prefix} {version}" ${compiler_config[spec]})
+            read -r root version <<< $(eval spack find --format "{prefix} {version}" ${compiler_config[spec]})
         else
             if [[ ${compiler_config[modifier]} == cray ]]; then
                 root=/opt/cray
@@ -455,7 +455,7 @@ function check_spec {
 
         if [[ $skip_spec == false ]]; then
             if [[ $dry_run != true ]]; then
-                spack_spec_out=$($spec_cmd $spec)
+                spack_spec_out=$(eval $spec_cmd $spec)
                 spec_hash=$(grep -A2 ^Concretized <<< "$spack_spec_out" | tail -n1 | awk '{print $2}')
 
                 if [[ " $start_hashes_all " == *" $spec_hash "* ]]; then
@@ -466,7 +466,7 @@ function check_spec {
 
                     # Make sure spec is in spack.yaml
                     if [[ " $start_hashes " != *" $spec_hash "* ]]; then
-                        spack add $spec > /dev/null
+                        eval spack add $spec > /dev/null
                     fi
                 else
                     install_date=$(date +%FT%T) add_spec_to_queue $spec_hash
@@ -547,7 +547,7 @@ function check_spec {
                 log_cmd "$spec_cmd $spec" >> $log_specs
                 echo "$spack_spec_out" &>> $log_specs
                 unset spack_spec_out
-                spack add $spec > /dev/null
+                eval spack add $spec > /dev/null
 
                 if [[ $spec == lmod* ]] && ! module -v 2> /dev/null; then
                     checks_lmod=true
@@ -569,7 +569,7 @@ function clear_added_specs {
         if [[ $queued_hash != $spec_hash ]]; then
             if ! grep -q "Successful.*$queued_hash" $log_installs; then
                 queued_spec=$(awk -F'|' '{print $NF}' <<< ${queue_config[$queued_hash]})
-                spack remove $queued_spec
+                eval spack remove $queued_spec
             fi
         fi
     done < <(tr '|' '\n' <<< "$install_queue")
