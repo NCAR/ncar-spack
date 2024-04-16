@@ -34,8 +34,11 @@ setenv("NCAR_HOST",         "%HOST%")
 setenv("QSCACHE_SERVER",    "%HOST%")
 
 -- Spack settings
-setenv("NCAR_ENV_CONFIG",   "%CONFIG%")
-setenv("NCAR_ENV_SPACK",    "%SPACKROOT%")
+local envpath = "%ENVROOT%"
+setenv("NCAR_ENV_CONFIG",   pathJoin(envpath, "config"))
+setenv("NCAR_ENV_SPACK",    pathJoin(envpath, "spack"))
+setenv("NCAR_ENV_REGISTRY", pathJoin(envpath, "registry"))
+setenv("NCAR_ENV_HASH",     "%GITHASH%")
 
 -- Globus collection UUIDS
 setenv("NCAR_GLOBUS_GLADE",     "d33b3614-6d04-11e5-ba46-22000b92c6ec")

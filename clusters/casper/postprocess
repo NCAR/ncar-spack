@@ -140,9 +140,9 @@ done
 
 # ===== CREATE META-MODULES =====
 
-function hide_module {
-    hl_file=$SPACK_ENV/util/hidden-modules
+hl_file=$SPACK_ENV/util/hidden-modules
 
+function hide_module {
     if [[ -f $hl_file ]]; then
         if grep -q $1 $hl_file; then
             return
@@ -153,6 +153,7 @@ function hide_module {
 }
 
 sys_gcc=gcc@$(gcc -dumpfullversion)
+spack_commit=$(cd $SPACK_ROOT; git rev-parse HEAD)
 
 if [[ $core_gcc != $sys_gcc ]]; then
     tsecho "Locate the core compiler for ncarenv"
@@ -176,6 +177,9 @@ for mod_type in ncarenv ncarenv-basic; do
     sed -i "s|%HOST%|$NCAR_SPACK_HOST|g" $tm_file
     sed -i "s|%TMPROOT%|$NCAR_SPACK_TMPROOT|g" $tm_file
     sed -i "s|%CCROOT%|${cc_root}|g" $tm_file
+    sed -i "s|%MODRC%|$hl_file|g" $tm_file
+    sed -i "s|%ENVROOT%|$NCAR_SPACK_ROOT_DEPLOYMENT|g" $tm_file
+    sed -i "s|%GITHASH%|$spack_commit|g" $tm_file
     mv $tm_file $mm_file
 
     if [[ $mod_type != ncarenv ]]; then
@@ -359,7 +363,7 @@ for prog in $wrapped_progs; do
         done
 
         unset py_path
-    done < <(spack find --format "{name} {version} {hash:4} {prefix}" $prog)
+    done < <(spack find --format "{name} {version} {hash:4} {prefix}" $prog 2> /dev/null)
 done
 
 # ===== SET UP PERL LIBRARY =====

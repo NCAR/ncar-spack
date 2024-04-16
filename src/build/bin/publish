@@ -16,7 +16,7 @@
 #           shell script. So we must activate in the script!
 #
 #   Author:         Brian Vanderwende
-#   Last Revised:   00:35, 11 Apr 2024
+#   Last Revised:   17:09, 12 Apr 2024
 #
 
 function remove_lock {
@@ -234,8 +234,8 @@ fi
 tsecho "Checking Spack repo for uncommitted changes"
 spack_test=$(cd $SPACK_ROOT; git status --porcelain | grep var/spack/repos/builtin || true)
 
-if [[ $NCAR_SPACK_DEPLOY_TYPE == production ]]; then
 if [[ -n $spack_test ]]; then
+if [[ $NCAR_SPACK_DEPLOY_TYPE == production ]]; then
 >&2 cat << EOF
 
 Error:  Uncommitted package changes detected in the deployment's Spack repo.
@@ -247,9 +247,9 @@ $spack_test
 
 EOF
 exit 1
-fi
 else
 tsecho " >> CHANGES DETECTED, but allowing as this isn't a production deployment"
+fi
 fi
 
 # Make sure build cache is up to date
@@ -429,7 +429,7 @@ fi
 tsecho "Creating split configuration files for community use"
 mkdir -p $SPACK_ENV/config
 
-for cfg_file in config packages compilers modules mirrors repos; do
+for cfg_file in config packages compilers modules mirrors repos concretizer; do
     sed -n "/^  [']*${cfg_file}:[':]*/,/^  [a-z]*:/p" spack.yaml | sed '$d; s/^  //' > $SPACK_ENV/config/${cfg_file}.yaml
 
     case $cfg_file in
@@ -452,11 +452,11 @@ if [[ -f $NCAR_SPACK_ENV_BUILD/bin/postprocess ]]; then
     NCAR_SPACK_ENV_TYPE=public $NCAR_SPACK_ENV_BUILD/bin/postprocess 
 fi
 
-if [[ ! -e $NCAR_SPACK_ROOT_DEPLOYMENT/util ]]; then
-    for public_dir in util config; do
-        ln -sf $SPACK_ENV/$public_dir $NCAR_SPACK_ROOT_DEPLOYMENT/$public_dir
-    done
-fi
+for object in util config registry; do
+    if [[ ! -e $NCAR_SPACK_ROOT_DEPLOYMENT/$object ]]; then
+        ln -sf $SPACK_ENV/$object $NCAR_SPACK_ROOT_DEPLOYMENT/$object
+    fi
+done
 
 if [[ ! -d $NCAR_SPACK_ROOT_PUBLIC/default ]] || [[ $set_as_default == true ]]; then
     tsecho "Setting environment as default public environment"
