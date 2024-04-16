@@ -1,0 +1,42 @@
+#!/bin/bash
+
+env_args=( SPACK_DISABLE_LOCAL_CONFIG=true )
+my_dir="$( cd "$(dirname "$0")" ; pwd )"
+NCAR_SPACK_ROOT=$(readlink -f $my_dir/..)
+
+if [[ ! -f $NCAR_SPACK_ROOT/bin/spack ]]; then
+    >&2 echo "Error: script is not installed into a Spack clone"
+    exit 1
+fi
+
+NCAR_SPACK_STARTUP=$NCAR_SPACK_ROOT/share/spack/setup-env.sh
+
+if [[ $0 == *tcsh ]]; then
+    NCAR_SPACK_STARTUP=${NCAR_SPACK_STARTUP/%.sh/.csh}
+    SHELL_INIT="/bin/tcsh -f"
+    
+    if [[ $# -eq 0 ]] && [[ -n $NCAR_SPACK_STARTUP ]]; then
+        echo "To init Spack, run:"
+        echo "    source \$NCAR_SPACK_STARTUP"
+        echo
+    fi
+else
+    SHELL_INIT="/bin/bash --noprofile"
+
+    if [[ $# -eq 0 ]]; then
+        env_args+=( PS1="\[\e[1;34m\][clean]\[\e[0m\] ${NCAR_SPACK_PROMPT:-\W$ }" )
+        SHELL_INIT="$SHELL_INIT --rcfile $NCAR_SPACK_ROOT/share/ncar/init.sh"
+    else
+        SHELL_INIT="BASH_ENV=$NCAR_SPACK_ROOT/share/ncar/init.sh $SHELL_INIT --norc"
+    fi
+fi
+
+env_args+=( PATH=/usr/local/bin:/usr/bin:/bin )
+
+for pass_vars in USER SUDO_USER HOME TERM SPACK_SYSTEM_CONFIG_PATH ${!NCAR_SPACK_*} LS_COLORS TMPDIR ${!GIT_*} SPACK_PYTHON VIMINIT; do
+    if [[ -n ${!pass_vars} ]]; then
+        env_args+=( $pass_vars="${!pass_vars}" )
+    fi
+done
+
+exec env -i "${env_args[@]}" $SHELL_INIT "$@"

@@ -4,7 +4,7 @@
 #   a specified cluster definition. 
 #
 #   Author:         Brian Vanderwende
-#   Last Revised:   21:31, 09 Apr 2024
+#   Last Revised:   22:44, 15 Apr 2024
 #
 
 set -e
@@ -182,6 +182,9 @@ if [[ $NCAR_SPACK_ROOT != $spack_clone_path ]]; then
     # Add original Spack repo as an upstream for checking out recipe updates
     git remote add upstream git@github.com:spack/spack.git
 
+    # Copy NCAR scripts into the clone
+    cp -r src/spack/* $spack_clone_path
+
     # Set prompt label in clean_bash script
     sed -i "s/\[clean\]/\[${NCAR_SPACK_HOST}-${NCAR_SPACK_HOST_VERSION}\]/" $spack_clone_path/bin/clean_bash
 
@@ -275,7 +278,7 @@ echo "Creating env at $NCAR_SPACK_ENV_BUILD ..."
 # All spack needs for an env is a directory with spack.yaml
 mkdir -p $NCAR_SPACK_ENV_BUILD/logs
 cp clusters/$NCAR_SYS/spack.yaml $NCAR_SPACK_ENV_BUILD
-cp -r src/* $NCAR_SPACK_ENV_BUILD
+cp -r src/build/* $NCAR_SPACK_ENV_BUILD
 
 cat > $NCAR_SPACK_ENV_BUILD/main.cfg << EOF
 NCAR_SPACK_DEPLOY_TYPE=$NCAR_SPACK_DEPLOY_TYPE
@@ -340,6 +343,8 @@ if [[ $NCAR_SPACK_PAD_LENGTH != 0 ]]; then
     spack config add "config:install_tree:padded_length:${NCAR_SPACK_PAD_LENGTH:-128}"
 fi
 
+signing_keys=$(spack gpg list --signing | awk 'f{print;f=0} /^sec /{f=1}')
+
 if [[ ${skip_mirror:-no} == no ]]; then
     for mtype in LOCAL GLOBAL; do
         mirror_variable=NCAR_SPACK_MIRROR_${mtype}
@@ -358,9 +363,15 @@ if [[ ${skip_mirror:-no} == no ]]; then
             fi
 
             spack mirror add ncar_mirror_${mtype,,} $mirror
+
+            # Make sure signing keys are pushed (and index regenerated!)
+            for key in $signing_keys; do
+                spack gpg publish --rebuild-index -m ncar_mirror_${mtype,,} $key
+            done
         fi
     done
 
+    # Install any known keys from the cache
     spack buildcache keys --install --trust
 fi
 

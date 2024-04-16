@@ -46,3 +46,6 @@ spack:
   view: false
   concretizer:
     unify: false
+    reuse: false
+  repos:
+  - $spack/var/spack/repos/ncar.hpcd
