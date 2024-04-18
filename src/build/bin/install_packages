@@ -8,7 +8,7 @@
 #           and any other packages that need it
 #
 #   Author:         Brian Vanderwende
-#   Last Revised:   00:38, 11 Apr 2024
+#   Last Revised:   23:17, 17 Apr 2024
 #
 
 
@@ -20,7 +20,10 @@ Options
     -h                      show this help message
     -c, --prefer-cache      specify that cached versions of packages should be used
     -d, --dry-run           show what would be installed but do not make any changes
-    -j, --buildjobs N       number of build jobs to run (otherwise will use env default)
+    -j, --jobs-per-task N   number of build jobs per spack install task
+                            (will use value in spack.yaml if unspecified)
+    -l, --host-list HOSTS   specify build hosts (comma-separated list, "cluster", or "pbs")
+    -n, --num-tasks N       number of concurrent calls to spack install (default 1)
     -p, --package-limit N   max number of packages to be installed at once (1 for sequential)
     -r, --refresh-registry  force refresh of package recipes in the registry
     -s, --skip-checks       don't perform certain environment sanity checks
@@ -54,8 +57,16 @@ while [[ $# -gt 0 ]]; do
             header_cmd="cat"
             dry_run=true
             ;;
-        -j|--build-jobs|--buildjobs)
+        -j|--jobs-per-task)
             build_jobs=$2
+            shift
+            ;;
+        -l|--host-list|--hostlist)
+            build_hosts=$2
+            shift
+            ;;
+        -n|--num-tasks)
+            num_tasks=$2
             shift
             ;;
         -p|--package-limit)
@@ -97,6 +108,7 @@ function handle_interrupt {
             echo -e "$RCOL     You may enter Ctrl/Cmd-C again to exit immediately.$DCOL\n"
             declare -g warned=true
         else
+            clear_added_specs
             exit 1
         fi
     fi
@@ -390,10 +402,10 @@ function check_registry {
 
 function print_queue_status {
     if [[ $package_limit -ne 1 ]]; then
-        if [[ ${#queue_config[@]} -gt 1 ]]; then
+        if [[ " ${!queue_config[@]} " == *" $spec_hash "* ]]; then
             package_count=$((${#queue_config[@]} - 1))
         else
-            package_count=1
+            package_count=${#queue_config[@]}
         fi
 
         tsecho "Beginning installs with $package_count specs in the queue"
@@ -567,7 +579,7 @@ function check_spec {
 function clear_added_specs {
     while read queued_hash; do
         if [[ $queued_hash != $spec_hash ]]; then
-            if ! grep -q "Successful.*$queued_hash" $log_installs; then
+            if ! grep -q "Successful.*$queued_hash" ${log_installs}*; then
                 queued_spec=$(awk -F'|' '{print $NF}' <<< ${queue_config[$queued_hash]})
                 eval spack remove $queued_spec
             fi
@@ -608,24 +620,53 @@ function install_specs {
 
     log_cmd "$build_steps" >> $log_installs
     spack concretize -j ${active_config[maxjobs]:-${build_jobs:-1}} -q > /dev/null
+    shell_pids= spack_status=0
 
     # Delayed-trapping won't work with set -e and we also enable job control
     # for a moment to create a new process group
     set +e -m
 
     # If interrupt signal is active, Spack will somehow intercept; so disable in a subshell
-    (trap '' SIGINT; $spec_build_cmd |& tee -a $log_installs | sed -u 's/^/   /' |                  \
-            (grep --line-buffered -e "Executing phase" -e "Successfully installed"                  \
-            -e "already installed" -e " Total: " -e " from binary cache" -e " Error: "              \
-            -e "^See build log" -e "spack-build-out.txt" -e "Installing" |                          \
-            grep -v "Skipping external package"); exit ${PIPESTATUS[0]}) &
+    for n in $(seq $num_tasks); do
+        prefix=" $FCOL[${build_hosts[$h]}:$n]$DCOL "
 
+        if [[ $my_host == ${build_hosts[$h]} ]]; then
+            my_build_cmd=$spec_build_cmd
+        else
+            my_build_cmd="ssh -n ${build_hosts[$h]} $my_dir/tools/remote_command $spec_build_cmd"
+        fi
+
+        if [[ $num_tasks -eq 1 ]]; then
+            my_log=$log_installs
+        else
+            my_log=${log_installs}.$n
+        fi
+
+        (trap '' SIGINT; $my_build_cmd |& tee -a $my_log | sed -u "s/^/$prefix/" |                  \
+                (grep --line-buffered -e "Executing phase" -e "Successfully installed"              \
+                -e "already installed" -e " Total: " -e " from binary cache" -e " Error: "          \
+                -e "^See build log" -e "spack-build-out.txt" -e "Installing" |                      \
+                grep -v "Skipping external package"); exit ${PIPESTATUS[0]}) &
+        shell_pids="$shell_pids $! "
+        ((h++))
+
+        if [[ $h -eq ${#build_hosts[@]} ]]; then
+            h=0
+        fi
+    done
     set +m
-    shell_pid=$!
 
-    while kill -0 $shell_pid 2> /dev/null || [[ -z $spack_status ]]; do
-        wait $shell_pid
-        spack_status=$?
+    while [[ -n $shell_pids ]]; do
+        my_pid=$(awk '{print $1}' <<< $shell_pids)
+
+        while kill -0 $my_pid 2> /dev/null && [[ -z $my_status ]]; do
+            wait $my_pid
+            my_status=$?
+        done
+
+        spack_status=$((spack_status + my_status))
+        shell_pids=${shell_pids/ $my_pid }
+        unset my_status
     done
 
     set -e
@@ -658,8 +699,8 @@ function install_specs {
         done < <(tr '|' '\n' <<< "$install_queue")
     else
         # Remove failed specs to avoid uninstalled packages in spack.yaml
-        bad_pkg=$(grep -e "==> Installing" -e "==> Error" $log_installs | grep -m1 -B1 "==> Error"  \
-                | sed -n 's/.*Installing \(.*\) .*/\1/p')
+        bad_pkg=$(grep -h -e "==> Installing" -e "==> Error" ${log_installs}*                       \
+                | grep -m1 -B1 "==> Error" | sed -n 's/.*Installing \(.*\) .*/\1/p')
         tsecho "Error: install of package $bad_pkg$ failed! Aborting installs ...\n"
         clear_added_specs
         exit 1
@@ -764,6 +805,32 @@ else
     exit 1
 fi
 
+if [[ ${num_tasks:-1} -eq 1 ]]; then
+    num_tasks=1
+fi
+
+if [[ -z $build_hosts ]]; then
+    build_hosts=($my_host)
+elif [[ $build_hosts == pbs ]]; then
+    if [[ -n $PBS_NODEFILE ]]; then
+        build_hosts=($(uniq $PBS_NODEFILE))
+    else
+        tsecho "Error: pbs hosts requested but PBS_NODEFILE is not set (Are we in a PBS job?)"
+        exit 1
+    fi
+else
+    if [[ $build_hosts == cluster ]]; then
+        if [[ -n $NCAR_SPACK_BUILD_HOSTS ]]; then
+            build_hosts=$NCAR_SPACK_BUILD_HOSTS
+        else
+            tsecho "Error: cluster hosts requested but NCAR_SPACK_BUILD_HOSTS is not set"
+            exit 1
+        fi
+    fi
+
+    build_hosts=($(tr ',' ' ' <<< $build_hosts))
+fi
+
 if [[ $dry_run == true ]]; then
 cat << EOF
 
@@ -779,9 +846,12 @@ Package manifest    = $manifest_file
 Spack version       = $spack_commit
 Concretizer reuse   = $reuse_packages
 
-Build jobs          = $build_jobs
+Spack install tasks = ${num_tasks:-1}
+Build jobs per task = $build_jobs
+Build host(s)       = ${build_hosts[@]}
+
 System GCC          = gcc@$sys_gcc
-Concurrent builds   = ${package_limit/-1/unlimited}
+Concurrent specs    = ${package_limit/-1/unlimited}
 Log verbosity       = ${log_verbosity:-0}
 
 EOF
@@ -797,7 +867,7 @@ echo -e "Processing install manifest ...\n"
 declare -A mpis ref_list config queue_config active_config compiler_config
 
 # Create some global tracking variables
-spec= comp= mpi= start_installs= trigger_active=
+spec= comp= mpi= start_installs=
 
 while read entry; do
     if [[ $entry == \#* ]]; then
@@ -859,10 +929,10 @@ done < <(awk 'NF' $manifest_file)
 
 # Perform any remaining installs
 if [[ ${#queue_config[@]} -gt 0 ]]; then
+    unset spec_hash
     print_queue_status
 
     if [[ $dry_run != true ]]; then
-        unset spec_hash
         install_specs
     fi
 fi

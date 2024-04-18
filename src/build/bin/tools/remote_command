@@ -1,0 +1,8 @@
+#!/bin/bash --noprofile
+
+# Perform common script setup including environment checks
+my_dir=${my_dir:-"$( cd "$(dirname "$0")"/.. ; pwd )"}
+quiet_mode=on
+. $my_dir/tools/init.sh
+
+$@

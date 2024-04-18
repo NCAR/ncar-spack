@@ -58,7 +58,7 @@ if [[ -f $NCAR_SPACK_ENV_BUILD/.publock ]]; then
 fi
 
 if [[ $NCAR_SPACK_CLEAN != true ]]; then
-    tsecho "Sanitizing user environment"
+    tsecho "Sanitizing user environment" ${quiet_mode:+9999}
     export TMPDIR=${NCAR_SPACK_TMPROOT}/$USER/temp; mkdir -p $TMPDIR
     NCAR_SPACK_CLEAN=true $NCAR_SPACK_ROOT_DEPLOYMENT/spack/bin/clean_bash $0 "$@"
     exit $?
@@ -69,10 +69,10 @@ elif [[ -z $SPACK_ENV ]]; then
     export start_time=${NCAR_SPACK_DEPLOY_TIME:-$(date +%y%m%dT%H%M)}
 
     # Pretty colors and other formatting
-    export GCOL="\033[1;32m" BCOL="\033[1;34m" PCOL="\033[1;35m" RCOL="\033[1;31m" DCOL="\033[0m"
-    export SEP=$'\n'
+    export GCOL=$(printf "\033[1;32m") BCOL=$(printf "\033[1;34m") PCOL=$(printf "\033[1;35m")
+    export RCOL=$(printf "\033[1;31m") FCOL=$(printf "\033[0;37m") DCOL=$(printf "\033[0m") SEP=$'\n'
 
-    tsecho "Activating Spack $my_env_type environment"
+    tsecho "Activating Spack $my_env_type environment" ${quiet_mode:+9999}
     
     if [[ -f $NCAR_SPACK_ROOT_ENVS/$my_env_type/spack.yaml ]]; then
         spack env activate $NCAR_SPACK_ROOT_ENVS/$my_env_type
@@ -82,7 +82,7 @@ elif [[ -z $SPACK_ENV ]]; then
         exit 1
     fi
 
-    tsecho "Testing whether user is owner of $my_env_type env"
+    tsecho "Testing whether user is owner of $my_env_type env" ${quiet_mode:+9999}
     export spack_env_user=$(stat -c "%U" $SPACK_ENV)
 
     if [[ $USER != $spack_env_user ]]; then
@@ -91,7 +91,7 @@ elif [[ -z $SPACK_ENV ]]; then
         exit 1
     fi
 
-    tsecho "Ensure specs list is flow-style YAML"
+    tsecho "Ensure specs list is flow-style YAML" ${quiet_mode:+9999}
 
     if grep -q -E '^ +specs: +\[' $SPACK_ENV/spack.yaml; then
         spack python $my_dir/tools/fix_specs.py
