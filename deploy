@@ -4,7 +4,7 @@
 #   a specified cluster definition. 
 #
 #   Author:         Brian Vanderwende
-#   Last Revised:   22:44, 15 Apr 2024
+#   Last Revised:   13:35, 18 Apr 2024
 #
 
 set -e
@@ -183,7 +183,7 @@ if [[ $NCAR_SPACK_ROOT != $spack_clone_path ]]; then
     git remote add upstream git@github.com:spack/spack.git
 
     # Copy NCAR scripts into the clone
-    cp -r src/spack/* $spack_clone_path
+    cp -r $NCAR_SPACK_DEPLOY_DIR/src/spack/* $spack_clone_path
 
     # Set prompt label in clean_bash script
     sed -i "s/\[clean\]/\[${NCAR_SPACK_HOST}-${NCAR_SPACK_HOST_VERSION}\]/" $spack_clone_path/bin/clean_bash
@@ -248,6 +248,7 @@ if [[ $NCAR_SPACK_ROOT != $spack_clone_path ]]; then
             export_gpg_key
         fi
     elif [[ -n $gpg_key ]]; then
+        echo -e "\nTrusting existing GPG key ..."
         spack gpg trust $gpg_key
     fi
 
@@ -273,7 +274,7 @@ EOF
 exit 1
 fi
 
-echo "Creating env at $NCAR_SPACK_ENV_BUILD ..."
+echo -e "\nCreating env at $NCAR_SPACK_ENV_BUILD ..."
 
 # All spack needs for an env is a directory with spack.yaml
 mkdir -p $NCAR_SPACK_ENV_BUILD/logs
@@ -365,9 +366,11 @@ if [[ ${skip_mirror:-no} == no ]]; then
             spack mirror add ncar_mirror_${mtype,,} $mirror
 
             # Make sure signing keys are pushed (and index regenerated!)
-            for key in $signing_keys; do
-                spack gpg publish --rebuild-index -m ncar_mirror_${mtype,,} $key
-            done
+            if [[ $mirror != https* ]]; then
+                for key in $signing_keys; do
+                    spack gpg publish --rebuild-index -m ncar_mirror_${mtype,,} $key
+                done
+            fi
         fi
     done
 
