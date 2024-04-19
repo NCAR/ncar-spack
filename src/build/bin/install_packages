@@ -8,7 +8,7 @@
 #           and any other packages that need it
 #
 #   Author:         Brian Vanderwende
-#   Last Revised:   23:17, 17 Apr 2024
+#   Last Revised:   17:30, 18 Apr 2024
 #
 
 
@@ -805,10 +805,6 @@ else
     exit 1
 fi
 
-if [[ ${num_tasks:-1} -eq 1 ]]; then
-    num_tasks=1
-fi
-
 if [[ -z $build_hosts ]]; then
     build_hosts=($my_host)
 elif [[ $build_hosts == pbs ]]; then
@@ -830,6 +826,8 @@ else
 
     build_hosts=($(tr ',' ' ' <<< $build_hosts))
 fi
+
+num_tasks=${num_tasks:-${#build_hosts[@]}}
 
 if [[ $dry_run == true ]]; then
 cat << EOF
