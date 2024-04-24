@@ -40,10 +40,11 @@ while [[ $# -gt 0 ]]; do
     shift
 done
 
-pkg_list=$(spack find --format '{name} {hash}')
+pkg_list=$(spack find --install-tree local --format '{name} {hash}')
 
 while read pkg_name pkg_hash; do
-    pkg_spec=$(grep :${pkg_hash}: $SPACK_ENV/.installs |& cut -d: -f1)
+    pkg_spec=$(sed -n '3,$ s/ | /|/gp' $SPACK_ENV/registry | awk -F\| -v hash=$pkg_hash             \
+            '$1 == hash {print $NF}')
 
     if [[ -n $pkg_spec ]]; then
         spack mark -e /$pkg_hash

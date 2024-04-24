@@ -374,7 +374,7 @@ perl_lib_root=$NCAR_SPACK_ROOT_BASE/perl
 
 if [[ $NCAR_SPACK_ENV_TYPE == public ]]; then
     tsecho "Checking for Spack-installed Perl"
-    perl_hash=$(spack find -x --format '{hash}' perl)
+    perl_hash=$(spack find -L -r --no-groups | awk '$1 ~ /\[[\^+]\]/ && $3 == "perl" {print $2}')
     perl_deps="/$perl_hash postgresql mysql libxml2"
 
     if [[ $? == 0 ]]; then

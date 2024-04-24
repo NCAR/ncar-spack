@@ -16,7 +16,7 @@
 #           shell script. So we must activate in the script!
 #
 #   Author:         Brian Vanderwende
-#   Last Revised:   17:09, 12 Apr 2024
+#   Last Revised:   22:48, 23 Apr 2024
 #
 
 function remove_lock {
@@ -67,8 +67,6 @@ EOF
 
 function create_manifest {
     declare -A config columns
-    spack env deactivate
-    spack env activate $NCAR_SPACK_ENV_BUILD
 
     # Derive registry columns
     for opt in ${install_params//|/ }; do
@@ -83,10 +81,9 @@ function create_manifest {
     write_manifest_header $1
 
     # Query all spec hashes
-    build_hashes="$(spack find -x --format '{hash}' | xargs)"
-
     while read spec; do
-        reg_line=$(sed -n '3,$ s/ *| */|/gp' $SPACK_ENV/registry | awk -F\| -v spec="$spec" '$NF == spec {print $0; exit}')
+        reg_line=$(sed -n '3,$ s/ *| */|/gp' $NCAR_SPACK_ENV_BUILD/registry |                       \
+                awk -F\| -v spec="$spec" '$NF == spec {print $0; exit}')
         spec_hash=$(cut -d'|' -f1 <<< "$reg_line")
         config=()
 
@@ -94,7 +91,7 @@ function create_manifest {
             tsecho "Error: package $spec not found in registry file"
             exit 1
         elif [[ " $build_hashes " != *" $spec_hash "* ]]; then
-            tsecho "Error: package $spec not found in build environment"
+            tsecho "Error: package $spec not found in build environment roots"
             exit 1
         fi
 
@@ -117,9 +114,6 @@ function create_manifest {
             echo "$entry" >> $1
         fi
     done < <(sed 's/^[ ]*- //' <<< $new_pkgs | sed '$!N; s/\n\s\s*\(.*\)/ \1/; P; D')
-
-    spack env deactivate
-    spack env activate $NCAR_SPACK_ENV_PUBLIC
 }
 
 function store_publish_options {
@@ -266,9 +260,11 @@ if [[ ! -f $NCAR_SPACK_ENV_PUBLIC/spack.yaml ]] && [[ $dry_run == true ]]; then
 fi
 
 #
-## ---- INSPECT THE PUBLIC ENVIRONMENT ----
+## ---- CONSTRUCT THE PUBLIC ENVIRONMENT ----
 #
 
+# First, get metadata from the build environment
+build_hashes="$(spack find -L --no-groups -r | awk '$1 ~ /\[[\^e+]\]/ {print $2}' | xargs)"
 pad_length=$(awk '/padded_length: / {print $2}' $SPACK_ENV/spack.yaml)
 
 tsecho "Converting build spack.yaml for use in public environment"
@@ -387,19 +383,24 @@ if grep -q -E '^ +specs: +\[' $SPACK_ENV/spack.yaml; then
 fi
 
 # Find any packages to remove
-rm_pkgs=$(grep -xv -f <(sed '1,/  specs:/d' $NCAR_SPACK_ENV_BUILD/spack.yaml) <(sed '1,/  specs:/d' spack.yaml) || [[ $? == 1 ]])
+tsecho "Removing any packages that have been uninstalled from build"
 
-if [[ -n $rm_pkgs ]]; then
-    tsecho "Removing packages that have been uninstalled from build"
+while read spec; do
+    spec_hash=$(sed -n '3,$ s/ *| */|/gp' $SPACK_ENV/registry |                           \
+            awk -F\| -v spec="$spec" '$NF == spec {print $1; exit}')
 
-    while read -r spec; do
-        if [[ $(spack location -i $spec) == ${NCAR_SPACK_ROOT_DEPLOYMENT}* ]]; then
-            eval spack uninstall --dependents --remove -y $spec
-        elif sed -n '/^[ ]*specs:/,$ p' $SPACK_ENV/spack.yaml | grep -q "$spec"; then
+    if [[ " $build_hashes " != *" $spec_hash "* ]]; then
+        if [[ $(spack location -i /$spec_hash) == ${NCAR_SPACK_ROOT_DEPLOYMENT}* ]]; then
+            tsecho "Uninstalling package $PCOL$spec$DCOL" 1
+            spack uninstall --dependents --remove -y /$spec_hash
+        else
+            tsecho "Removing package $PCOL$spec$DCOL" 1
             eval spack remove $spec
         fi
-    done < <(sed 's/[ ]*- //' <<< $rm_pkgs | tac)
-fi
+
+        sed -i "/^${spec_hash} .*/d" $SPACK_ENV/registry
+    fi
+done < <(sed '1,/  specs:/d' $SPACK_ENV/spack.yaml | sed 's/^[ -]*//' | tac)
 
 # If there are new packages, install sequentially to improve determinism
 new_pkgs=$(grep -xv -f <(sed '1,/  specs:/d' spack.yaml) <(sed '1,/  specs:/d' $NCAR_SPACK_ENV_BUILD/spack.yaml) || [[ $? == 1 ]])
@@ -408,7 +409,7 @@ if [[ -n $new_pkgs ]]; then
     tsecho "Creating manifest and installing cached packages"
     pkg_manifest=$log_dir/manifest.$start_time
     create_manifest $pkg_manifest
-    $my_dir/install_packages --skip-checks --prefer-cache $pkg_manifest
+    $my_dir/install_packages -n 4 -j 1 --skip-checks --prefer-cache $pkg_manifest
 
     # Check that installs completed successfully
     if [[ ${PIPESTATUS[0]} == 1 ]]; then

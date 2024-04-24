@@ -8,7 +8,7 @@
 #           and any other packages that need it
 #
 #   Author:         Brian Vanderwende
-#   Last Revised:   17:30, 18 Apr 2024
+#   Last Revised:   15:02, 23 Apr 2024
 #
 
 
@@ -95,17 +95,17 @@ build_cmd="spack install --include-build-deps"
 
 function handle_interrupt {
     if [[ $warned == true ]]; then
-        echo -e   "\n$RCOL >>> Second Ctrl/Cmd-c detected; forcing early exit!$DCOL\n"
-        kill -- -$shell_pid
-        wait $shell_pid 2> /dev/null
+        echo -e   "\n$RCOL >>> Second Ctrl/Cmd-c detected; forcing early exit!$DCOL"
+        kill -- $(sed 's/\([0-9][0-9]*\)/-\1/g' <<< $shell_pids)
+        wait
         clear_added_specs
         exit 1
     else
-        echo -e   "\n$RCOL >>> User requested exit via Ctrl/Cmd-C$DCOL\n"
+        echo -e     "\n$RCOL >>> User requested exit via Ctrl/Cmd-C$DCOL"
 
-        if [[ -n $shell_pid ]]; then
-            echo -e "$RCOL     Waiting for currently-running spack install to finish.$DCOL"
-            echo -e "$RCOL     You may enter Ctrl/Cmd-C again to exit immediately.$DCOL\n"
+        if [[ -n $shell_pids ]]; then
+            echo -e "\n$RCOL     Waiting for currently-running spack install to finish.$DCOL"
+            echo -e   "$RCOL     You may enter Ctrl/Cmd-C again to exit immediately.$DCOL\n"
             declare -g warned=true
         else
             clear_added_specs
@@ -348,7 +348,7 @@ function compiler_checks {
         fi
 
         if [[ ${compiler_config[build]:-true} == true ]]; then
-            read -r root version <<< $(eval spack find --format "{prefix} {version}" ${compiler_config[spec]})
+            read -r root version <<< $(eval spack find --format \"{prefix} {version}\" ${compiler_config[spec]})
         else
             if [[ ${compiler_config[modifier]} == cray ]]; then
                 root=/opt/cray
@@ -577,11 +577,22 @@ function check_spec {
 }
 
 function clear_added_specs {
+    echo -e "$RCOL >>> Removing any queued specs from spack.yaml ...$DCOL\n"
+
     while read queued_hash; do
         if [[ $queued_hash != $spec_hash ]]; then
-            if ! grep -q "Successful.*$queued_hash" ${log_installs}*; then
-                queued_spec=$(awk -F'|' '{print $NF}' <<< ${queue_config[$queued_hash]})
-                eval spack remove $queued_spec
+            queued_spec=$(awk -F'|' '{print $NF}' <<< ${queue_config[$queued_hash]})
+            if ! grep -q -e "Successful.*$queued_hash"      \
+                    -e "^\[+\].*external .*$queued_hash" ${log_installs}*; then
+                # If we can't find it by hash, it may still have been "installed" by virtue
+                # of existing in an upstream, so we have to search by short hash
+                if ! grep -q -e "^\[+\].*/${queued_hash:0:4}$" ${log_installs}*; then
+                    eval spack remove $queued_spec
+                else
+                    tsecho "Keeping upstream spec $queued_spec (hash /$queued_hash)." 2
+                fi
+            else
+                tsecho "Keeping successfully installed spec $queued_spec (hash /$queued_hash)." 2
             fi
         fi
     done < <(tr '|' '\n' <<< "$install_queue")
@@ -642,7 +653,8 @@ function install_specs {
             my_log=${log_installs}.$n
         fi
 
-        (trap '' SIGINT; $my_build_cmd |& tee -a $my_log | sed -u "s/^/$prefix/" |                  \
+        (trap '' SIGINT; $my_build_cmd |& tee -a $my_log |                                          \
+                sed -u "s/^\(==> Error:.*\)/$RCOL\1$DCOL/; s/^/$prefix/" |                          \
                 (grep --line-buffered -e "Executing phase" -e "Successfully installed"              \
                 -e "already installed" -e " Total: " -e " from binary cache" -e " Error: "          \
                 -e "^See build log" -e "spack-build-out.txt" -e "Installing" |                      \
@@ -699,9 +711,7 @@ function install_specs {
         done < <(tr '|' '\n' <<< "$install_queue")
     else
         # Remove failed specs to avoid uninstalled packages in spack.yaml
-        bad_pkg=$(grep -h -e "==> Installing" -e "==> Error" ${log_installs}*                       \
-                | grep -m1 -B1 "==> Error" | sed -n 's/.*Installing \(.*\) .*/\1/p')
-        tsecho "Error: install of package $bad_pkg$ failed! Aborting installs ...\n"
+        tsecho "Error: one or more packages failed to install! Aborting ...\n"
         clear_added_specs
         exit 1
     fi
@@ -854,8 +864,8 @@ Log verbosity       = ${log_verbosity:-0}
 
 EOF
 
-echo "Querying current explicit packages ..."
-start_hashes=$(spack find -x --format '{hash}' | xargs)
+echo "Querying current root and installed packages ..."
+start_hashes=$(spack find -L --no-groups -r | awk '$1 ~ /\[[\^e+]\]/ {print $2}' | xargs)
 start_hashes_all=$(spack find --format '{hash}' | xargs)
 initialize_registry
 
