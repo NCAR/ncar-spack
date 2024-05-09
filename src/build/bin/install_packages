@@ -8,7 +8,7 @@
 #           and any other packages that need it
 #
 #   Author:         Brian Vanderwende
-#   Last Revised:   15:02, 23 Apr 2024
+#   Last Revised:   15:45, 09 May 2024
 #
 
 
@@ -94,24 +94,37 @@ spec_cmd="spack spec -I -N -t -L"
 build_cmd="spack install --include-build-deps"
 
 function handle_interrupt {
-    if [[ $warned == true ]]; then
-        echo -e   "\n$RCOL >>> Second Ctrl/Cmd-c detected; forcing early exit!$DCOL"
-        kill -- $(sed 's/\([0-9][0-9]*\)/-\1/g' <<< $shell_pids)
-        wait
-        clear_added_specs
-        exit 1
-    else
-        echo -e     "\n$RCOL >>> User requested exit via Ctrl/Cmd-C$DCOL"
+    case $warn_level in
+        1)
+            echo -e   "\n$RCOL >>> Second Ctrl/Cmd-c detected; cleaning up and forcing early exit.$DCOL"
 
-        if [[ -n $shell_pids ]]; then
-            echo -e "\n$RCOL     Waiting for currently-running spack install to finish.$DCOL"
-            echo -e   "$RCOL     You may enter Ctrl/Cmd-C again to exit immediately.$DCOL\n"
-            declare -g warned=true
-        else
-            clear_added_specs
+            for pid in $shell_pids; do
+                echo -e "$RCOL    Killing installer with PID=$pid ...$DCOL"
+                kill -- -$pid 2> /dev/null
+                wait $pid
+            done
+
+            warn_level=2
+            clear_added_specs 1
             exit 1
-        fi
-    fi
+            ;;
+        2)
+            echo -e     "\n$RCOL >>> Exiting immediately. "
+            exit 1
+            ;;
+        *)
+            echo -e     "\n$RCOL >>> User requested exit via Ctrl/Cmd-C$DCOL"
+
+            if [[ -n $shell_pids ]]; then
+                echo -e "\n$RCOL     Waiting for currently-running spack install to finish.$DCOL"
+                echo -e   "$RCOL     You may enter Ctrl/Cmd-C again to end installs now.$DCOL\n"
+                declare -g warn_level=1
+            else
+                clear_added_specs 1
+                exit 1
+            fi
+            ;;
+    esac
 }
 
 function add_spec_to_view {
@@ -213,7 +226,7 @@ function prepare_spec {
                     comp=${config[$opt]}
                     ;;
                 mpi)
-                    mpi=${config[$mpi]}
+                    mpi=${config[$opt]}
                     ;;
                 compilers)
                     spec_check=${spec_check:-$(mask_spec compilers $comp)}
@@ -409,8 +422,9 @@ function print_queue_status {
         fi
 
         tsecho "Beginning installs with $package_count specs in the queue"
-        tsecho " >> active config = $(declare -p active_config | cut -d= -f2-)"
     fi
+
+    tsecho " >> active config = $(declare -p active_config | cut -d= -f2-)"
 }
 
 function check_spec {
@@ -443,7 +457,7 @@ function check_spec {
     fi
 
     if [[ ${config[build]} == false ]]; then
-        tsecho "Skipping spec   $PCOL$spec$BCOL$type_msg$DCOL (reason: build=false specified)" 1
+        tsecho "Skipping spec.. $PCOL$spec$BCOL$type_msg$DCOL (reason: build=false specified)" 1
 
         if [[ ${config[type]} == compiler ]] && [[ ${config[register]} != no ]] && [[ $dry_run != true ]]; then
             store_compiler_config
@@ -503,15 +517,7 @@ function check_spec {
         fi
 
         # Finalize cache status
-        if [[ $NCAR_SPACK_PAD_LENGTH != 0 ]]; then
-            if [[ ${prefer_cache:-no} == yes ]]; then
-                if [[ ${active_config[cache]} == deps ]]; then
-                    cache_label=" (require cached dependencies)"
-                else
-                    cache_label=" (require cache)"
-                fi
-            fi
-        else
+        if [[ $NCAR_SPACK_PAD_LENGTH == 0 ]]; then
             active_config[cache]=no
         fi
 
@@ -536,7 +542,7 @@ function check_spec {
         fi
 
         if [[ $skip_spec == true ]]; then
-            tsecho "Skipping spec   $PCOL$spec$BCOL$type_msg$DCOL (reason: already installed)" 1
+            tsecho "Skipping spec.. $PCOL$spec$BCOL$type_msg$DCOL (reason: already installed)" 1
 
             if [[ ${#compiler_config[@]} -gt 0 ]]; then
                 compiler_checks
@@ -577,7 +583,9 @@ function check_spec {
 }
 
 function clear_added_specs {
-    echo -e "$RCOL >>> Removing any queued specs from spack.yaml ...$DCOL\n"
+    if [[ $1 == 1 ]]; then
+        echo -e "$RCOL >>> Removing any queued specs from spack.yaml ...$DCOL\n"
+    fi
 
     while read queued_hash; do
         if [[ $queued_hash != $spec_hash ]]; then
@@ -587,13 +595,37 @@ function clear_added_specs {
                 # If we can't find it by hash, it may still have been "installed" by virtue
                 # of existing in an upstream, so we have to search by short hash
                 if ! grep -q -e "^\[+\].*/${queued_hash:0:4}$" ${log_installs}*; then
-                    eval spack remove $queued_spec
+                    (trap '' SIGINT; eval spack remove $queued_spec) &
+                    wait $!
+                    continue
                 else
                     tsecho "Keeping upstream spec $queued_spec (hash /$queued_hash)." 2
                 fi
             else
                 tsecho "Keeping successfully installed spec $queued_spec (hash /$queued_hash)." 2
             fi
+
+            add_date=$(date +%FT%T) add_spec_to_registry $queued_hash
+            queued_spec=$(awk -F'|' '{print $NF}' <<< ${queue_config[$queued_hash]})
+            remove_spec_from_queue $queued_hash
+
+            # Modify spack.yaml based on access settings
+            case ${active_config[access]:-module} in
+                core)
+                    spec_name=$(spack find --format "{name}" /$queued_hash)
+                    spack config add "modules:default:lmod:core_specs:$spec_name"
+                    tsecho " >> Setting package as core_spec: $queued_spec" 2
+                    ;;
+                view)
+                    spack config add "modules:default:lmod:exclude:$queued_spec"
+                    add_spec_to_view "$queued_spec"
+                    tsecho " >> Adding package to the view:   $queued_spec" 2
+                    ;;
+                none)
+                    spack config add "modules:default:lmod:exclude:$queued_spec"
+                    tsecho " >> Excluding package from tree:  $queued_spec" 2
+                    ;;
+            esac
         fi
     done < <(tr '|' '\n' <<< "$install_queue")
 }
@@ -625,12 +657,13 @@ function install_specs {
     while read queued_hash; do
         if [[ $queued_hash != $spec_hash ]]; then
             queued_spec=$(awk -F'|' '{print $NF}' <<< ${queue_config[$queued_hash]})
-            build_steps="spack add ${queued_spec}${sep}$build_steps"
+            build_steps="spack add ${queued_spec}${SEP}$build_steps"
         fi
-    done < <(tr '|' '\n' <<< "$install_queue")
+    done < <(tr '|' '\n' <<< "$install_queue" | tac)
 
     log_cmd "$build_steps" >> $log_installs
-    spack concretize -j ${active_config[maxjobs]:-${build_jobs:-1}} -q > /dev/null
+    tsecho "Starting concretization using ${build_jobs:-1} threads" 2
+    spack concretize -j ${build_jobs:-1} -q > /dev/null
     shell_pids= spack_status=0
 
     # Delayed-trapping won't work with set -e and we also enable job control
@@ -643,8 +676,10 @@ function install_specs {
 
         if [[ $my_host == ${build_hosts[$h]} ]]; then
             my_build_cmd=$spec_build_cmd
+            host_type=local
         else
             my_build_cmd="ssh -n ${build_hosts[$h]} $my_dir/tools/remote_command $spec_build_cmd"
+            host_type=remote
         fi
 
         if [[ $num_tasks -eq 1 ]]; then
@@ -659,23 +694,29 @@ function install_specs {
                 -e "already installed" -e " Total: " -e " from binary cache" -e " Error: "          \
                 -e "^See build log" -e "spack-build-out.txt" -e "Installing" |                      \
                 grep -v "Skipping external package"); exit ${PIPESTATUS[0]}) &
-        shell_pids="$shell_pids $! "
+        my_pid=$!
+        shell_pids="$shell_pids $my_pid "
+
+        tsecho "Started new install process with PID=$BCOL${my_pid}$DCOL on $host_type host $BCOL${build_hosts[$h]}$DCOL" 2
         ((h++))
 
         if [[ $h -eq ${#build_hosts[@]} ]]; then
             h=0
         fi
+
+        sleep 2
     done
     set +m
 
     while [[ -n $shell_pids ]]; do
         my_pid=$(awk '{print $1}' <<< $shell_pids)
 
-        while kill -0 $my_pid 2> /dev/null && [[ -z $my_status ]]; do
+        while kill -0 $my_pid 2> /dev/null || [[ -z $my_status ]]; do
             wait $my_pid
             my_status=$?
         done
 
+        tsecho "Install process with PID=$BCOL${my_pid}$DCOL finished with status=$BCOL${my_status}$DCOL" 2
         spack_status=$((spack_status + my_status))
         shell_pids=${shell_pids/ $my_pid }
         unset my_status
@@ -684,35 +725,11 @@ function install_specs {
     set -e
 
     if [[ $spack_status -eq 0 ]]; then
-        while read queued_hash; do
-            if [[ $queued_hash != $spec_hash ]]; then
-                add_date=$(date +%FT%T) add_spec_to_registry $queued_hash
-                queued_spec=$(awk -F'|' '{print $NF}' <<< ${queue_config[$queued_hash]})
-                remove_spec_from_queue $queued_hash
-
-                # Modify spack.yaml based on access settings
-                case ${active_config[access]:-module} in
-                    core)
-                        spec_name=$(spack find --format "{name}" /$queued_hash)
-                        spack config add "modules:default:lmod:core_specs:$spec_name"
-                        tsecho " >> Setting package as core_spec: $queued_spec" 2
-                        ;;
-                    view)
-                        spack config add "modules:default:lmod:exclude:$queued_spec"
-                        add_spec_to_view "$queued_spec"
-                        tsecho " >> Adding package to the view:   $queued_spec" 2
-                        ;;
-                    none)
-                        spack config add "modules:default:lmod:exclude:$queued_spec"
-                        tsecho " >> Excluding package from tree:  $queued_spec" 2
-                        ;;
-                esac
-            fi
-        done < <(tr '|' '\n' <<< "$install_queue")
+        clear_added_specs
     else
         # Remove failed specs to avoid uninstalled packages in spack.yaml
         tsecho "Error: one or more packages failed to install! Aborting ...\n"
-        clear_added_specs
+        clear_added_specs 1
         exit 1
     fi
 
@@ -721,7 +738,7 @@ function install_specs {
         compiler_checks
     fi
 
-    if [[ -n $warned ]]; then
+    if [[ -n $warn_level ]]; then
         echo -e "\n$RCOL >>> Installs are finished; proceeding with user-requested exit$DCOL\n"
         exit 1
     fi
@@ -808,7 +825,7 @@ fi
 if [[ $package_limit -eq 1 ]]; then
     spack_action="Installing spec"
 elif [[ $package_limit -ge -1 ]]; then
-    spack_action="Adding spec    "
+    spack_action="Adding spec... "
     package_limit=${package_limit/0/-1}
 else
     tsecho "Error: invalid --package-limit setting ($package_limit)"
@@ -891,47 +908,52 @@ while read entry; do
                 unset manual_skip
                 ;;
         esac
-    elif [[ $entry != *'<'* ]] && [[ $entry == *:* ]]; then
-        unset ${!block_*}
-        block_build=true
-
-        for mflag in $entry; do
-            case $mflag in
-                *:)
-                    spec_type=${mflag%:}
-                    ;;
-                *=*)
-                    declare block_${mflag%=*}=${mflag#*=}
-                    ;;
-            esac
-        done
     else
-        unset comp mpi
+        # Remove any in-line comments first
+        entry=${entry%%#*}
 
-        case $spec_type in
-            mdep)
-                for comp in $compilers; do
-                    while read mpi; do
+        if [[ $entry != *'<'* ]] && [[ $entry == *:* ]]; then
+            unset ${!block_*}
+            block_build=true
+
+            for mflag in $entry; do
+                case $mflag in
+                    *:)
+                        spec_type=${mflag%:}
+                        ;;
+                    *=*)
+                        declare block_${mflag%=*}=${mflag#*=}
+                        ;;
+                esac
+            done
+        else
+            unset comp mpi
+
+            case $spec_type in
+                mdep)
+                    for comp in $compilers; do
+                        while read mpi; do
+                            prepare_spec || continue
+                            check_spec
+                        done <<< ${mpis[$comp]}
+                    done
+                    ;;
+                cdep)
+                    for comp in $compilers; do
                         prepare_spec || continue
                         check_spec
-                    done <<< ${mpis[$comp]}
-                done
-                ;;
-            cdep)
-                for comp in $compilers; do
+                    done
+                    ;;
+                singleton)
                     prepare_spec || continue
                     check_spec
-                done
-                ;;
-            singleton)
-                prepare_spec || continue
-                check_spec
-                ;;
-            *)
-                tsecho "Error: unrecognized spec type: $spec_type\n       halting installs at $entry\n"
-                exit 1
-                ;;
-        esac
+                    ;;
+                *)
+                    tsecho "Error: unrecognized spec type: $spec_type\n       halting installs at $entry\n"
+                    exit 1
+                    ;;
+            esac
+        fi
     fi
 done < <(awk 'NF' $manifest_file)
 

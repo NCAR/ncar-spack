@@ -16,7 +16,7 @@
 #           shell script. So we must activate in the script!
 #
 #   Author:         Brian Vanderwende
-#   Last Revised:   22:48, 23 Apr 2024
+#   Last Revised:   16:13, 09 May 2024
 #
 
 function remove_lock {
@@ -264,7 +264,9 @@ fi
 #
 
 # First, get metadata from the build environment
-build_hashes="$(spack find -L --no-groups -r | awk '$1 ~ /\[[\^e+]\]/ {print $2}' | xargs)"
+found_pkgs="$(spack find -L --no-groups -r)"
+build_hashes="$(awk '$1 ~ /\[[\^e+]\]/ {print $2}' <<< "$found_pkgs" | xargs)"
+local_hashes="$(awk '$1 ~ /\[\+\]/ {print $2}' <<< "$found_pkgs" | xargs)"
 pad_length=$(awk '/padded_length: / {print $2}' $SPACK_ENV/spack.yaml)
 
 tsecho "Converting build spack.yaml for use in public environment"
@@ -328,12 +330,12 @@ if [[ -d $NCAR_SPACK_ENV_PUBLIC ]]; then
             exit 0
         fi
     fi
-    
+
     if [[ -n $NCAR_SPACK_GITHUB ]]; then
         tsecho "Checking that local and remote Git repos match"
         remote_commit=$(git ls-remote -h origin "$NCAR_SPACK_HOST_VERSION" | awk '{print $1}')
         local_commit=$(git rev-parse HEAD)
-        
+
         if [[ $remote_commit != $local_commit ]]; then
             tsecho "Error:  Remote repo $NCAR_SPACK_GITHUB and local repo are not in sync."
             >&2 echo "           Remote: $remote_commit"
@@ -346,7 +348,7 @@ else
     echo
     git init $NCAR_SPACK_ENV_PUBLIC
     cd $NCAR_SPACK_ENV_PUBLIC
-    
+
     if [[ -n $NCAR_SPACK_GITHUB ]]; then
         git remote add origin $NCAR_SPACK_GITHUB
     fi
@@ -357,7 +359,7 @@ else
     create_git_readme
 
     git commit -m "Initialize repo with README and .gitignore"
-    
+
     if [[ -n $NCAR_SPACK_GITHUB ]]; then
         git push -u origin "$NCAR_SPACK_HOST_VERSION"
     fi
@@ -390,7 +392,7 @@ while read spec; do
             awk -F\| -v spec="$spec" '$NF == spec {print $1; exit}')
 
     if [[ " $build_hashes " != *" $spec_hash "* ]]; then
-        if [[ $(spack location -i /$spec_hash) == ${NCAR_SPACK_ROOT_DEPLOYMENT}* ]]; then
+        if [[ " $local_hashes " == *" $spec_hash "* ]]; then
             tsecho "Uninstalling package $PCOL$spec$DCOL" 1
             spack uninstall --dependents --remove -y /$spec_hash
         else
@@ -450,7 +452,7 @@ fi
 
 if [[ -f $NCAR_SPACK_ENV_BUILD/bin/postprocess ]]; then
     tsecho "Running postprocessing script on environment"
-    NCAR_SPACK_ENV_TYPE=public $NCAR_SPACK_ENV_BUILD/bin/postprocess 
+    NCAR_SPACK_ENV_TYPE=public $NCAR_SPACK_ENV_BUILD/bin/postprocess
 fi
 
 for object in util config registry; do

@@ -4,7 +4,7 @@
 #   a specified cluster definition. 
 #
 #   Author:         Brian Vanderwende
-#   Last Revised:   13:35, 18 Apr 2024
+#   Last Revised:   16:48, 09 May 2024
 #
 
 set -e
@@ -380,21 +380,20 @@ fi
 
 # Add custom repos
 if [[ -f clusters/$NCAR_SYS/repos.cfg ]]; then
-    mkdir -p $SPACK_ENV/repos
-
     while read -r repo; do
-        if [[ -f $NCAR_SPACK_DEPLOY_DIR/repos/$repo/setup.sh ]]; then
-            . $NCAR_SPACK_DEPLOY_DIR/repos/$repo/setup.sh
-        else
-            cp -r $NCAR_SPACK_DEPLOY_DIR/repos/$repo $SPACK_ENV/repos
-            mkdir -p $SPACK_ENV/repos/$repo/packages
-            spack repo add $SPACK_ENV/repos/$repo
-        fi
+        spack repo add $repo
     done < clusters/$NCAR_SYS/repos.cfg
 fi
 
 # Add NCAR templates
 spack config add "config:template_dirs:$SPACK_ENV/templates/modules"
+
+# Add any requested upstreams
+if [[ -f clusters/$NCAR_SYS/upstreams.cfg ]]; then
+    while read -r upstream_name upstream_path; do
+        spack config add "upstreams:${upstream_name}:install_tree:$upstream_path"
+    done < clusters/$NCAR_SYS/upstreams.cfg
+fi
 
 #
 ## ---- BUILD PACKAGES IN ENVIRONMENTS ----

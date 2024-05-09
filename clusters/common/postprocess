@@ -26,7 +26,7 @@ while [[ $# -gt 0 ]]; do
 done
 
 
-for nv_version in $(spack find --format "{version}" nvhpc | grep -v "==>"); do
+for nv_version in $(spack find --format "{version}" nvhpc 2> /dev/null | grep -v "==>"); do
     [[ $log_active == 1 ]] && echo -e "Checking nvhpc/${nv_version} for CUDA bloat ..."
     nv_root=$(spack location -i nvhpc@$nv_version)
     cuda_root=$nv_root/Linux_x86_64/$nv_version/cuda

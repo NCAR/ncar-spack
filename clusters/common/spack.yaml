@@ -5,19 +5,41 @@
 spack:
   config:
     install_tree:
-      root: '%INSTALLROOT%'
+      root: /glade/derecho/scratch/vanderwb/spack-tests/common/24.04/envs/build/opt
       projections:
-        all: '{name}/{version}'
+        all: '{name}/{version}/{hash:4}'
+      padded_length: 128
     build_jobs: 4
-    test_stage: '%TMPROOT%/${user}/temp/spack/%DEPLOYMENT%/tests'
-    source_cache: '%TMPROOT%/${user}/temp/spack/cache'
-    misc_cache: '%TMPROOT%/${user}/temp/spack/%DEPLOYMENT%/misc'
+    test_stage: /glade/derecho/scratch/${user}/temp/spack/common/24.04/tests
+    source_cache: /glade/derecho/scratch/${user}/temp/spack/cache
+    misc_cache: /glade/derecho/scratch/${user}/temp/spack/common/24.04/misc
     build_stage:
-    - '%TMPROOT%/${user}/temp/spack/builds'
+    - /glade/derecho/scratch/${user}/temp/spack/builds
     shared_linking:
       type: rpath
       bind: false
+    template_dirs:
+    - /glade/derecho/scratch/vanderwb/spack-tests/common/24.04/envs/build/templates/modules
   packages:
+    openssl:
+      externals:
+      - spec: openssl@1.1.1l
+        prefix: /usr
+      buildable: false
+      require:
+      - '%gcc@7.5.0'
+    pkg-config:
+      externals:
+      - spec: pkg-config@0.29.2
+        prefix: /usr
+      buildable: false
+      require: '%gcc@7.5.0'
+    gcc:
+      variants:
+      - +piclibs
+      - languages=c,c++,fortran,go
+      require:
+      - '%gcc@7.5.0'
     all:
       compiler: [gcc@7.5.0]
       target: [x86_64_v3]
@@ -27,6 +49,11 @@ spack:
       permissions:
         read: world
         write: user
+      prefer:
+      - spec: ^zlib
+        when: ^zlib-api
+      - spec: ^pkg-config
+        when: ^pkgconfig
     aocc:
       require:
       - +license-agreed
@@ -34,15 +61,28 @@ spack:
       require: +allow-unsupported-compilers
       variants:
       - +dev
-    gcc:
-      variants:
-      - +piclibs
-      - languages=c,c++,fortran,go
+    patchelf:
+      require:
+      - '@:0.17'
     linaro-forge:
       require: +accept-eula
-    pkg-config:
-      require: '%gcc@7.5.0'
-  compilers: []
+    zstd:
+      variants:
+      - +programs
+  compilers:
+  - compiler:
+      spec: gcc@=7.5.0
+      paths:
+        cc: /usr/bin/gcc
+        cxx: /usr/bin/g++
+        f77: /usr/bin/gfortran
+        fc: /usr/bin/gfortran
+      flags: {}
+      operating_system: opensuse15
+      target: x86_64
+      modules: []
+      environment: {}
+      extra_rpaths: []
   view: false
   concretizer:
     unify: false
@@ -54,3 +94,14 @@ spack:
       - opensuse15
   repos:
   - $spack/var/spack/repos/ncar.hpcd
+  mirrors:
+    ncar_mirror_global: https://stratus.ucar.edu/spack-cache-common
+    ncar_mirror_local: /glade/derecho/scratch/vanderwb/spack-tests/common/mirror
+  specs:
+  - nvhpc@24.3
+  - cuda@11.8.0
+  - cudnn@8.9.7.29-11
+  - intel-oneapi-inspector@2024.1.0
+  - linaro-forge@23.1.2
+  - gcc@13.2.0
+  - intel-oneapi-compilers@2024.1.0
