@@ -36,7 +36,7 @@ done
 
 # First, let's make sure module tree exists
 if [[ ! -d $mod_deployment ]] || [[ -n $spack_flags ]]; then
-    spack module lmod refresh -y $spack_flags
+    spack module lmod refresh -y --upstream-modules $spack_flags
 fi
 
 # Then, let's make sure utils and localrc exist

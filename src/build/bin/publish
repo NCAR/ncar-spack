@@ -16,7 +16,7 @@
 #           shell script. So we must activate in the script!
 #
 #   Author:         Brian Vanderwende
-#   Last Revised:   16:13, 09 May 2024
+#   Last Revised:   14:47, 28 Jun 2024
 #
 
 function remove_lock {
@@ -149,6 +149,12 @@ EOF
 #
 ## ---- INITIALIZATION ----
 #
+
+# Make sure this script is not being sourced
+if (return 0 2>/dev/null); then
+    >&2 echo "Error: I need to be executed, not sourced"
+    exit 1
+fi
 
 # Perform common script setup including environment checks
 export my_dir="$( cd "$(dirname "$0")" ; pwd )"
@@ -432,22 +438,23 @@ fi
 tsecho "Creating split configuration files for community use"
 mkdir -p $SPACK_ENV/config
 
-for cfg_file in config packages compilers modules mirrors repos concretizer; do
-    sed -n "/^  [']*${cfg_file}:[':]*/,/^  [a-z]*:/p" spack.yaml | sed '$d; s/^  //' > $SPACK_ENV/config/${cfg_file}.yaml
+for cfg_file in config packages compilers modules mirrors repos concretizer upstreams; do
+    if grep -q "^  ${cfg_file}:" spack.yaml 2> /dev/null; then
+        sed -n "/^  [']*${cfg_file}:[':]*/,/^  [a-z]*:/p" spack.yaml | sed '$d; s/^  //' > $SPACK_ENV/config/${cfg_file}.yaml
 
-    case $cfg_file in
-        mirrors)
-            sed -i 's|s3://|https://stratus.ucar.edu/|' $SPACK_ENV/config/${cfg_file}.yaml
-            ;;
-    esac
+        case $cfg_file in
+            mirrors)
+                sed -i 's|s3://|https://stratus.ucar.edu/|' $SPACK_ENV/config/${cfg_file}.yaml
+                ;;
+        esac
+    fi
 done
 
 sed -i '/[ ]*roots:[ ]*/,+1d' $SPACK_ENV/config/modules.yaml
 
-# Create modules in build environment
 if [[ -n $NCAR_SPACK_ROOT_MODULES ]]; then
     tsecho "Generating modules in public environment"
-    spack module lmod refresh -y
+    spack module lmod refresh --upstream-modules -y
 fi
 
 if [[ -f $NCAR_SPACK_ENV_BUILD/bin/postprocess ]]; then
