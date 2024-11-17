@@ -18,6 +18,8 @@ $1
 EOF
 }
 
+export -f tsecho log_cmd
+
 my_name=$(basename "$0")
 . $my_dir/../main.cfg
 

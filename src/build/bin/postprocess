@@ -1,0 +1,143 @@
+#!/bin/bash
+#
+#   This script runs postprocessing "units" defined in the postprocess
+#   subdirectory of the build environment.
+#
+#   Author:         Brian Vanderwende
+#   Last Revised:   15:51, 15 Nov 2024
+#
+
+function usage {
+cat << EOF
+Usage: $0 [OPTIONS]
+
+Use this script to run postprocessing steps (units) which modify the specified
+environment (build by default) beyond what Spack can do. All units are specified
+in the $SPACK_ENV/postprocess subdirectory.
+
+In general, units will be run in alphabetical order. You can prioritize a unit by
+prefixing with a number - e.g., 01.unit.
+
+You can also restrict a unit to only run for build or public environments by
+appending the environment type at the end - e.g., unit.public. It is also
+possible to define a unit that only provides shared helper functions by
+appending "helper" at the end instead of an environment type. Such a unit will
+not be run by this script.
+
+If you wish to operate on a specific environment, specify the variable
+NCAR_SPACK_ENV_TYPE when calling this script. For example:
+
+    NCAR_SPACK_ENV_TYPE=public bin/postprocess
+
+Options
+    -h, --help              show this help message
+    -l, --list              list all currently defined units for the environment
+    -u, --units [LIST]      only run the units in this comma-delimited list
+    -v, --verbose           provide additional logging messages
+
+EOF
+exit
+}
+
+if [[ " $@ " == *" -h "* ]] || [[ " $@ " == *" --help "* ]]; then
+    usage
+fi
+
+# Perform common script setup including environment checks
+export my_dir="$( cd "$(dirname "$0")" ; pwd )"
+. $my_dir/tools/init.sh
+
+# Create a temporary file for use in all units
+export TMP_FILE=$SPACK_ENV/.tmp.$$
+
+if [[ $NCAR_SPACK_ENV_TYPE == public ]]; then
+    export MOD_ROOT=$NCAR_SPACK_ROOT_MODULES
+    export BASE_ROOT=$NCAR_SPACK_ROOT_BASE
+else
+    export MOD_ROOT=$SPACK_ENV/modules
+    export BASE_ROOT=$SPACK_ENV
+fi
+
+export MOD_DEPLOYMENT=$MOD_ROOT/$NCAR_SPACK_HOST_VERSION
+export POSTPROCESS_UNIT_DIR=$SPACK_ENV/postprocess
+
+while [[ $# -gt 0 ]]; do
+    case $1 in
+        -h|--help)
+            usage
+            exit 0
+            ;;
+        -l|--list)
+            skip_execution=true
+            ;;
+        -u|--units)
+            if [[ $1 == *=* ]]; then
+                unit_list=($(tr ',' ' ' <<< ${1#*=}))
+            else
+                unit_list=($(tr ',' ' ' <<< $2))
+                shift
+            fi
+            ;;
+        -v|--verbose)
+            export log_verbosity=$((log_verbosity + 1))
+            ;;
+    esac
+
+    shift
+done
+
+if [[ ${skip_execution:-false} != true ]]; then
+    # Make sure config variables are available to our units
+    for cfg_var in ${!NCAR_SPACK_*}; do
+        export $cfg_var
+    done
+
+    if [[ -n $NCAR_SPACK_ROOT_MODULES ]]; then
+        # First, let's make sure module tree exists
+        if [[ ! -d $MOD_DEPLOYMENT ]]; then
+            spack module lmod refresh --upstream-modules -y
+        fi
+
+        # Then, let's make sure utils and localrc exist
+        tsecho "Refreshing module init scripts"
+        . $my_dir/tools/make_localinit.sh ${NCAR_SPACK_ENV_TYPE:-build}
+    fi
+fi
+
+#
+##  MAIN UNIT EXECUTION
+#
+
+if [[ -d $POSTPROCESS_UNIT_DIR ]]; then
+    cd $POSTPROCESS_UNIT_DIR
+else
+    tsecho "No postprocessing units found. Skipping"
+    exit
+fi
+
+if [[ -z $unit_list ]]; then
+    if [[ ${NCAR_SPACK_ENV_TYPE:-build} == build ]]; then
+        env_filter=public
+    else
+        env_filter=build
+    fi
+
+    unit_list=$(ls --color=never -1 | xargs)
+fi
+
+if [[ $skip_execution == true ]]; then
+    for unit in $unit_list; do
+        if [[ $unit != *.helper ]] && [[ $unit != *.$env_filter ]]; then
+            tsecho "Detected postprocessing unit $PCOL$unit$DCOL; skipping execution"
+        fi
+    done
+else
+    for unit in $unit_list; do
+        if [[ $unit != *.helper ]] && [[ $unit != *.$env_filter ]]; then
+            tsecho "Running postprocessing unit $GCOL$unit$DCOL"
+            UNIT_NAME=$unit bash $unit
+        fi
+    done
+fi
+
+tsecho "Postprocessing complete"

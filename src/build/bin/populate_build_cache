@@ -52,7 +52,7 @@ done
 log_dir=$SPACK_ENV/logs
 mkdir -p $log_dir
 log_file=$log_dir/cache.$start_time
-cache_cmd="spack buildcache push -a"
+cache_cmd="spack buildcache push --private"
 
 if [[ $NCAR_SPACK_DEPLOY_TYPE == production ]]; then
     mirror=${mirror:-$NCAR_SPACK_MIRROR_GLOBAL}

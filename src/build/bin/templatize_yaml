@@ -1,5 +1,26 @@
 #!/bin/bash
 
+function usage {
+cat << EOF
+Usage: $0
+
+Use this script to strip this environment's spack.yaml down to essential
+settings worth propagating to a new version of the deployment. Things like
+specs, externals, and view packages are removed.
+
+The resulting template will be created in \$SPACK_ENV/template/yaml.
+
+Options
+    -h, --help              show this help message
+
+EOF
+exit
+}
+
+if [[ " $@ " == *" -h "* ]] || [[ " $@ " == *" --help "* ]]; then
+    usage
+fi
+
 # Perform common script setup including environment checks
 export my_dir="$( cd "$(dirname "$0")" ; pwd )"
 . $my_dir/tools/init.sh

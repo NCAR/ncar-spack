@@ -39,4 +39,11 @@ for pass_vars in USER SUDO_USER HOME TERM SPACK_SYSTEM_CONFIG_PATH ${!NCAR_SPACK
     fi
 done
 
+# Ensure no ~/.spack contamination
+if [[ -d ~/.spack ]]; then
+    backup_root=${SCRATCH:-/glade/derecho/scratch/$USER}/.spack-backups
+    mkdir -p $backup_root
+    mv ~/.spack $backup_root/$(date +%y%m%d-%H%M%S)
+fi
+
 exec env -i "${env_args[@]}" $SHELL_INIT "$@"

@@ -1,10 +1,7 @@
 #!/bin/bash
 #
-#   This script is used to deploy a new "build" environment based on
-#   a specified cluster definition. 
-#
 #   Author:         Brian Vanderwende
-#   Last Revised:   16:48, 09 May 2024
+#   Last Revised:   13:57, 15 Nov 2024
 #
 
 set -e
@@ -16,6 +13,11 @@ function usage {
 cat << EOF
 Usage: $0 [OPTIONS] CLUSTER
 
+This script is used to deploy a new Spack software stack based on a specified
+cluster definition. A "build" environment will be created, and by default all
+packages defined in the cluster's manifest will be built. Publishing will not
+be done by this script.
+
 Options
     -h, --help                  show this help message
     -b, --branch                override the branch of the CSG Spack fork to use
@@ -24,7 +26,12 @@ Options
                                     PATH    - specify the path to a private GPG key
                                     new     - force generation of a new key
                                     none    - don't generate or import keys
-    -n, --no-pkgs               don't install packages, only set up deployment
+    -s, --skip STEP1[,STEP2]        skip specified step of deployment process
+                                    packages    - don't install anything into build
+                                    constraints - don't add constraints
+                                    keys        - don't set up GPG keys
+                                    mirrors     - don't set up local+global mirrors
+                                    all         - skip all of the above
     -p, --production            create a production deployment (must be csgteam)
     --set-version VERSION       override version set in cluster definition
 
@@ -65,12 +72,6 @@ while [[ $# -gt 0 ]]; do
             gpg_opt=$2
             shift
             ;;
-        -m|--no-mirror|--nomirror)
-            skip_mirror=yes
-            ;;
-        -n|--no-pkgs|--nopkgs)
-            skip_pkgs=yes
-            ;;
         -p|--production)
             my_user=$(whoami)
 
@@ -80,6 +81,16 @@ while [[ $# -gt 0 ]]; do
                 >&2 echo "Error: cannot create production deployment as $my_user"
                 exit 1
             fi
+            ;;
+        -s|--skip)
+            if [[ $1 == *=* ]]; then
+                skip_steps=${1#*=}
+            else
+                skip_steps=$2
+                shift
+            fi
+
+            skip_steps=" $(tr ',' ' ' <<< $skip_steps) "
             ;;
         --set-version)
             custom_version=$2
@@ -118,7 +129,7 @@ if [[ -n $tmp_file_path ]]; then
     sed "s/\(NCAR_SPACK_HOST_VERSION=\).*/\1${custom_version}/" \
         $NCAR_SPACK_DEPLOY_DIR/clusters/$NCAR_SYS/main.cfg > $settings_file
 else
-    settings_file=${settings_file:-$NCAR_SPACK_DEPLOY_DIR/clusters/$NCAR_SYS/main.cfg}
+    settings_file=$NCAR_SPACK_DEPLOY_DIR/clusters/$NCAR_SYS/main.cfg
 fi
 
 . $settings_file
@@ -188,11 +199,6 @@ if [[ $NCAR_SPACK_ROOT != $spack_clone_path ]]; then
     # Set prompt label in clean_bash script
     sed -i "s/\[clean\]/\[${NCAR_SPACK_HOST}-${NCAR_SPACK_HOST_VERSION}\]/" $spack_clone_path/bin/clean_bash
 
-    # Set different core compiler if requested
-    if [[ -n $NCAR_SPACK_GCC_ROOT ]]; then
-        sed -i "s|^\(CORE_GCC_ROOT=\)|\1$NCAR_SPACK_GCC_ROOT|" $spack_clone_path/share/ncar/init.sh
-    fi
-
     # If exists, use Spack utils repo for Python
     if [[ -d $NCAR_SPACK_PYTHON_ROOT ]]; then
         sed -i "s|^\(NCAR_SPACK_PYTHON_ROOT=\).*|\1$NCAR_SPACK_PYTHON_ROOT|" $spack_clone_path/share/ncar/init.sh
@@ -223,33 +229,35 @@ if [[ $NCAR_SPACK_ROOT != $spack_clone_path ]]; then
     . $spack_clone_path/share/spack/setup-env.sh
 
     # Create trusted GPG key in spack install
-    if [[ $gpg_opt == new ]]; then
-        if [[ $key_user == csg ]]; then
-            key_person="NCAR HPC Consulting"
-        else
-            key_person="$(getent passwd $key_user | awk -F[,:] '{ print $5 }')"
-        fi
+    if [[ ! $skip_steps =~ " "(keys|all)" "  ]]; then
+        if [[ $gpg_opt == new ]]; then
+            if [[ $key_user == csg ]]; then
+                key_person="NCAR HPC Consulting"
+            else
+                key_person="$(getent passwd $key_user | awk -F[,:] '{ print $5 }')"
+            fi
 
-        echo -e "\nCreating trusted GPG key for build cache creation ..."
-        spack gpg create "$key_person" "<$key_user@ucar.edu>"
+            echo -e "\nCreating trusted GPG key for build cache creation ..."
+            spack gpg create "$key_person" "<$key_user@ucar.edu>"
 
-        if [[ -f $key_root/${key_user}-key.priv ]]; then
-            read -p "GPG key already exists. Overwrite (y/N)? " clobber_key
-            clobber_key=${clobber_key:-no}
+            if [[ -f $key_root/${key_user}-key.priv ]]; then
+                read -p "GPG key already exists. Overwrite (y/N)? " clobber_key
+                clobber_key=${clobber_key:-no}
 
-            if [[ yes == ${clobber_key,,}* ]]; then
-                echo "Backing up old key ..."
-                mkdir $key_root/backup.$NCAR_SPACK_DEPLOY_TIME
-                mv $key_root/${key_user}-key.* $key_root/backup.$NCAR_SPACK_DEPLOY_TIME
+                if [[ yes == ${clobber_key,,}* ]]; then
+                    echo "Backing up old key ..."
+                    mkdir $key_root/backup.$NCAR_SPACK_DEPLOY_TIME
+                    mv $key_root/${key_user}-key.* $key_root/backup.$NCAR_SPACK_DEPLOY_TIME
+                    export_gpg_key
+                fi
+            else
+                mkdir -p $key_root
                 export_gpg_key
             fi
-        else
-            mkdir -p $key_root
-            export_gpg_key
+        elif [[ -n $gpg_key ]]; then
+            echo -e "\nTrusting existing GPG key ..."
+            spack gpg trust $gpg_key
         fi
-    elif [[ -n $gpg_key ]]; then
-        echo -e "\nTrusting existing GPG key ..."
-        spack gpg trust $gpg_key
     fi
 
     # Make sure environment is clean
@@ -305,8 +313,8 @@ if [[ -d clusters/$NCAR_SYS/templates ]]; then
     cp -r clusters/$NCAR_SYS/templates $NCAR_SPACK_ENV_BUILD
 fi
 
-if [[ -f clusters/$NCAR_SYS/postprocess ]]; then
-    cp -L clusters/$NCAR_SYS/postprocess $NCAR_SPACK_ENV_BUILD/bin
+if [[ -e clusters/$NCAR_SYS/postprocess ]]; then
+    cp -r -L clusters/$NCAR_SYS/postprocess $NCAR_SPACK_ENV_BUILD
 fi
 
 # Make cluster-specific substitutions in spack.yaml
@@ -331,7 +339,10 @@ spack bootstrap root $NCAR_SPACK_ROOT_BOOTSTRAP
 # Add package constraints from initial config file
 if [[ -f clusters/$NCAR_SYS/constraints.cfg ]]; then
     cp clusters/$NCAR_SYS/constraints.cfg $NCAR_SPACK_ENV_BUILD
-    $NCAR_SPACK_ENV_BUILD/bin/add_constraints
+    
+    if [[ ! $skip_steps =~ " "(constraints|all)" "  ]]; then
+        $NCAR_SPACK_ENV_BUILD/bin/add_constraints
+    fi
 fi
 
 # Detect available external compilers (e.g., Cray compilers)
@@ -346,7 +357,7 @@ fi
 
 signing_keys=$(spack gpg list --signing | awk 'f{print;f=0} /^sec /{f=1}')
 
-if [[ ${skip_mirror:-no} == no ]]; then
+if [[ ! $skip_steps =~ " "(mirrors|all)" "  ]]; then
     for mtype in LOCAL GLOBAL; do
         mirror_variable=NCAR_SPACK_MIRROR_${mtype}
         mirror=${!mirror_variable}
@@ -399,7 +410,7 @@ fi
 ## ---- BUILD PACKAGES IN ENVIRONMENTS ----
 #
 
-if [[ ${skip_pkgs:-no} != yes ]]; then
+if [[ ! $skip_steps =~ " "(packages|all)" "  ]]; then
     echo -e "Building packages in build environment ...\n"
     # Build packages from source in build environment
     cd $NCAR_SPACK_ENV_BUILD

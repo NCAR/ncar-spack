@@ -8,18 +8,30 @@
 #           and any other packages that need it
 #
 #   Author:         Brian Vanderwende
-#   Last Revised:   15:45, 09 May 2024
+#   Last Revised:   17:51, 16 Nov 2024
 #
 
 
 function usage {
 cat << EOF
-Usage: $0 [MANIFEST]
+Usage: $0 [MANIFEST-FILE]
+
+Use this script to install new packages into the build environment. Package manifest is
+specified in the packages.cfg file in the build environment. This script is the preferred
+method for installing new packages! Using "spack install" certainly works but this script
+adds:
+
+    1. Sensible matrixing of compiler and MPI dependencies
+    2. Logging of package specs
+    3. Concurrent builds when feasible (if reuse = False only)
+    4. Maintenance of the package "registry" which tracks stack-related metadata
+    5. Git tracking of the .spack-db, which can become corrupted
 
 Options
     -h                      show this help message
     -c, --prefer-cache      specify that cached versions of packages should be used
     -d, --dry-run           show what would be installed but do not make any changes
+    -f, --fail-fast         if any build task fails, terminate others immediately
     -j, --jobs-per-task N   number of build jobs per spack install task
                             (will use value in spack.yaml if unspecified)
     -l, --host-list HOSTS   specify build hosts (comma-separated list, "cluster", or "pbs")
@@ -33,7 +45,7 @@ EOF
 exit
 }
 
-if [[ " $@ " == *" -h "* ]]; then
+if [[ " $@ " == *" -h "* ]] || [[ " $@ " == *" --help "* ]]; then
     usage
 fi
 
@@ -56,6 +68,9 @@ while [[ $# -gt 0 ]]; do
         -d|--dry-run|--dryrun)
             header_cmd="cat"
             dry_run=true
+            ;;
+        -f|--fail-fast)
+            fail_fast=true
             ;;
         -j|--jobs-per-task)
             build_jobs=$2
@@ -152,7 +167,7 @@ function add_spec_to_queue {
         queue_config[$1]="${queue_config[$1]:+${queue_config[$1]}|}${!field_vars[$width]}"
     done
 
-    queue_config[$1]="${queue_config[$1]}|$spec"
+    queue_config[$1]="${queue_config[$1]}|$raw_spec|$spec"
     install_queue="${install_queue:+${install_queue}|}$1"
 }
 
@@ -168,7 +183,7 @@ function add_spec_to_registry {
         printf "%-${field_widths[$n]}s | " ${registry[$n]} >> $SPACK_ENV/registry
     done
 
-    printf "%s\n" "${registry[-1]}" >> $SPACK_ENV/registry
+    printf "%s | %s\n" "${registry[-2]}" "${registry[-1]}" >> $SPACK_ENV/registry
 }
 
 function refresh_config {
@@ -383,8 +398,8 @@ function compiler_checks {
 function check_registry {
     # Check whether certain settings on package have changed
     for n in ${!registry[@]}; do
-        # The last entry is always the spec, which has variable length and is not checked
-        if [[ ${registry[$n]} != ${registry[-1]} ]]; then
+        # The last two entries are always the spec, which has variable length and is not checked
+        if [[ $n -lt $((${#registry[@]} - 2 )) ]]; then
             width=$(($(wc -c <<< "${registry[$n]}") - 1))
 
             if [[ -n ${field_vars[$width]} ]]; then
@@ -415,21 +430,23 @@ function check_registry {
 
 function print_queue_status {
     if [[ $package_limit -ne 1 ]]; then
-        if [[ " ${!queue_config[@]} " == *" $spec_hash "* ]]; then
-            package_count=$((${#queue_config[@]} - 1))
-        else
-            package_count=${#queue_config[@]}
-        fi
-
-        tsecho "Beginning installs with $package_count specs in the queue"
+        tsecho "Beginning installs with ${#queue_config[@]} specs in the queue"
     fi
 
     tsecho " >> active config = $(declare -p active_config | cut -d= -f2-)"
 }
 
+function print_spec_message {
+    if [[ -n ${config[type]} ]]; then
+        tsecho "$1 $GCOL$spec $BCOL(${config[type]})$DCOL$cache_label"
+    else
+        tsecho "$1 $GCOL$spec$DCOL$cache_label"
+    fi
+}
+
 function check_spec {
     if [[ ${config[type]} == mpi ]]; then
-        if [[ -n $comp ]]; then
+        if [[ -n $comp ]] && [[ ${config[matrix]:-yes} == yes ]]; then
             mpis[$comp]="${mpis[$comp]:+${mpis[$comp]}$SEP}$spec"
         else
             tsecho "Error: cannot install an MPI without setting a compiler!"
@@ -447,7 +464,7 @@ function check_spec {
             comp_spec="${comp_spec/llvm/clang}"
         fi
 
-        if [[ ${config[register]:-yes} == yes ]]; then
+        if [[ ${config[register]:-yes} == yes ]] && [[ ${config[matrix]:-yes} == yes ]]; then
             if [[ $comp_spec == gcc* ]]; then
                 compilers="$comp_spec $compilers"
             else
@@ -455,6 +472,38 @@ function check_spec {
             fi
         fi
     fi
+
+    #
+    ## First, we check to see if any installs need to be performed....
+    #
+
+    # If not yet initialized, make sure config ready for installs
+    if [[ ${#active_config[@]} -eq 0 ]]; then
+        refresh_config
+    fi
+
+    # Finalize cache status
+    if [[ $NCAR_SPACK_PAD_LENGTH == 0 ]]; then
+        active_config[cache]=no
+    fi
+
+    if [[ ${#queue_config[@]} -gt 0 ]] && [[ ${start_installs:-false} == true ]]; then
+        print_queue_status
+
+        if [[ $dry_run != true ]]; then
+            install_specs
+        else
+            while read queued_hash; do
+                remove_spec_from_queue $queued_hash
+            done < <(tr '|' '\n' <<< "$install_queue")
+
+            unset start_installs
+        fi
+    fi
+
+    #
+    ## Now, let's see if we need to add this spec to the queue
+    #
 
     if [[ ${config[build]} == false ]]; then
         tsecho "Skipping spec.. $PCOL$spec$BCOL$type_msg$DCOL (reason: build=false specified)" 1
@@ -464,13 +513,21 @@ function check_spec {
             compiler_checks
         fi
     else
-        skip_spec=false spec_hash=
+        skip_spec=false spec_hash= raw_spec="$spec" parsed_spec=
 
+        # Check for raw spec first, to avoid recreating canonical spec
+        registry_data=$(sed -n '3,$ s/ | /|/gp' $SPACK_ENV/registry | awk -F\| -v spec="$spec"      \
+                '$(NF-1) == spec {print $0}')
+        
         # Use Spack commands to reformat into canonical Spec ordering
         parse_cmd="spack.cmd.parse_specs('$(sed "s/'/\\\'/g" <<< $spec)')[0]"
-        spec="$(PYTHONPATH=$pypath $SPACK_PYTHON -c "import spack.cmd; print($parse_cmd)")"
-        registry_data=$(sed -n '3,$ s/ | /|/gp' $SPACK_ENV/registry | awk -F\| -v spec="$spec"      \
-                '$NF == spec {print $0}')
+        
+        if [[ -z $registry_data ]]; then
+            parsed_spec="$(PYTHONPATH=$pypath $SPACK_PYTHON -c "import spack.cmd; print($parse_cmd)")"
+            spec="$parsed_spec"
+            registry_data=$(sed -n '3,$ s/ | /|/gp' $SPACK_ENV/registry | awk -F\| -v spec="$spec"      \
+                    '$NF == spec {print $0}')
+        fi
 
         if [[ -n $registry_data ]]; then
             IFS='|' read -a registry <<< $registry_data
@@ -481,8 +538,27 @@ function check_spec {
 
         if [[ $skip_spec == false ]]; then
             if [[ $dry_run != true ]]; then
+                # Get parsed spec if we haven't already...
+                if [[ -z $parsed_spec ]]; then
+                    spec="$(PYTHONPATH=$pypath $SPACK_PYTHON -c "import spack.cmd; print($parse_cmd)")"
+                fi
+
+                set +e
                 spack_spec_out=$(eval $spec_cmd $spec)
-                spec_hash=$(grep -A2 ^Concretized <<< "$spack_spec_out" | tail -n1 | awk '{print $2}')
+
+                if [[ $? == 0 ]]; then
+                    set -e
+                    spec_hash=$(grep -A2 ^Concretized <<< "$spack_spec_out" | tail -n1 | awk '{print $2}')
+                else
+                    clear_added_specs 1
+                    exit 1
+                fi
+
+                if [[ $spec_hash != ${config[match]:-$spec_hash} ]]; then
+                    tsecho "Error: computed hash ($spec_hash) for package $spec does \n       not match expected hash (${config[match]})"
+                    clear_added_specs 1
+                    exit 1
+                fi
 
                 if [[ " $start_hashes_all " == *" $spec_hash "* ]]; then
                     install_date=N/A add_spec_to_queue $spec_hash
@@ -492,6 +568,7 @@ function check_spec {
 
                     # Make sure spec is in spack.yaml
                     if [[ " $start_hashes " != *" $spec_hash "* ]]; then
+                        print_spec_message "Adding to specs"
                         eval spack add $spec > /dev/null
                     fi
                 else
@@ -512,31 +589,6 @@ function check_spec {
             ref_list["/${config[$opt]}"]="/$spec_hash"
         fi
 
-        if [[ ${#active_config[@]} -eq 0 ]]; then
-            refresh_config
-        fi
-
-        # Finalize cache status
-        if [[ $NCAR_SPACK_PAD_LENGTH == 0 ]]; then
-            active_config[cache]=no
-        fi
-
-        if [[ ${#queue_config[@]} -gt 0 ]] && [[ ${start_installs:-false} == true ]]; then
-            print_queue_status
-
-            if [[ $dry_run != true ]]; then
-                install_specs
-            else
-                while read queued_hash; do
-                    if [[ $queued_hash != $spec_hash ]]; then
-                        remove_spec_from_queue $queued_hash
-                    fi
-                done < <(tr '|' '\n' <<< "$install_queue")
-
-                unset start_installs
-            fi
-        fi
-
         if [[ ${config[type]} == compiler ]] && [[ ${config[register]} != no ]] && [[ $dry_run != true ]]; then
             store_compiler_config
         fi
@@ -548,11 +600,7 @@ function check_spec {
                 compiler_checks
             fi
         else
-            if [[ -n ${config[type]} ]]; then
-                tsecho "$spack_action $GCOL$spec $BCOL(${config[type]})$DCOL$cache_label"
-            else
-                tsecho "$spack_action $GCOL$spec$DCOL$cache_label"
-            fi
+            print_spec_message "Installing spec"
 
             if [[ $package_limit -gt 0 ]] && [[ ${#queue_config[@]} -ge $package_limit ]]; then
                 start_installs=true
@@ -588,46 +636,48 @@ function clear_added_specs {
     fi
 
     while read queued_hash; do
-        if [[ $queued_hash != $spec_hash ]]; then
-            queued_spec=$(awk -F'|' '{print $NF}' <<< ${queue_config[$queued_hash]})
-            if ! grep -q -e "Successful.*$queued_hash"      \
-                    -e "^\[+\].*external .*$queued_hash" ${log_installs}*; then
-                # If we can't find it by hash, it may still have been "installed" by virtue
-                # of existing in an upstream, so we have to search by short hash
-                if ! grep -q -e "^\[+\].*/${queued_hash:0:4}$" ${log_installs}*; then
-                    (trap '' SIGINT; eval spack remove $queued_spec) &
-                    wait $!
-                    continue
-                else
-                    tsecho "Keeping upstream spec $queued_spec (hash /$queued_hash)." 2
-                fi
+        queued_spec=$(awk -F'|' '{print $NF}' <<< ${queue_config[$queued_hash]})
+        if ! grep -q -e "Successful.*$queued_hash"      \
+                -e "^\[+\].*external .*$queued_hash" ${log_installs}*; then
+            # If we can't find it by hash, it may still have been "installed" by virtue
+            # of existing in an upstream, so we have to search by short hash
+            if ! grep -q -e "^\[+\].*/${queued_hash:0:4}$" ${log_installs}*; then
+                (trap '' SIGINT; eval spack remove $queued_spec) &
+                wait $!
+                continue
             else
-                tsecho "Keeping successfully installed spec $queued_spec (hash /$queued_hash)." 2
+                tsecho "Keeping upstream spec $queued_spec (hash /$queued_hash)." 2
             fi
-
-            add_date=$(date +%FT%T) add_spec_to_registry $queued_hash
-            queued_spec=$(awk -F'|' '{print $NF}' <<< ${queue_config[$queued_hash]})
-            remove_spec_from_queue $queued_hash
-
-            # Modify spack.yaml based on access settings
-            case ${active_config[access]:-module} in
-                core)
-                    spec_name=$(spack find --format "{name}" /$queued_hash)
-                    spack config add "modules:default:lmod:core_specs:$spec_name"
-                    tsecho " >> Setting package as core_spec: $queued_spec" 2
-                    ;;
-                view)
-                    spack config add "modules:default:lmod:exclude:$queued_spec"
-                    add_spec_to_view "$queued_spec"
-                    tsecho " >> Adding package to the view:   $queued_spec" 2
-                    ;;
-                none)
-                    spack config add "modules:default:lmod:exclude:$queued_spec"
-                    tsecho " >> Excluding package from tree:  $queued_spec" 2
-                    ;;
-            esac
+        else
+            tsecho "Keeping successfully installed spec $queued_spec (hash /$queued_hash)." 2
         fi
+
+        add_date=$(date +%FT%T) add_spec_to_registry $queued_hash
+        queued_spec=$(awk -F'|' '{print $NF}' <<< ${queue_config[$queued_hash]})
+        remove_spec_from_queue $queued_hash
+
+        # Modify spack.yaml based on access settings
+        case ${active_config[access]:-module} in
+            core)
+                spec_name=$(spack find --format "{name}" /$queued_hash)
+                spack config add "modules:default:lmod:core_specs:$spec_name"
+                tsecho " >> Setting package as core_spec: $queued_spec" 2
+                ;;
+            view)
+                spack config add "modules:default:lmod:exclude:$queued_spec"
+                add_spec_to_view "$queued_spec"
+                tsecho " >> Adding package to the view:   $queued_spec" 2
+                ;;
+            none)
+                spack config add "modules:default:lmod:exclude:$queued_spec"
+                tsecho " >> Excluding package from tree:  $queued_spec" 2
+                ;;
+        esac
     done < <(tr '|' '\n' <<< "$install_queue")
+    
+    if [[ $1 == 1 ]]; then
+        backup_build_database
+    fi
 }
 
 function install_specs {
@@ -709,17 +759,35 @@ function install_specs {
     set +m
 
     while [[ -n $shell_pids ]]; do
-        my_pid=$(awk '{print $1}' <<< $shell_pids)
-
-        while kill -0 $my_pid 2> /dev/null || [[ -z $my_status ]]; do
-            wait $my_pid
-            my_status=$?
+        for my_pid in $shell_pids; do
+            if ! kill -0 $my_pid 2> /dev/null; then
+                wait $my_pid
+                my_status=$?
+                break
+            fi
         done
 
-        tsecho "Install process with PID=$BCOL${my_pid}$DCOL finished with status=$BCOL${my_status}$DCOL" 2
-        spack_status=$((spack_status + my_status))
-        shell_pids=${shell_pids/ $my_pid }
-        unset my_status
+        if [[ -z $my_status ]]; then
+            sleep 1
+        else
+            tsecho "Install process with PID=$BCOL${my_pid}$DCOL finished with status=$BCOL${my_status}$DCOL" 2
+            spack_status=$((spack_status + my_status))
+            shell_pids=${shell_pids/ $my_pid }
+
+            if [[ $my_status -ne 0 ]] && [[ $fail_fast == true ]]; then
+                echo -e   "\n$RCOL >>> Fail-fast mode active. Terminating remaining installers ...$DCOL"
+
+                for pid in $shell_pids; do
+                    echo -e "$RCOL    Killing installer with PID=$pid ...$DCOL"
+                    kill -- -$pid 2> /dev/null
+                done
+
+                # Don't repeat this once we have killed the other installers
+                fail_fast=false
+            fi
+
+            unset my_status
+        fi
     done
 
     set -e
@@ -767,7 +835,7 @@ function initialize_registry {
         printf "%-${width}s | " "${field_labels[${field_vars[$width]}]}" >> $SPACK_ENV/.registry.tmp
     done
 
-    printf "%s\n" "Descriptive Spec" >> $SPACK_ENV/.registry.tmp
+    printf "%s\n" "Raw Spec | Spec" >> $SPACK_ENV/.registry.tmp
     printf "%170s\n" | tr " " "-" >> $SPACK_ENV/.registry.tmp
 
     if [[ -f $SPACK_ENV/registry ]]; then
@@ -791,6 +859,41 @@ function initialize_registry {
     mv $SPACK_ENV/.registry.tmp $SPACK_ENV/registry
 }
 
+function backup_build_database {
+    if [[ $dry_run != true ]]; then
+        if [[ $SPACK_ENV == $NCAR_SPACK_ENV_BUILD ]]; then
+            cd $SPACK_ENV
+
+            if [[ ! -d .git ]]; then
+                tsecho "Creating database backup repository for build environment"
+                echo; git init; echo
+            fi
+
+            # Find the database path
+            search_path=opt
+
+            while [[ -d $search_path ]]; do
+                if [[ -d $search_path/.spack-db ]]; then
+                    spack_db=$search_path/.spack-db
+                    break
+                fi
+
+                search_path=$(echo $search_path/_*)
+            done
+
+            if [[ -n $spack_db ]]; then
+                rsync -a --delete --exclude=failures $spack_db/ .spack-db
+                git add .spack-db
+
+                if ! git diff --cached --quiet; then
+                    tsecho "Backing up changes to build environment package database"
+                    echo; git commit -m "DB backup - $start_time"
+                fi
+            fi
+        fi
+    fi
+}
+
 trap handle_interrupt SIGINT
 
 # Ensure log directory exists
@@ -805,7 +908,7 @@ spack concretize -q
 
 # Detect available compiler information
 sys_gcc=$(gcc -v |& grep "gcc version" | cut -d' ' -f3)
-current_comps=$(spack config get compilers | grep spec | cut -d: -f2)
+current_comps=$(spack compiler list --scope env:$SPACK_ENV | grep '@')
 
 # Detect Spack and builtin commits
 tsecho "Detect Spack and repo versions"
@@ -822,12 +925,9 @@ if [[ -z $package_limit ]]; then
     fi
 fi
 
-if [[ $package_limit -eq 1 ]]; then
-    spack_action="Installing spec"
-elif [[ $package_limit -ge -1 ]]; then
-    spack_action="Adding spec... "
+if [[ $package_limit -ge -1 ]]; then
     package_limit=${package_limit/0/-1}
-else
+elif [[ $package_limit -ne 1 ]]; then
     tsecho "Error: invalid --package-limit setting ($package_limit)"
     exit 1
 fi
@@ -851,10 +951,27 @@ else
         fi
     fi
 
-    build_hosts=($(tr ',' ' ' <<< $build_hosts))
-fi
+    check_hosts="$(tr ',' ' ' <<< $build_hosts)"
+    build_hosts=
 
-num_tasks=${num_tasks:-${#build_hosts[@]}}
+    tsecho "Checking build host connectivity"
+
+    for bhost in $check_hosts; do
+        if ssh $bhost true 2> /dev/null; then
+            tsecho " >> Successfully connected to ${GCOL}${bhost}$DCOL" 1
+            build_hosts="${build_hosts:+$build_hosts }$bhost"
+        else
+            tsecho " >> Cannot connect to ${PCOL}${bhost}$DCOL; not using"
+        fi
+    done
+
+    if [[ -z $build_hosts ]]; then
+        tsecho "Error: none of the specified build hosts can be reached"
+        exit 1
+    else
+        build_hosts=($build_hosts)
+    fi
+fi
 
 if [[ $dry_run == true ]]; then
 cat << EOF
@@ -871,11 +988,12 @@ Package manifest    = $manifest_file
 Spack version       = $spack_commit
 Concretizer reuse   = $reuse_packages
 
-Spack install tasks = ${num_tasks:-1}
+Spack install tasks = ${num_tasks:=${#build_hosts[@]}}
 Build jobs per task = $build_jobs
 Build host(s)       = ${build_hosts[@]}
 
 System GCC          = gcc@$sys_gcc
+Stack Core GCC      = ${NCAR_SPACK_CORE_GCC:-gcc@$sys_gcc}
 Concurrent specs    = ${package_limit/-1/unlimited}
 Log verbosity       = ${log_verbosity:-0}
 
@@ -966,3 +1084,6 @@ if [[ ${#queue_config[@]} -gt 0 ]]; then
         install_specs
     fi
 fi
+
+# Back up package database if build environment
+backup_build_database

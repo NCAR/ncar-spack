@@ -1,9 +1,5 @@
 #!/bin/bash
 
-# Perform common script setup including environment checks
-export my_dir="$( cd "$(dirname "$0")" ; pwd )"
-. $my_dir/tools/init.sh
-
 function usage {
 cat << EOF
 Usage: $0
@@ -22,16 +18,23 @@ you'll get modules for all sorts of things.
 
 Run this script after regenerating the index to restore the package marks.
 
+Options
+    -h, --help              show this help message
+
 EOF
 exit
 }
 
+if [[ " $@ " == *" -h "* ]] || [[ " $@ " == *" --help "* ]]; then
+    usage
+fi
+
+# Perform common script setup including environment checks
+export my_dir="$( cd "$(dirname "$0")" ; pwd )"
+. $my_dir/tools/init.sh
+
 while [[ $# -gt 0 ]]; do
     case $1 in
-        -h|--help)
-            clear
-            usage
-            ;;
         -v|--verbose)
             export log_verbosity=1
             ;;

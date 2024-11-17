@@ -1,8 +1,41 @@
 #!/bin/bash
 
+function usage {
+cat << EOF
+Usage: $0 [OPTIONS]
+
+This script can be used to add "constraints" to the build environmment's
+spack.yaml. Such constraints include externals, which can be automatically or
+manually detected, and requirements to set on packages.
+
+If an external is set to be "fixed", this in turn sets buildable to false and
+Spack will be forced to use the external.
+
+Options
+    -h, --help              show this help message
+    -v, --verbose           provide additional logging messages
+
+EOF
+exit
+}
+
+if [[ " $@ " == *" -h "* ]] || [[ " $@ " == *" --help "* ]]; then
+    usage
+fi
+
 # Perform common script setup including environment checks
 export my_dir="$( cd "$(dirname "$0")" ; pwd )"
 . $my_dir/tools/init.sh
+
+while [[ $# -gt 0 ]]; do
+    case $1 in
+        -v|--verbose)
+            export log_verbosity=1
+            ;;
+    esac
+
+    shift
+done
 
 log_dir=$SPACK_ENV/logs
 mkdir -p $log_dir
@@ -69,7 +102,7 @@ if [[ -f $SPACK_ENV/constraints.cfg ]]; then
                             ext_flags="$ext_flags --path"
                             
                             if [[ $entry != *\[*\]* ]]; then
-                                tsecho "Error: spec must be delimited in path by [*]!"
+                                tsecho "Error: spec must be delimited in path by [*]"
                                 exit 1
                             fi
 
@@ -120,8 +153,10 @@ if [[ -f $SPACK_ENV/constraints.cfg ]]; then
                                 tsecho "Adding externals  $GCOL${found_list}$DCOL"
                             fi
 
-                            # Externals should also "use" the core compiler
-                            manual_require "$core" "$entry"
+                            # Externals should also "use" the core compiler unless marked "floating"
+                            if [[ " $my_meta " != *" floating "* ]]; then
+                                manual_require "$core" "$entry"
+                            fi
                         fi
                         ;;
                     require)

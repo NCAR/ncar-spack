@@ -4,20 +4,53 @@
 #   environment to the production environment in a reproducible
 #   and traceable way. The script does a number of things:
 #
-#   1. Sanity checks of current environment
-#   2. Check to see that build spack.yaml and spack.lock are in sync
-#   3. Check whether any changes need to be made to the public env
-#   4. Sync build and public environment package installs
-#   5. (Re)build the public module tree
-#   6. Commit and push changes to Github repo
 #
 #   Note:   as of Spack v0.17, the activate scripts will break if
 #           used with an environent already activated outside of a
 #           shell script. So we must activate in the script!
 #
 #   Author:         Brian Vanderwende
-#   Last Revised:   14:47, 28 Jun 2024
+#   Last Revised:   08:38, 09 Nov 2024
 #
+
+
+function usage {
+cat << EOF
+Usage: $0 [OPTIONS] "Commit message for publish"
+
+Use this script to sync the public environment with the build environment, making all
+changes in build user-visible. Any new packages, postprocessing steps, modules, view
+additions will be ported over.
+
+This script uses locking to ensure that only one publish step is happening at a time.
+
+Specifically, this script performs the following steps:
+
+    1. Sanity checks of current environment
+    2. Check to see whether build spack.yaml and spack.lock are in sync
+    3. Check to see whether build and public postprocessing steps are in sync
+    4. Conclude whether any changes need to be made to the public env
+    5. Sync build and public environment package installs
+    6. (Re)build the public module tree
+    7. Postprocess the public environment
+    8. Copy artifacts from Spack to the public directory (e.g., .spack-db)
+    9. Commit and push changes to Github repo
+
+Options
+    -h, --help              show this help message
+    -d, --dry-run           show what would be published but do not make any changes
+    --force                 attempt to publish changes, even if none detected
+    --resume                continue an existing publish attempt (exercise caution!)
+    --set-default           upon publishing, make this ncarenv the default for users
+    -v, --verbose           provide additional logging messages
+
+EOF
+exit
+}
+
+if [[ " $@ " == *" -h "* ]] || [[ " $@ " == *" --help "* ]]; then
+    usage
+fi
 
 function remove_lock {
     if [[ $NCAR_SPACK_LOCK_PID ]]; then
@@ -101,7 +134,7 @@ function create_manifest {
 
         if [[ ${config[publish]:-yes} == yes ]]; then
             unset config[publish]
-            entry="    $spec"
+            entry="    $spec <match:$spec_hash>"
 
             for opt in ${!config[@]}; do
                 def_var=default_$opt
@@ -110,6 +143,12 @@ function create_manifest {
                     entry="$entry <$opt:${config[$opt]}>"
                 fi
             done
+
+            # GCC can impact concretization b/c of runtime packages. Order matters even
+            # with fresh. This triggers immediate installs before proceeding.
+            if [[ $spec == gcc* ]]; then
+                entry="$entry <type:compiler> <register:no>"
+            fi
 
             echo "$entry" >> $1
         fi
@@ -175,10 +214,14 @@ force_resume=N
 
 while [[ $# -gt 0 ]]; do
     case $1 in
+        -h|--help)
+            usage
+            exit 0
+            ;;
         -d|--dry-run|--dryrun)
             dry_run=true
             ;;
-        -f|--force)
+        --force)
             force_commit=true
             ;;
         --resume)
@@ -217,7 +260,7 @@ fi
 
 tsecho "Testing build environment for unconcretized changes"
 conc_test=$(spack concretize -j 4 |& grep -v -e "Updating view at" -e "Skipping external"   \
-        -e "terminal_title" || true)
+        -e "terminal_title" -e "No new specs" || true)
 
 if [[ -n $conc_test ]]; then
 >&2 cat << EOF
@@ -417,7 +460,7 @@ if [[ -n $new_pkgs ]]; then
     tsecho "Creating manifest and installing cached packages"
     pkg_manifest=$log_dir/manifest.$start_time
     create_manifest $pkg_manifest
-    $my_dir/install_packages -n 4 -j 1 --skip-checks --prefer-cache $pkg_manifest
+    $my_dir/install_packages -n 4 -j 1 --skip-checks --prefer-cache --fail-fast $pkg_manifest
 
     # Check that installs completed successfully
     if [[ ${PIPESTATUS[0]} == 1 ]]; then
@@ -443,14 +486,15 @@ for cfg_file in config packages compilers modules mirrors repos concretizer upst
         sed -n "/^  [']*${cfg_file}:[':]*/,/^  [a-z]*:/p" spack.yaml | sed '$d; s/^  //' > $SPACK_ENV/config/${cfg_file}.yaml
 
         case $cfg_file in
+            modules)
+                sed -i '/[ ]*roots:[ ]*/,+1d' $SPACK_ENV/config/modules.yaml
+                ;;
             mirrors)
                 sed -i 's|s3://|https://stratus.ucar.edu/|' $SPACK_ENV/config/${cfg_file}.yaml
                 ;;
         esac
     fi
 done
-
-sed -i '/[ ]*roots:[ ]*/,+1d' $SPACK_ENV/config/modules.yaml
 
 if [[ -n $NCAR_SPACK_ROOT_MODULES ]]; then
     tsecho "Generating modules in public environment"
@@ -459,6 +503,7 @@ fi
 
 if [[ -f $NCAR_SPACK_ENV_BUILD/bin/postprocess ]]; then
     tsecho "Running postprocessing script on environment"
+    rsync -a --delete $NCAR_SPACK_ENV_BUILD/postprocess/ postprocess
     NCAR_SPACK_ENV_TYPE=public $NCAR_SPACK_ENV_BUILD/bin/postprocess
 fi
 
@@ -473,9 +518,14 @@ if [[ ! -d $NCAR_SPACK_ROOT_PUBLIC/default ]] || [[ $set_as_default == true ]]; 
     ln -sfn $NCAR_SPACK_ROOT_DEPLOYMENT $NCAR_SPACK_ROOT_PUBLIC/default
 fi
 
-tsecho "Committing YAML, lock, util and config changes to Git repo"
+tsecho "Committing stack changes to Git repo"
 echo
-git add spack.yaml spack.lock config registry
+
+# Bring latest changes from Spack install tree; these are components of the stack
+# that can become corrupted and are worth backing up!
+rsync -a --delete --exclude=failures $SPACK_ROOT/opt/spack/.spack-db/ .spack-db
+
+git add spack.yaml spack.lock config registry .spack-db postprocess
 
 if [[ -d util ]]; then
     git add util
