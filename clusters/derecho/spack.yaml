@@ -742,6 +742,9 @@ spack:
     pango:
       variants:
       - +X
+    parallel-netcdf:
+      variants:
+      - +examples
     parallelio:
       variants:
       - +ncint
