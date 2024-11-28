@@ -15,7 +15,12 @@ cat << EOF
       environment:
         set:
           PE_ENV: CRAY
+          CRAY_CPU_TARGET: x86-milan
           NVCCFLAGS: -allow-unsupported-compiler
+          NVCC_PREPEND_FLAGS: -allow-unsupported-compiler
+          # These are needed for kokkos (see kokkos_check_env.cmake)
+          CRAYPE_VERSION: 1
+          CRAYPE_LINK_TYPE: dynamic
         append_path:
           LD_LIBRARY_PATH: $cray_libfabric_root/lib64
 EOF

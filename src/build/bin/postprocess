@@ -4,7 +4,7 @@
 #   subdirectory of the build environment.
 #
 #   Author:         Brian Vanderwende
-#   Last Revised:   09:02, 25 Nov 2024
+#   Last Revised:   20:09, 27 Nov 2024
 #
 
 function usage {
@@ -158,5 +158,7 @@ if [[ -f $log_file ]]; then
         perl -p -i -e "s/\Q\$ENV{$color_code}//g" $log_file
     done
 fi
+
+update_log_pointers postprocess
 
 tsecho "Postprocessing complete"

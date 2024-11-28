@@ -36,3 +36,6 @@ if [[ $? == 0 ]]; then
 else
     tsecho "Error: YAML template could not be created"
 fi
+
+# Filter out any remaining references to the deployed build env
+sed -i "s|$SPACK_ENV|%BASEROOT%|" $SPACK_ENV/templates/yaml/spack.yaml

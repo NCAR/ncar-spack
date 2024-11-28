@@ -10,7 +10,7 @@
 #           shell script. So we must activate in the script!
 #
 #   Author:         Brian Vanderwende
-#   Last Revised:   19:55, 27 Nov 2024
+#   Last Revised:   22:33, 27 Nov 2024
 #
 
 
@@ -496,9 +496,9 @@ new_pkgs=$(grep -xv -f <(sed '1,/  specs:/d' spack.yaml) <(sed '1,/  specs:/d' $
 
 if [[ -n $new_pkgs ]]; then
     tsecho "Creating manifest and installing cached packages"
-    pkg_manifest=$log_dir/manifest.$start_time
-    create_manifest $pkg_manifest
-    $my_dir/install_packages -n 4 -j 1 --skip-checks --prefer-cache --fail-fast $pkg_manifest
+    log_manifest=$log_dir/manifest.$start_time
+    create_manifest $log_manifest
+    $my_dir/install_packages -n 4 -j 1 --skip-checks --prefer-cache --fail-fast $log_manifest
 
     # Check that installs completed successfully
     if [[ ${PIPESTATUS[0]} == 1 ]]; then
@@ -509,7 +509,8 @@ if [[ -n $new_pkgs ]]; then
 fi
 
 tsecho "Concretizing other environment changes"
-spack concretize -j 4 &> $log_dir/concretize.$start_time
+log_concretize=$log_dir/concretize.$start_time
+spack concretize -j 4 &> $log_concretize
 
 tsecho "Ensure specs list is flow-style YAML"
 if grep -q -E '^ +specs: +\[' $SPACK_ENV/spack.yaml; then
@@ -581,6 +582,8 @@ if [[ -n $NCAR_SPACK_GITHUB ]]; then
     echo
     git push -u origin "$NCAR_SPACK_HOST_VERSION"
 fi
+
+update_log_pointers manifest concretize
 
 # Commit succesful, so remove ability to resume it
 rm -f $NCAR_SPACK_ENV_BUILD/.pubstore

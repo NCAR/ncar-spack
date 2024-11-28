@@ -8,7 +8,7 @@
 #           and any other packages that need it
 #
 #   Author:         Brian Vanderwende
-#   Last Revised:   13:41, 27 Nov 2024
+#   Last Revised:   20:07, 27 Nov 2024
 #
 
 
@@ -1110,3 +1110,5 @@ fi
 
 # Back up package database if build environment
 backup_build_database
+
+update_log_pointers specs installs

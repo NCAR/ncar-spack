@@ -18,7 +18,19 @@ $1
 EOF
 }
 
-export -f tsecho log_cmd
+function update_log_pointers {
+    for log_type in $@; do
+        log_name=log_$log_type
+        log_src=${log_file:-${!log_name}}
+
+        if [[ -f $log_src ]]; then
+            rm -f $log_dir/latest.$log_type
+            ln -s $log_src $log_dir/latest.$log_type
+        fi
+    done
+}
+
+export -f tsecho log_cmd update_log_pointers
 
 my_name=$(basename "$0")
 . $my_dir/../main.cfg

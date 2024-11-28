@@ -172,3 +172,5 @@ if [[ -f $SPACK_ENV/constraints.cfg ]]; then
         esac
     done < $SPACK_ENV/constraints.cfg
 fi
+
+update_log_pointers constraints

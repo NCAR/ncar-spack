@@ -17,12 +17,16 @@ cat << EOF
       environment:
         set:
           NVCCFLAGS: -allow-unsupported-compiler
+          NVCC_PREPEND_FLAGS: -allow-unsupported-compiler
 EOF
 
 if [[ $install_modifier == cray ]]; then
 cray_libfabric_root=${cray_libfabric_root:-$(spack location -i libfabric %gcc)}
 
 cat << EOF
+          # These are needed for kokkos (see kokkos_check_env.cmake)
+          CRAYPE_VERSION: 1
+          CRAYPE_LINK_TYPE: dynamic
         append_path:
           LD_LIBRARY_PATH: $cray_libfabric_root/lib64
 EOF

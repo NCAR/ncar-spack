@@ -23,8 +23,9 @@ spack:
       compiler: [gcc@12.4.0, gcc@7.5.0]
       target: [x86_64_v3]
       providers:
-        'pkgconfig:': [pkg-config]
-        'zlib-api:': [zlib]
+        tbb: [intel-oneapi-tbb]
+        pkgconfig: [pkg-config]
+        zlib-api: [zlib]
       permissions:
         read: world
         write: user
@@ -40,15 +41,28 @@ spack:
       require: +allow-unsupported-compilers
       variants:
       - +dev
+    cudnn:
+      prefer:
+      - spec: ^cuda@12.3.2
+        when: '@8.9.7.29-12'
     gcc:
       variants:
       - +piclibs
       - languages=c,c++,fortran,go
       require:
       - '%gcc@7.5.0'
+    glibc:
+      require:
+      - '%gcc'
     intel-oneapi-compilers:
       variants:
       - +nvidia
+    intel-oneapi-runtime:
+      prefer:
+      - spec: ^gcc-runtime@12.4.0
+    libxml2:
+      require:
+      - '%gcc'
     linaro-forge:
       require: +accept-eula
     openssl:
@@ -58,7 +72,8 @@ spack:
       require:
       - '@:0.17'
     pkg-config:
-      require: '%gcc'
+      require:
+      - '%gcc'
     zstd:
       variants:
       - +programs
