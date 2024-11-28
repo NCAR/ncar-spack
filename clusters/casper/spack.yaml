@@ -1335,3 +1335,5 @@ spack:
       - sles15
       sles15:
       - opensuse15
+  repos:
+  - $spack/var/spack/repos/ncar.hpcd

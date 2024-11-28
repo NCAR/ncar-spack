@@ -4,7 +4,7 @@
 #   subdirectory of the build environment.
 #
 #   Author:         Brian Vanderwende
-#   Last Revised:   15:51, 15 Nov 2024
+#   Last Revised:   09:02, 25 Nov 2024
 #
 
 function usage {
@@ -86,6 +86,10 @@ while [[ $# -gt 0 ]]; do
     shift
 done
 
+log_dir=$SPACK_ENV/logs
+mkdir -p $log_dir
+log_file=$log_dir/postprocess.$start_time
+
 if [[ ${skip_execution:-false} != true ]]; then
     # Make sure config variables are available to our units
     for cfg_var in ${!NCAR_SPACK_*}; do
@@ -134,9 +138,24 @@ if [[ $skip_execution == true ]]; then
 else
     for unit in $unit_list; do
         if [[ $unit != *.helper ]] && [[ $unit != *.$env_filter ]]; then
-            tsecho "Running postprocessing unit $GCOL$unit$DCOL"
-            UNIT_NAME=$unit bash $unit
+            tsecho "Running postprocessing unit $GCOL$unit$DCOL" |& tee -a $log_file
+
+            if [[ -f $unit.$NCAR_SPACK_ENV_TYPE ]]; then
+                UNIT_NAME=$unit bash $unit.$NCAR_SPACK_ENV_TYPE |& tee -a $log_file
+            elif [[ -f $unit ]]; then
+                UNIT_NAME=$unit bash $unit |& tee -a $log_file
+            else
+                tsecho "Error: postprocess unit $unit not found in $NCAR_SPACK_ENV_TYPE deployment"
+                exit
+            fi
         fi
+    done
+fi
+
+# Clean colors from log file
+if [[ -f $log_file ]]; then
+    for color_code in $COLOR_LIST; do
+        perl -p -i -e "s/\Q\$ENV{$color_code}//g" $log_file
     done
 fi
 

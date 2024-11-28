@@ -20,7 +20,7 @@ spack:
       bind: false
   packages:
     all:
-      compiler: [gcc@7.5.0]
+      compiler: [gcc@12.4.0, gcc@7.5.0]
       target: [x86_64_v3]
       providers:
         'pkgconfig:': [pkg-config]
@@ -46,16 +46,19 @@ spack:
       - languages=c,c++,fortran,go
       require:
       - '%gcc@7.5.0'
+    intel-oneapi-compilers:
+      variants:
+      - +nvidia
     linaro-forge:
       require: +accept-eula
     openssl:
       require:
-      - '%gcc@7.5.0'
+      - '%gcc'
     patchelf:
       require:
       - '@:0.17'
     pkg-config:
-      require: '%gcc@7.5.0'
+      require: '%gcc'
     zstd:
       variants:
       - +programs

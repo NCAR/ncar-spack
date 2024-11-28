@@ -73,6 +73,7 @@ elif [[ -z $SPACK_ENV ]]; then
     # Pretty colors and other formatting
     export GCOL=$(printf "\033[1;32m") BCOL=$(printf "\033[1;34m") PCOL=$(printf "\033[1;35m")
     export RCOL=$(printf "\033[1;31m") FCOL=$(printf "\033[0;37m") DCOL=$(printf "\033[0m") SEP=$'\n'
+    export COLOR_LIST="GCOL BCOL PCOL RCOL FCOL DCOL"
 
     tsecho "Activating Spack $my_env_type environment" ${quiet_mode:+9999}
     

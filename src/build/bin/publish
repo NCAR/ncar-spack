@@ -10,7 +10,7 @@
 #           shell script. So we must activate in the script!
 #
 #   Author:         Brian Vanderwende
-#   Last Revised:   08:38, 09 Nov 2024
+#   Last Revised:   19:55, 27 Nov 2024
 #
 
 
@@ -179,10 +179,33 @@ cat << EOF
 
 *** DRY RUN REQUESTED - NO CHANGES WILL BE MADE! ***
 
-The following diff shows changes that would be made to the public environment
-spack.yaml upon calling publish:
+The following output shows changes that would be made to the public environment
+spack.yaml or postprocess unit(s) upon calling publish:
 
 EOF
+}
+
+function env_diff {
+    tsecho "Checking for pending changes to public"
+    unit_list=$(ls --color=never -1 $NCAR_SPACK_ENV_BUILD/postprocess | xargs)
+
+    if ! cmp -s $NCAR_SPACK_ENV_PUBLIC/spack.yaml $NCAR_SPACK_ENV_BUILD/.prototype/spack.yaml; then
+        tsecho " >> ${GCOL}spack.yaml${DCOL} is changed"
+        changes_detected=1
+    else
+        changes_detected=0
+    fi
+
+    for unit in $unit_list; do
+        if [[ $unit != *.build ]]; then
+            if ! cmp -s $NCAR_SPACK_ENV_BUILD/postprocess/$unit $NCAR_SPACK_ENV_PUBLIC/postprocess/$unit; then
+                tsecho " >> postprocessing unit: ${GCOL}${unit}$DCOL is changed"
+                ((changes_detected+=2))
+            fi
+        fi
+    done
+
+    return $changes_detected
 }
 
 #
@@ -315,7 +338,6 @@ fi
 # First, get metadata from the build environment
 found_pkgs="$(spack find -L --no-groups -r)"
 build_hashes="$(awk '$1 ~ /\[[\^e+]\]/ {print $2}' <<< "$found_pkgs" | xargs)"
-local_hashes="$(awk '$1 ~ /\[\+\]/ {print $2}' <<< "$found_pkgs" | xargs)"
 pad_length=$(awk '/padded_length: / {print $2}' $SPACK_ENV/spack.yaml)
 
 tsecho "Converting build spack.yaml for use in public environment"
@@ -339,11 +361,15 @@ spack config remove 'config:install_tree:root'
 spack env deactivate
 
 if [[ $dry_run == true ]]; then
+    set +e
     dry_run_header
+    env_diff
+    env_status=$?
 
-    if cmp -s $NCAR_SPACK_ENV_PUBLIC/spack.yaml .prototype/spack.yaml; then
+    if [[ $env_status -eq 0 ]]; then
         echo "build and public environments are in sync; no changes will be made"
-    else
+    elif [[ $env_status -eq 1 ]]; then
+        echo
         diff -U2 --color $NCAR_SPACK_ENV_PUBLIC/spack.yaml .prototype/spack.yaml
     fi
 
@@ -371,7 +397,7 @@ if [[ -d $NCAR_SPACK_ENV_PUBLIC ]]; then
         fi
     fi
 
-    if cmp $NCAR_SPACK_ENV_BUILD/.prototype/spack.yaml spack.yaml >& /dev/null; then
+    if env_diff; then
         if [[ $force_commit == true ]]; then
             tsecho "No spack.yaml changes but proceeding anyway (--force option enabled)"
         else
@@ -441,6 +467,18 @@ while read spec; do
             awk -F\| -v spec="$spec" '$NF == spec {print $1; exit}')
 
     if [[ " $build_hashes " != *" $spec_hash "* ]]; then
+        tsecho "Checking location of package with hash $PCOL$spec_hash$DCOL" 2
+
+        if [[ -z $local_hashes ]]; then
+            found_pkgs="$(spack find -L --no-groups -r)"
+            local_hashes="$(awk '$1 ~ /\[\+\]/ {print $2}' <<< "$found_pkgs" | xargs)"
+
+            # Prefix locks can become broken...
+            rm -f $SPACK_ROOT/opt/spack/.spack-db/lock
+            rm -f $SPACK_ROOT/opt/spack/.spack-db/prefix_lock
+        fi
+
+        # Are packages local to this deployment or upstream packages?
         if [[ " $local_hashes " == *" $spec_hash "* ]]; then
             tsecho "Uninstalling package $PCOL$spec$DCOL" 1
             spack uninstall --dependents --remove -y /$spec_hash

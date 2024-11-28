@@ -8,7 +8,7 @@
 #           and any other packages that need it
 #
 #   Author:         Brian Vanderwende
-#   Last Revised:   17:51, 16 Nov 2024
+#   Last Revised:   13:41, 27 Nov 2024
 #
 
 
@@ -428,6 +428,25 @@ function check_registry {
     fi
 }
 
+function modify_spec_access {
+    case $1 in
+        core)
+            spec_name=$(spack find --format "{name}" /$2)
+            spack config add "modules:default:lmod:core_specs:$spec_name"
+            tsecho " >> Setting package as core_spec: $3" 2
+            ;;
+        view)
+            spack config add "modules:default:lmod:exclude:$3"
+            add_spec_to_view "$3"
+            tsecho " >> Adding package to the view:   $3" 2
+            ;;
+        none)
+            spack config add "modules:default:lmod:exclude:$3"
+            tsecho " >> Excluding package from tree:  $3" 2
+            ;;
+    esac
+}
+
 function print_queue_status {
     if [[ $package_limit -ne 1 ]]; then
         tsecho "Beginning installs with ${#queue_config[@]} specs in the queue"
@@ -493,9 +512,11 @@ function check_spec {
         if [[ $dry_run != true ]]; then
             install_specs
         else
-            while read queued_hash; do
-                remove_spec_from_queue $queued_hash
-            done < <(tr '|' '\n' <<< "$install_queue")
+            if [[ -n $install_queue ]]; then
+                while read queued_hash; do
+                    remove_spec_from_queue $queued_hash
+                done < <(tr '|' '\n' <<< "$install_queue")
+            fi
 
             unset start_installs
         fi
@@ -570,6 +591,9 @@ function check_spec {
                     if [[ " $start_hashes " != *" $spec_hash "* ]]; then
                         print_spec_message "Adding to specs"
                         eval spack add $spec > /dev/null
+
+                        # Adding the spec won't make it explicit, so let's make sure...
+                        spack mark -e /$spec_hash
                     fi
                 else
                     install_date=$(date +%FT%T) add_spec_to_queue $spec_hash
@@ -594,7 +618,13 @@ function check_spec {
         fi
 
         if [[ $skip_spec == true ]]; then
-            tsecho "Skipping spec.. $PCOL$spec$BCOL$type_msg$DCOL (reason: already installed)" 1
+            if [[ " $start_hashes " == *" $spec_hash "* ]]; then
+                tsecho "Skipping spec.. $PCOL$spec$BCOL$type_msg$DCOL (reason: already installed)" 1
+            else
+                # Make sure added package gets concretized and access is finalized
+                needs_concretization=true
+                modify_spec_access ${config[access]:-module} $spec_hash "$spec"
+            fi
 
             if [[ ${#compiler_config[@]} -gt 0 ]]; then
                 compiler_checks
@@ -635,45 +665,30 @@ function clear_added_specs {
         echo -e "$RCOL >>> Removing any queued specs from spack.yaml ...$DCOL\n"
     fi
 
-    while read queued_hash; do
-        queued_spec=$(awk -F'|' '{print $NF}' <<< ${queue_config[$queued_hash]})
-        if ! grep -q -e "Successful.*$queued_hash"      \
-                -e "^\[+\].*external .*$queued_hash" ${log_installs}*; then
-            # If we can't find it by hash, it may still have been "installed" by virtue
-            # of existing in an upstream, so we have to search by short hash
-            if ! grep -q -e "^\[+\].*/${queued_hash:0:4}$" ${log_installs}*; then
-                (trap '' SIGINT; eval spack remove $queued_spec) &
-                wait $!
-                continue
+    if [[ -n $install_queue ]]; then
+        while read queued_hash; do
+            queued_spec=$(awk -F'|' '{print $NF}' <<< ${queue_config[$queued_hash]})
+            if ! grep -q -e "Successful.*$queued_hash"      \
+                    -e "^\[+\].*external .*$queued_hash" ${log_installs}*; then
+                # If we can't find it by hash, it may still have been "installed" by virtue
+                # of existing in an upstream, so we have to search by short hash
+                if ! grep -q -e "^\[+\].*/${queued_hash:0:4}$" ${log_installs}*; then
+                    (trap '' SIGINT; eval spack remove $queued_spec) &
+                    wait $!
+                    continue
+                else
+                    tsecho "Keeping upstream spec $queued_spec (hash /$queued_hash)." 2
+                fi
             else
-                tsecho "Keeping upstream spec $queued_spec (hash /$queued_hash)." 2
+                tsecho "Keeping successfully installed spec $queued_spec (hash /$queued_hash)." 2
             fi
-        else
-            tsecho "Keeping successfully installed spec $queued_spec (hash /$queued_hash)." 2
-        fi
 
-        add_date=$(date +%FT%T) add_spec_to_registry $queued_hash
-        queued_spec=$(awk -F'|' '{print $NF}' <<< ${queue_config[$queued_hash]})
-        remove_spec_from_queue $queued_hash
-
-        # Modify spack.yaml based on access settings
-        case ${active_config[access]:-module} in
-            core)
-                spec_name=$(spack find --format "{name}" /$queued_hash)
-                spack config add "modules:default:lmod:core_specs:$spec_name"
-                tsecho " >> Setting package as core_spec: $queued_spec" 2
-                ;;
-            view)
-                spack config add "modules:default:lmod:exclude:$queued_spec"
-                add_spec_to_view "$queued_spec"
-                tsecho " >> Adding package to the view:   $queued_spec" 2
-                ;;
-            none)
-                spack config add "modules:default:lmod:exclude:$queued_spec"
-                tsecho " >> Excluding package from tree:  $queued_spec" 2
-                ;;
-        esac
-    done < <(tr '|' '\n' <<< "$install_queue")
+            add_date=$(date +%FT%T) add_spec_to_registry $queued_hash
+            queued_spec=$(awk -F'|' '{print $NF}' <<< ${queue_config[$queued_hash]})
+            remove_spec_from_queue $queued_hash
+            modify_spec_access ${active_config[access]:-module} $queued_hash "$queued_spec"
+        done < <(tr '|' '\n' <<< "$install_queue")
+    fi
     
     if [[ $1 == 1 ]]; then
         backup_build_database
@@ -683,7 +698,7 @@ function clear_added_specs {
 function install_specs {
     if [[ ${active_config[cache]} == no ]]; then
         spec_build_cmd="${build_cmd} --use-buildcache never"
-    elif [[ ${active_config[cache]} == deps ]]; then
+    elif [[ ${active_config[cache]} == dep* ]]; then
         if [[ $prefer_cache == yes ]]; then
             spec_build_cmd="${build_cmd} --use-buildcache package:never,dependencies:only"
         else
@@ -704,17 +719,19 @@ function install_specs {
     # Install the package and view pertinent log information
     build_steps="$spec_build_cmd"
 
-    while read queued_hash; do
-        if [[ $queued_hash != $spec_hash ]]; then
-            queued_spec=$(awk -F'|' '{print $NF}' <<< ${queue_config[$queued_hash]})
-            build_steps="spack add ${queued_spec}${SEP}$build_steps"
-        fi
-    done < <(tr '|' '\n' <<< "$install_queue" | tac)
+    if [[ -n $install_queue ]]; then
+        while read queued_hash; do
+            if [[ $queued_hash != $spec_hash ]]; then
+                queued_spec=$(awk -F'|' '{print $NF}' <<< ${queue_config[$queued_hash]})
+                build_steps="spack add ${queued_spec}${SEP}$build_steps"
+            fi
+        done < <(tr '|' '\n' <<< "$install_queue" | tac)
+    fi
 
     log_cmd "$build_steps" >> $log_installs
     tsecho "Starting concretization using ${build_jobs:-1} threads" 2
     spack concretize -j ${build_jobs:-1} -q > /dev/null
-    shell_pids= spack_status=0
+    shell_pids= spack_status=0 needs_concretization=
 
     # Delayed-trapping won't work with set -e and we also enable job control
     # for a moment to create a new process group
@@ -722,7 +739,7 @@ function install_specs {
 
     # If interrupt signal is active, Spack will somehow intercept; so disable in a subshell
     for n in $(seq $num_tasks); do
-        prefix=" $FCOL[${build_hosts[$h]}:$n]$DCOL "
+        prefix=" $FCOL[$n:${build_hosts[$h]}]$DCOL "
 
         if [[ $my_host == ${build_hosts[$h]} ]]; then
             my_build_cmd=$spec_build_cmd
@@ -1082,6 +1099,12 @@ if [[ ${#queue_config[@]} -gt 0 ]]; then
 
     if [[ $dry_run != true ]]; then
         install_specs
+    fi
+elif [[ ${needs_concretization:-false} == true ]]; then
+    tsecho "Concretizing already-installed packages added to environment"
+
+    if [[ $dry_run != true ]]; then
+        spack concretize -j ${build_jobs:-1} -q > /dev/null
     fi
 fi
 

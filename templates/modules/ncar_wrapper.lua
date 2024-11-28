@@ -1,4 +1,10 @@
 {% extends "ncar_default.lua" %}
+{% block environment %}
+
+conflict("chapel")
+
+{{ super() }}
+{% endblock %}
 {% block footer %}
 
 if os.getenv("LMOD_FAMILY_MPI") then
