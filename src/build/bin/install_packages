@@ -8,7 +8,7 @@
 #           and any other packages that need it
 #
 #   Author:         Brian Vanderwende
-#   Last Revised:   20:07, 27 Nov 2024
+#   Last Revised:   17:46, 01 Dec 2024
 #
 
 
@@ -539,10 +539,10 @@ function check_spec {
         # Check for raw spec first, to avoid recreating canonical spec
         registry_data=$(sed -n '3,$ s/ | /|/gp' $SPACK_ENV/registry | awk -F\| -v spec="$spec"      \
                 '$(NF-1) == spec {print $0}')
-        
+
         # Use Spack commands to reformat into canonical Spec ordering
         parse_cmd="spack.cmd.parse_specs('$(sed "s/'/\\\'/g" <<< $spec)')[0]"
-        
+
         if [[ -z $registry_data ]]; then
             parsed_spec="$(PYTHONPATH=$pypath $SPACK_PYTHON -c "import spack.cmd; print($parse_cmd)")"
             spec="$parsed_spec"
@@ -569,7 +569,12 @@ function check_spec {
 
                 if [[ $? == 0 ]]; then
                     set -e
-                    spec_hash=$(grep -A2 ^Concretized <<< "$spack_spec_out" | tail -n1 | awk '{print $2}')
+
+                    if [[ $NCAR_SPACK_SPEC_FORMAT == new ]]; then
+                        spec_hash=$(head -1 <<< "$spack_spec_out" | awk '{print $2}')
+                    else
+                        spec_hash=$(grep -A2 ^Concretized <<< "$spack_spec_out" | tail -n1 | awk '{print $2}')
+                    fi
                 else
                     clear_added_specs 1
                     exit 1
@@ -689,7 +694,7 @@ function clear_added_specs {
             modify_spec_access ${active_config[access]:-module} $queued_hash "$queued_spec"
         done < <(tr '|' '\n' <<< "$install_queue")
     fi
-    
+
     if [[ $1 == 1 ]]; then
         backup_build_database
     fi
@@ -1065,7 +1070,7 @@ while read entry; do
             unset comp mpi
 
             case $spec_type in
-                mdep)
+                mdep|by-mpi)
                     for comp in $compilers; do
                         while read mpi; do
                             prepare_spec || continue
@@ -1073,7 +1078,7 @@ while read entry; do
                         done <<< ${mpis[$comp]}
                     done
                     ;;
-                cdep)
+                cdep|by-compiler)
                     for comp in $compilers; do
                         prepare_spec || continue
                         check_spec

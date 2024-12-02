@@ -1,7 +1,7 @@
 #!/bin/bash
 #
 #   Author:         Brian Vanderwende
-#   Last Revised:   13:57, 15 Nov 2024
+#   Last Revised:   10:42, 28 Nov 2024
 #
 
 set -e
@@ -190,6 +190,13 @@ if [[ $NCAR_SPACK_ROOT != $spack_clone_path ]]; then
         git checkout $NCAR_SPACK_HOST_VERSION
     fi
 
+    # Check whether Spack should use new spec output
+    if git merge-base --is-ancestor 6f948eb847c46a9caea852d3ffffd9cd4575dacc HEAD; then
+        spec_format=new
+    else
+        spec_format=old
+    fi
+
     # Add original Spack repo as an upstream for checking out recipe updates
     git remote add upstream git@github.com:spack/spack.git
 
@@ -292,6 +299,7 @@ cp -r src/build/* $NCAR_SPACK_ENV_BUILD
 cat > $NCAR_SPACK_ENV_BUILD/main.cfg << EOF
 NCAR_SPACK_DEPLOY_TYPE=$NCAR_SPACK_DEPLOY_TYPE
 NCAR_SPACK_DEPLOY_COMMIT=$(git rev-parse HEAD)
+NCAR_SPACK_SPEC_FORMAT=$spec_format
 
 EOF
 
