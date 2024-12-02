@@ -8,7 +8,7 @@
 #           and any other packages that need it
 #
 #   Author:         Brian Vanderwende
-#   Last Revised:   17:46, 01 Dec 2024
+#   Last Revised:   17:42, 01 Dec 2024
 #
 
 
@@ -329,7 +329,11 @@ function prepare_spec {
         fi
     done
 
-    if [[ ${#queue_config[@]} -gt 0 ]]; then
+    if [[ ${config[type]} == compiler ]] && [[ ${config[build]} != false ]]; then
+        config[register]=${config[register]:-yes}
+    fi
+
+    if [[ ${#queue_config[@]} -gt 0 ]] && [[ $start_installs != true ]]; then
         for opt in ${install_params//|/ }; do
             if [[ ${#active_config[@]} -gt 0 ]] && [[ ${config[$opt]} != ${active_config[$opt]} ]]; then
                 if [[ $opt == maxjobs ]] && [[ ${config[$opt]} -lt ${build_jobs:-1} ]]; then
@@ -539,10 +543,10 @@ function check_spec {
         # Check for raw spec first, to avoid recreating canonical spec
         registry_data=$(sed -n '3,$ s/ | /|/gp' $SPACK_ENV/registry | awk -F\| -v spec="$spec"      \
                 '$(NF-1) == spec {print $0}')
-
+        
         # Use Spack commands to reformat into canonical Spec ordering
         parse_cmd="spack.cmd.parse_specs('$(sed "s/'/\\\'/g" <<< $spec)')[0]"
-
+        
         if [[ -z $registry_data ]]; then
             parsed_spec="$(PYTHONPATH=$pypath $SPACK_PYTHON -c "import spack.cmd; print($parse_cmd)")"
             spec="$parsed_spec"
@@ -569,7 +573,7 @@ function check_spec {
 
                 if [[ $? == 0 ]]; then
                     set -e
-
+                    
                     if [[ $NCAR_SPACK_SPEC_FORMAT == new ]]; then
                         spec_hash=$(head -1 <<< "$spack_spec_out" | awk '{print $2}')
                     else
@@ -639,7 +643,7 @@ function check_spec {
 
             if [[ $package_limit -gt 0 ]] && [[ ${#queue_config[@]} -ge $package_limit ]]; then
                 start_installs=true
-            elif [[ ${config[type]} == compiler ]] && [[ ${config[register]} != no ]]; then
+            elif [[ ${config[register]} == yes ]]; then
                 start_installs=true
                 tsecho " >> INSTALL TRIGGER - spec is a compiler and will be registered" 2
             fi
@@ -694,7 +698,7 @@ function clear_added_specs {
             modify_spec_access ${active_config[access]:-module} $queued_hash "$queued_spec"
         done < <(tr '|' '\n' <<< "$install_queue")
     fi
-
+    
     if [[ $1 == 1 ]]; then
         backup_build_database
     fi
@@ -823,9 +827,16 @@ function install_specs {
         exit 1
     fi
 
-    # If spec is a compiler, register in the YAML file
+    # If spec is a compiler, register in the YAML file or dump cache
     if [[ ${#compiler_config[@]} -gt 0 ]]; then
-        compiler_checks
+        if [[ $NCAR_SPACK_ENV_TYPE == build ]]; then
+            compiler_checks
+        else
+            # Spack now caches whether a compiler can be found, so we have to
+            # dump cache here to make a compiler actually work :-(
+            tsecho " >> Clearing Spack misc cache to reset compiler functionality"
+            spack clean -m > /dev/null
+        fi
     fi
 
     if [[ -n $warn_level ]]; then
@@ -926,7 +937,10 @@ log_installs=$log_dir/installs.$start_time.${SUDO_USER:-$USER}
 
 # Make sure environment reports current state
 tsecho "Verify current environment concretization"
-spack concretize -q
+
+if [[ $SPACK_ENV/spack.yaml -nt $SPACK_ENV/spack.lock ]]; then
+    spack concretize -q
+fi
 
 # Detect available compiler information
 sys_gcc=$(gcc -v |& grep "gcc version" | cut -d' ' -f3)

@@ -39,7 +39,7 @@ my_name=$(basename "$0")
 # Note that shell arrays can't be exported, so we must define it here to be
 # reinstantiated for each script
 declare -A field_vars field_labels
-field_widths=( 32 19 40 4 6 7 8 )
+field_widths=( 32 19 40 4 6 7 8 9 )
 field_vars[32]=spec_hash
 field_vars[19]=install_date
 field_vars[40]=spack_commit
@@ -47,6 +47,7 @@ field_vars[4]="config[maxjobs]"
 field_vars[6]="config[trust]"
 field_vars[7]="config[cache]"
 field_vars[8]="config[publish]"
+field_vars[9]="config[register]"
 field_labels[spec_hash]="Package Hash"
 field_labels[install_date]="Date Installed"
 field_labels[spack_commit]="Spack Git Repo Commit"
@@ -54,8 +55,9 @@ field_labels["config[maxjobs]"]="Jobs"
 field_labels["config[trust]"]="Trust?"
 field_labels["config[cache]"]="Cached?"
 field_labels["config[publish]"]="Publish?"
+field_labels["config[register]"]="Register?"
 
-install_params="cache|trust|maxjobs|access"
+install_params="cache|trust|maxjobs|access|register"
 default_trust=no
 default_cache=yes
 default_publish=yes

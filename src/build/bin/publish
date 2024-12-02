@@ -10,7 +10,7 @@
 #           shell script. So we must activate in the script!
 #
 #   Author:         Brian Vanderwende
-#   Last Revised:   22:33, 27 Nov 2024
+#   Last Revised:   17:14, 01 Dec 2024
 #
 
 
@@ -141,14 +141,12 @@ function create_manifest {
 
                 if [[ ${config[$opt]} != ${!def_var} ]]; then
                     entry="$entry <$opt:${config[$opt]}>"
+
+                    if [[ $opt == register ]]; then
+                        entry="$entry <type:compiler>"
+                    fi
                 fi
             done
-
-            # GCC can impact concretization b/c of runtime packages. Order matters even
-            # with fresh. This triggers immediate installs before proceeding.
-            if [[ $spec == gcc* ]]; then
-                entry="$entry <type:compiler> <register:no>"
-            fi
 
             echo "$entry" >> $1
         fi
@@ -282,8 +280,11 @@ elif [[ $dry_run != true ]]; then
 fi
 
 tsecho "Testing build environment for unconcretized changes"
-conc_test=$(spack concretize -j 4 |& grep -v -e "Updating view at" -e "Skipping external"   \
-        -e "terminal_title" -e "No new specs" || true)
+
+if [[ $SPACK_ENV/spack.yaml -nt $SPACK_ENV/spack.lock ]]; then
+    conc_test=$(spack concretize -j 4 |& grep -v -e "Updating view at"          \
+        -e "Skipping external" -e "terminal_title" -e "No new specs" || true)
+fi
 
 if [[ -n $conc_test ]]; then
 >&2 cat << EOF
