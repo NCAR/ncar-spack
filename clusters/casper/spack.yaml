@@ -60,6 +60,9 @@ spack:
         - zlib
         tbb:
         - intel-oneapi-tbb
+        libglx:
+        - opengl
+        - mesa
       permissions:
         read: world
         write: user
@@ -152,9 +155,9 @@ spack:
     cli11:
       require: '%gcc'
     cmake:
-      # Without +ownlibs, some packages can't concretize due to infinite regression
       require:
       - '%gcc'
+      # Without +ownlibs, some packages can't concretize due to infinite regression
       variants:
       - +ownlibs
     cpio:
@@ -199,6 +202,9 @@ spack:
       - '%gcc'
       variants:
       - +graphviz
+    dsfmt:
+      require:
+      - '%gcc'
     ecbuild:
       require:
       - '%gcc'
@@ -221,8 +227,8 @@ spack:
       - +treesitter
     esmf:
       variants:
-      - +parallelio
       - +external-parallelio
+      - +parallelio
       - ~mpi
       - ~pnetcdf
       - ~xerces
@@ -263,9 +269,9 @@ spack:
     fontconfig:
       require: '%gcc'
     freetype:
+      require:
       # Newer version leads to concretization issues for Python packages
       # This setting avoids multiple builds of many packages
-      require:
       - '@:2.10.2'
       - '%gcc'
     gawk:
@@ -374,9 +380,9 @@ spack:
       variants:
       - +dap
     graphicsmagick:
+      require:
       # graphicsmagick can't built using libjpeg>2
       # https://github.com/ImageMagick/ImageMagick/issues/6514
-      require:
       - ^libjpeg-turbo@:2
       - '%gcc'
     groff:
@@ -388,12 +394,12 @@ spack:
     gzip:
       require:
       - '%gcc'
-    harfbuzz:
-      variants:
-      - +graphite2
     h5z-zfp:
       prefer:
       - spec: ^hdf5~mpi
+    harfbuzz:
+      variants:
+      - +graphite2
     hdf:
       variants:
       - +external-xdr
@@ -448,6 +454,8 @@ spack:
       - '%gcc'
     intel-oneapi-mkl:
       prefer:
+      - spec: '@2024'
+        when: '%oneapi@2024'
       - spec: '@2025'
         when: '%oneapi@2025'
       - spec: +gfortran threads=openmp
@@ -465,15 +473,18 @@ spack:
     ispc:
       require: '%clang'
     jasper:
-      # Newer Jasper versions have caused issues in the past
-      # TODO - recheck whether this is a problem now
       require:
       - '%gcc'
+      # Newer Jasper versions have caused issues in the past
+      # TODO - recheck whether this is a problem now
       - '@:2'
     json-c:
       require: '%gcc'
     jsoncpp:
       require: '%gcc'
+    julia:
+      require:
+      - '%gcc'
     krb5:
       require:
       - '%gcc'
@@ -483,6 +494,9 @@ spack:
     libarchive:
       require:
       - compression=bz2lib,lz4,lzma,lzo2,zlib,zstd xar=expat
+      - '%gcc'
+    libblastrampoline:
+      require:
       - '%gcc'
     libcap:
       require:
@@ -511,8 +525,12 @@ spack:
     libfuse:
       require: ~utils
     libgd:
+      require:
       # gnuplot fails to build with newer version due to libiconv linking failure
-      require: '@2.2.4'
+      - '@2.2.4'
+    libgit2:
+      require:
+      - '%gcc'
     libjpeg-turbo:
       require: '%gcc'
     libogg:
@@ -522,6 +540,9 @@ spack:
       - '%gcc'
     libpng:
       require: '%gcc'
+    libssh2:
+      require:
+      - '%gcc'
     libszip:
       require: '%gcc'
     libtheora:
@@ -540,6 +561,11 @@ spack:
       - +xz
       - +zlib
       - components=setjump,ptrace,coredump
+      require:
+      - '%gcc'
+    libwhich:
+      require:
+      - '%gcc'
     libx11:
       require: '%gcc'
     libxaw:
@@ -569,6 +595,9 @@ spack:
     matlab:
       require: '%gcc'
     maven:
+      require:
+      - '%gcc'
+    mbedtls:
       require:
       - '%gcc'
     mesa-glu:
@@ -654,7 +683,13 @@ spack:
       variants:
       - +fortran
       - threads=openmp
+    opengl:
+      require:
+      - '%gcc'
     openjdk:
+      require:
+      - '%gcc'
+    openlibm:
       require:
       - '%gcc'
     openmpi:
@@ -680,18 +715,21 @@ spack:
       require:
       - '%gcc'
     openssl:
+      require:
       # Requiring certs=system is necessary to perform builds like rust using
       # external openssl. Also note that I've edited the package to remove the
       # deprecation status of this version. It makes the concretizer wildly
       # unpredictable and fussy! This seems justified as the Spack documentation
       # itself suggests that the trusted thing to do is to use the system version
-      require:
       - certs=system
       - '%gcc'
     osmesa:
       require:
       - '%gcc'
     ospray:
+      require:
+      - '%gcc'
+    p7zip:
       require:
       - '%gcc'
     pango:
@@ -733,9 +771,10 @@ spack:
       - spec: ^netcdf-c+mpi
         when: +mpi
     patchelf:
-      # Version 0.18 breaks when using gcc@7.5.0
       require:
+      # Version 0.18 breaks when using gcc@7.5.0
       - '@:0.17'
+      - '%gcc'
     pcre:
       require: '%gcc'
     pcre2:
@@ -770,9 +809,10 @@ spack:
       require:
       - '%gcc'
     py-setuptools:
-      # Simplifies stack to limit to 0.63, latest version used by numpy with Python < 3.12
       require:
       - '%gcc'
+      prefer:
+      # Simplifies stack to limit to 0.63, latest version used by numpy with Python < 3.12
       - '@:63'
     python:
       prefer:
@@ -803,6 +843,9 @@ spack:
     sed:
       require:
       - '%gcc'
+    silo:
+      variants:
+      - ~python
     singularityce:
       variants:
       - ~suid
@@ -839,6 +882,9 @@ spack:
       - +verbs
       - +vfs
     unzip:
+      require:
+      - '%gcc'
+    utf8proc:
       require:
       - '%gcc'
     util-linux-uuid:
@@ -965,17 +1011,41 @@ spack:
         core_specs:
         - visit
         - paraview
-        - gmt
         - octave
+        - gsl
+        - nco
+        - gmt
+        - cdo
         - nccmp
         - ncview
-        - cdo
-        - nco
-        - gsl
-        - cuda
-        - r
-        - cmake
+        - eigen
+        - vapor
+        - darshan-util
+        - ecflow
+        - neovim
+        - madis
+        - ferret
+        - doxygen
+        - linaro-forge
+        - grib-util
         - wgrib2
+        - grads
+        - ncvis
+        - ucx
+        - ncl
+        - cudnn
+        - cuda
+        - charliecloud
+        - peak-memusage
+        - podman
+        - pcre
+        - apptainer
+        - miniconda3
+        - cmake
+        - go
+        - intel-oneapi-compilers
+        - nvhpc
+        - r
         cuda:
           environment:
             set:
@@ -1183,6 +1253,8 @@ spack:
           autoload: none
         ncview:
           autoload: none
+        neovim:
+          template: ncar_neovim.lua
         netcdf:
           autoload: all
         netcdf+mpi:
@@ -1200,19 +1272,17 @@ spack:
               NVIDIA_VERSION: '{version}'
             prepend_path:
               LD_LIBRARY_PATH: '{prefix}/Linux_x86_64/{version}/compilers/lib'
-        neovim:
-          template: ncar_neovim.lua
         octave:
           autoload: none
         openmpi:
           environment:
             set:
+              # https://github.com/open-mpi/ompi/issues/9647
               OMPI_MCA_oob_tcp_if_exclude: mgt
               OMPI_MCA_plm: tm
-              OMPI_MCA_shmem_mmap_enable_nfs_warning: '0'
-              # https://github.com/open-mpi/ompi/issues/9647
-              OMPI_MCA_rmaps_default_mapping_policy: :hwtcpus
               OMPI_MCA_prte_silence_shared_fs: '1'
+              OMPI_MCA_rmaps_default_mapping_policy: :hwtcpus
+              OMPI_MCA_shmem_mmap_enable_nfs_warning: '0'
             prepend_path:
               LD_LIBRARY_PATH: '{prefix}/lib'
         parallel-netcdf:

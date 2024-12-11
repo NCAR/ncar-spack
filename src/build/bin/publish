@@ -10,7 +10,7 @@
 #           shell script. So we must activate in the script!
 #
 #   Author:         Brian Vanderwende
-#   Last Revised:   17:14, 01 Dec 2024
+#   Last Revised:   22:54, 10 Dec 2024
 #
 
 
@@ -18,11 +18,12 @@ function usage {
 cat << EOF
 Usage: $0 [OPTIONS] "Commit message for publish"
 
-Use this script to sync the public environment with the build environment, making all
-changes in build user-visible. Any new packages, postprocessing steps, modules, view
-additions will be ported over.
+Use this script to sync the public environment with the build environment,
+making all changes in build user-visible. Any new packages, postprocessing
+steps, modules, view additions will be ported over.
 
-This script uses locking to ensure that only one publish step is happening at a time.
+This script uses locking to ensure that only one publish step is happening at a
+time.
 
 Specifically, this script performs the following steps:
 
@@ -38,10 +39,11 @@ Specifically, this script performs the following steps:
 
 Options
     -h, --help              show this help message
-    -d, --dry-run           show what would be published but do not make any changes
+    -a, --access [LEVEL]    set max access to "stack" modules [user/group/ALL]
+    -d, --dry-run           show what would be published; don't make any changes
     --force                 attempt to publish changes, even if none detected
-    --resume                continue an existing publish attempt (exercise caution!)
-    --set-default           upon publishing, make this ncarenv the default for users
+    --resume                continue an existing publish attempt (caution!)
+    --set-default           upon publishing, make this ncarenv the default
     -v, --verbose           provide additional logging messages
 
 EOF
@@ -239,6 +241,14 @@ while [[ $# -gt 0 ]]; do
             usage
             exit 0
             ;;
+        -a|--access)
+            if [[ $1 == *=* ]]; then
+                access_level=${1#*=}
+            else
+                access_level=$2
+                shift
+            fi
+            ;;
         -d|--dry-run|--dryrun)
             dry_run=true
             ;;
@@ -343,6 +353,7 @@ pad_length=$(awk '/padded_length: / {print $2}' $SPACK_ENV/spack.yaml)
 
 tsecho "Converting build spack.yaml for use in public environment"
 cd $SPACK_ENV; mkdir -p .prototype; spack env deactivate
+
 cp spack.yaml .prototype
 
 if [[ -n $pad_length ]]; then
@@ -545,6 +556,31 @@ if [[ -f $NCAR_SPACK_ENV_BUILD/bin/postprocess ]]; then
     tsecho "Running postprocessing script on environment"
     rsync -a --delete $NCAR_SPACK_ENV_BUILD/postprocess/ postprocess
     NCAR_SPACK_ENV_TYPE=public $NCAR_SPACK_ENV_BUILD/bin/postprocess
+fi
+
+if [[ -n $access_level ]]; then
+    tsecho "Changing environment access level to $GCOL$access_level$DCOL"
+
+    for mod_type in ncarenv ncarenv-basic; do
+        stack_module=$NCAR_SPACK_ROOT_MODULES/environment/$mod_type/${NCAR_SPACK_HOST_VERSION}.lua
+
+        if [[ -f $stack_module ]]; then
+            case $access_level in
+                user)
+                    chmod 600 $stack_module
+                    ;;
+                group)
+                    chmod 640 $stack_module
+                    ;;
+                all)
+                    chmod 644 $stack_module
+                    ;;
+                *)
+                    >&2 echo "Warning: Skipping unknown access level $RCOL$access_level$DCOL"
+                    ;;
+            esac
+        fi
+    done
 fi
 
 for object in util config registry; do

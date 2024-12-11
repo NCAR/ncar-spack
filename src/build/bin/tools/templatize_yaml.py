@@ -90,7 +90,7 @@ for key in raw["spack"]:
                                             data["spack"][key][mset][subkey][modkey][var][envkey] = sorted(data["spack"][key][mset][subkey][modkey][var][envkey])
 
                     data["spack"][key][mset][subkey] = dict(sorted(data["spack"][key][mset][subkey].items(), key=lambda item: item[0]))
-    elif key in ["mirrors", "repos", "specs", "bootstrap", "upstreams"]:
+    elif key in ["mirrors", "specs", "bootstrap", "upstreams"]:
         del data["spack"][key]
 
 # Write modified yaml to template

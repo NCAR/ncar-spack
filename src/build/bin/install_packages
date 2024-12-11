@@ -8,7 +8,7 @@
 #           and any other packages that need it
 #
 #   Author:         Brian Vanderwende
-#   Last Revised:   17:42, 01 Dec 2024
+#   Last Revised:   19:31, 10 Dec 2024
 #
 
 
@@ -16,10 +16,10 @@ function usage {
 cat << EOF
 Usage: $0 [MANIFEST-FILE]
 
-Use this script to install new packages into the build environment. Package manifest is
-specified in the packages.cfg file in the build environment. This script is the preferred
-method for installing new packages! Using "spack install" certainly works but this script
-adds:
+Use this script to install new packages into the build environment. Package
+manifest is specified in the packages.cfg file in the build environment. This
+script is the preferred method for installing new packages! Using "spack
+install" certainly works but this script adds:
 
     1. Sensible matrixing of compiler and MPI dependencies
     2. Logging of package specs
@@ -29,14 +29,18 @@ adds:
 
 Options
     -h                      show this help message
-    -c, --prefer-cache      specify that cached versions of packages should be used
-    -d, --dry-run           show what would be installed but do not make any changes
-    -f, --fail-fast         if any build task fails, terminate others immediately
+    -a, --overwrite-access  replace pkg access settings with those in manifest
+    -c, --prefer-cache      specify that only cached packages should be used
+    -d, --dry-run           show what would be done; do not make any changes
+    -f, --fail-fast         if any build task fails, terminate all immediately
     -j, --jobs-per-task N   number of build jobs per spack install task
                             (will use value in spack.yaml if unspecified)
-    -l, --host-list HOSTS   specify build hosts (comma-separated list, "cluster", or "pbs")
-    -n, --num-tasks N       number of concurrent calls to spack install (default 1)
-    -p, --package-limit N   max number of packages to be installed at once (1 for sequential)
+    -l, --host-list HOSTS   specify build hosts
+                            (comma-separated list, "cluster", or "pbs")
+    -n, --num-tasks N       # of concurrent calls to spack install (default 1)
+                            if negative, will scale down if npkgs < ntasks
+    -p, --package-limit N   max number of packages to be installed at once
+                            (1 for sequential)
     -r, --refresh-registry  force refresh of package recipes in the registry
     -s, --skip-checks       don't perform certain environment sanity checks
     -v, --verbose           provide details on actions *not* taken
@@ -58,10 +62,20 @@ my_host=$(hostname)
 manifest_file=$SPACK_ENV/packages.cfg
 build_jobs=$(spack config get config | sed -n 's/^[ ]*build_jobs: \(.*\)/\1/p')
 header_cmd='tee $log_installs'
+access_verbosity=2
 
 # Handle user input
 while [[ $# -gt 0 ]]; do
     case $1 in
+        -a|--overwrite-access)
+            overwrite_access=true
+            access_verbosity=1
+
+            # Since we will modify access, let's show skipped packages to make things clearer
+            if [[ $log_verbosity -lt 1 ]]; then
+                log_verbosity=1
+            fi
+            ;;
         -c|--prefer-cache)
             prefer_cache=yes
             ;;
@@ -82,6 +96,12 @@ while [[ $# -gt 0 ]]; do
             ;;
         -n|--num-tasks)
             num_tasks=$2
+
+            if [[ $num_tasks -lt 0 ]]; then
+                num_tasks=$((num_tasks * -1))
+                shrink_tasks=true
+            fi
+
             shift
             ;;
         -p|--package-limit)
@@ -433,20 +453,25 @@ function check_registry {
 }
 
 function modify_spec_access {
+    # First, clean up any existing access to avoid conflicts
+    spec_name=$(sed 's/[@%^+~ ].*//' <<< "$3")
+    sed -i "/^[ ]*core_specs:/,/^ *[a-z]/ {/- $spec_name/d}" $SPACK_ENV/spack.yaml
+    sed -i "/^[ ]*lmod:$/,$ {/^[ ]*exclude:$/,/^[ ]*[a-z]/ {/- $3/d}}" $SPACK_ENV/spack.yaml
+    sed -i "/^  view:$/,/^  [a-z]*:/ {/^[ ]*select:$/,/^[ ]*[a-z]/ {/- $3/d}}" $SPACK_ENV/spack.yaml
+
     case $1 in
         core)
-            spec_name=$(spack find --format "{name}" /$2)
             spack config add "modules:default:lmod:core_specs:$spec_name"
-            tsecho " >> Setting package as core_spec: $3" 2
+            tsecho " >> Setting package as core_spec: $3" $access_verbosity
             ;;
         view)
             spack config add "modules:default:lmod:exclude:$3"
             add_spec_to_view "$3"
-            tsecho " >> Adding package to the view:   $3" 2
+            tsecho " >> Adding package to the view:   $3" $access_verbosity
             ;;
         none)
             spack config add "modules:default:lmod:exclude:$3"
-            tsecho " >> Excluding package from tree:  $3" 2
+            tsecho " >> Excluding package from tree:  $3" $access_verbosity
             ;;
     esac
 }
@@ -476,7 +501,7 @@ function check_spec {
             exit 1
         fi
     elif [[ ${config[type]} == compiler ]]; then
-        comp_spec=$(sed "s/^\([^@+~ ]*\)[^@]*\(@[^+~ ]*\).*/\1\2/" <<< "$spec")
+        comp_spec=$(sed "s/^\([^@+~ ]*\)[^@]*\(@[^+~% ]*\).*/\1\2/" <<< "$spec")
 
         if [[ $comp_spec == intel-oneapi-compilers-classic* ]]; then
             comp_spec="${comp_spec/intel-oneapi-compilers-classic/intel}"
@@ -629,6 +654,10 @@ function check_spec {
         if [[ $skip_spec == true ]]; then
             if [[ " $start_hashes " == *" $spec_hash "* ]]; then
                 tsecho "Skipping spec.. $PCOL$spec$BCOL$type_msg$DCOL (reason: already installed)" 1
+
+                if [[ ${overwrite_access:-false} == true ]]; then
+                    modify_spec_access ${config[access]:-module} $spec_hash "$spec"
+                fi
             else
                 # Make sure added package gets concretized and access is finalized
                 needs_concretization=true
@@ -727,12 +756,14 @@ function install_specs {
 
     # Install the package and view pertinent log information
     build_steps="$spec_build_cmd"
+    build_tasks=0
 
     if [[ -n $install_queue ]]; then
         while read queued_hash; do
             if [[ $queued_hash != $spec_hash ]]; then
                 queued_spec=$(awk -F'|' '{print $NF}' <<< ${queue_config[$queued_hash]})
                 build_steps="spack add ${queued_spec}${SEP}$build_steps"
+                ((build_tasks++))
             fi
         done < <(tr '|' '\n' <<< "$install_queue" | tac)
     fi
@@ -740,14 +771,24 @@ function install_specs {
     log_cmd "$build_steps" >> $log_installs
     tsecho "Starting concretization using ${build_jobs:-1} threads" 2
     spack concretize -j ${build_jobs:-1} -q > /dev/null
-    shell_pids= spack_status=0 needs_concretization=
+    shell_pids= spack_status=0 needs_concretization= task_limit=$num_tasks
+
+    if [[ ${shrink_tasks:-false} == true ]]; then
+        if [[ $build_tasks -lt $num_tasks ]]; then
+            if [[ $build_tasks -gt 0 ]]; then
+                task_limit=$build_tasks
+            else
+                task_limit=1
+            fi
+        fi
+    fi
 
     # Delayed-trapping won't work with set -e and we also enable job control
     # for a moment to create a new process group
     set +e -m
 
     # If interrupt signal is active, Spack will somehow intercept; so disable in a subshell
-    for n in $(seq $num_tasks); do
+    for n in $(seq $task_limit); do
         prefix=" $FCOL[$n:${build_hosts[$h]}]$DCOL "
 
         if [[ $my_host == ${build_hosts[$h]} ]]; then
