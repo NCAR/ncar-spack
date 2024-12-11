@@ -92,7 +92,7 @@ spack:
         when: ^zlib-api
       - spec: cuda_arch=80
         when: +cuda
-      # Wihtout these, these packages will use GCC versions
+      # Without these, these packages will use GCC versions
       # (not yet true for nvhpc/cce, but check when those runtimes are added)
       - spec: ^hdf5 %oneapi
         when: '%oneapi ^hdf5'
@@ -377,6 +377,8 @@ spack:
       - '%gcc'
     gmake:
       require:
+      # This may help ioapi build
+      - '@:4.2'
       - '%gcc'
     gmp:
       require:
@@ -1282,7 +1284,8 @@ spack:
           hdf5+mpi: hdf5-mpi/{version}
           netcdf: netcdf/{version}
           intel-oneapi-advisor: intel-advisor/{version}
-          intel-oneapi-compilers: intel/{version}
+          intel-oneapi-compilers@2024: intel-oneapi/{version}
+          intel-oneapi-compilers@2025: intel/{version}
           intel-oneapi-inspector: intel-inspector/{version}
           intel-oneapi-mpi: intel-mpi/{version}
           intel-oneapi-mkl: mkl/{version}

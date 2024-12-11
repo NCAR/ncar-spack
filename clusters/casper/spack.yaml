@@ -33,7 +33,7 @@ spack:
       - +python
     all:
       compiler:
-      - gcc@7.5.0
+      - gcc@12.4.0
       - gcc
       - nvhpc
       - oneapi
@@ -54,8 +54,12 @@ spack:
         - openblas
         - intel-oneapi-mkl
         - nvhpc
+        rpc:
+        - libtirpc
         'zlib-api:':
         - zlib
+        tbb:
+        - intel-oneapi-tbb
       permissions:
         read: world
         write: user
@@ -83,8 +87,14 @@ spack:
         when: ^zlib-api
       - spec: cuda_arch=60,70,80
         when: +cuda
+      # Without these, these packages will use GCC versions
+      # (not yet true for nvhpc/cce, but check when those runtimes are added)
+      - spec: ^hdf5 %oneapi
+        when: '%oneapi ^hdf5'
+      - spec: ^netcdf-c %oneapi
+        when: '%oneapi ^netcdf-c'
     antlr:
-      require: '%gcc@7.5.0'
+      require: '%gcc'
     apptainer:
       variants:
       - ~suid
@@ -93,16 +103,16 @@ spack:
       - ~mpi
     attr:
       require:
-      - '%gcc@7.5.0'
+      - '%gcc'
     autoconf:
-      require: '%gcc@7.5.0'
+      require: '%gcc'
     autoconf-archive:
-      require: '%gcc@7.5.0'
+      require: '%gcc'
     automake:
-      require: '%gcc@7.5.0'
+      require: '%gcc'
     bash:
       require:
-      - '%gcc@7.5.0'
+      - '%gcc'
     binutils:
       variants:
       - +gas
@@ -110,18 +120,18 @@ spack:
       - +ld
       - +libiberty
     bison:
-      require: '%gcc@7.5.0'
+      require: '%gcc'
     bzip2:
       require:
-      - '%gcc@7.5.0'
+      - '%gcc'
     c-blosc:
       require:
-      - '%gcc@7.5.0'
+      - '%gcc'
     c-blosc2:
       require:
-      - '%gcc@7.5.0'
+      - '%gcc'
     cairo:
-      require: '%gcc@7.5.0'
+      require: '%gcc'
       variants:
       - +X
       - +fc
@@ -140,35 +150,36 @@ spack:
       variants:
       - +squashfuse
     cli11:
-      require: '%gcc@7.5.0'
+      require: '%gcc'
     cmake:
       # Without +ownlibs, some packages can't concretize due to infinite regression
       require:
-      - '%gcc@7.5.0'
+      - '%gcc'
       variants:
       - +ownlibs
     cpio:
       require:
-      - '%gcc@7.5.0'
+      - '%gcc'
     cuda:
       variants:
       - +dev
       require:
       - +allow-unsupported-compilers
-      - '%gcc@7.5.0'
+      - '%gcc'
     cudnn:
-      require: '%gcc@7.5.0'
+      prefer:
+      - spec: ^cuda@12.3.2
+        when: '@8.9.7.29-12'
+      require: '%gcc'
     curl:
-      # Need mbedtls option for Julia - most other packages seem to prefer openSSL
       require:
-      - '%gcc@7.5.0'
-      - tls=openssl,mbedtls
+      - '%gcc'
       variants:
       - +libidn2
       - +libssh2
       - +nghttp2
     cutensor:
-      require: '%gcc@7.5.0'
+      require: '%gcc'
     darshan-runtime:
       variants:
       - +parallel-netcdf
@@ -182,15 +193,15 @@ spack:
       - +bzip2
     diffutils:
       require:
-      - '%gcc@7.5.0'
+      - '%gcc'
     doxygen:
       require:
-      - '%gcc@7.5.0'
+      - '%gcc'
       variants:
       - +graphviz
     ecbuild:
       require:
-      - '%gcc@7.5.0'
+      - '%gcc'
     eccodes:
       variants:
       - +fortran
@@ -198,34 +209,25 @@ spack:
       - +png
       - +tools
       - jp2k=jasper
+    ecflow:
+      variants:
+      - +ui
     eigen:
-      require: '%gcc@7.5.0'
+      require: '%gcc'
     emacs:
       variants:
       - +X
       - +json
       - +treesitter
     esmf:
-      # If external-lapack not forced, concretizer will try to be lazy and
-      # avoid lapack requirements by switching to internal despite variant
-      require:
-      - spec: +external-lapack
-        when: '@8.1:'
-      - spec: ^parallelio@2.6.2
-        when: +external-parallelio @8.6.0
-      - spec: ^openblas
-        when: '%gcc ^lapack'
-      - spec: ^intel-oneapi-mkl@2024.1.0
-        when: '%oneapi@2024.1.0 ^lapack'
-      - spec: ^nvhpc@24.3
-        when: '%nvhpc@24.3 ^lapack'
       variants:
+      - +parallelio
       - +external-parallelio
       - ~mpi
       - ~pnetcdf
       - ~xerces
     expat:
-      require: '%gcc@7.5.0'
+      require: '%gcc'
     ferret:
       variants:
       - +datasets
@@ -253,28 +255,28 @@ spack:
       - ~mpi
     findutils:
       require:
-      - '%gcc@7.5.0'
+      - '%gcc'
     flex:
-      require: '%gcc@7.5.0'
+      require: '%gcc'
     fltk:
-      require: '%gcc@7.5.0'
+      require: '%gcc'
     fontconfig:
-      require: '%gcc@7.5.0'
+      require: '%gcc'
     freetype:
       # Newer version leads to concretization issues for Python packages
       # This setting avoids multiple builds of many packages
       require:
       - '@:2.10.2'
-      - '%gcc@7.5.0'
+      - '%gcc'
     gawk:
       require:
-      - '%gcc@7.5.0'
+      - '%gcc'
     gcc:
       variants:
       - +piclibs
       - languages=c,c++,fortran,go
       require:
-      - '%gcc@7.5.0'
+      - '%gcc'
     gdal:
       require:
       - any_of:
@@ -315,9 +317,9 @@ spack:
       - ~python
     ghostscript:
       require:
-      - '%gcc@7.5.0'
+      - '%gcc'
     giflib:
-      require: '%gcc@7.5.0'
+      require: '%gcc'
     gimp:
       # Turning docs on adds the dependency to itstool, which breaks a lot of reuse
       # because of libxml2+python requirement
@@ -326,20 +328,23 @@ spack:
     git:
       variants:
       - +svn
+      - +tcltk
     gl2ps:
       require:
-      - '%gcc@7.5.0'
+      - '%gcc'
     glew:
       require:
-      - '%gcc@7.5.0'
+      - '%gcc'
     glpk:
-      require: '%gcc@7.5.0'
+      require: '%gcc'
     gmake:
       require:
-      - '%gcc@7.5.0'
+      # This may help ioapi build
+      - '@:4.2'
+      - '%gcc'
     gmp:
       require:
-      - '%gcc@7.5.0'
+      - '%gcc'
     gmt:
       variants:
       - +ffmpeg
@@ -358,7 +363,9 @@ spack:
       - +qt
       - +wx
     googletest:
-      require: '%gcc@7.5.0'
+      require: '%gcc'
+      variants:
+      - cxxstd=17
     gptl:
       variants:
       - +papi
@@ -371,16 +378,22 @@ spack:
       # https://github.com/ImageMagick/ImageMagick/issues/6514
       require:
       - ^libjpeg-turbo@:2
-      - '%gcc@7.5.0'
+      - '%gcc'
     groff:
       require:
-      - '%gcc@7.5.0'
+      - '%gcc'
+    gtkplus:
+      variants:
+      - +cups
     gzip:
       require:
-      - '%gcc@7.5.0'
+      - '%gcc'
     harfbuzz:
       variants:
       - +graphite2
+    h5z-zfp:
+      prefer:
+      - spec: ^hdf5~mpi
     hdf:
       variants:
       - +external-xdr
@@ -393,7 +406,7 @@ spack:
       require:
       - any_of:
         - ^hdf5@1.10
-        when: '%gcc@7.5.0'
+        when: '%gcc'
     hdf5:
       variants:
       - +cxx
@@ -401,9 +414,11 @@ spack:
       - +hl
       - +szip
       - ~mpi
+      prefer:
+      - '@:1.12'
     hwloc:
       require:
-      - '%gcc@7.5.0'
+      - '%gcc'
       variants:
       - +cuda
     hypre:
@@ -415,61 +430,68 @@ spack:
         - '%nvhpc ^nvhpc'
         - '%cce ^cray-libsci'
     icu4c:
-      require: '%gcc@7.5.0'
+      require: '%gcc'
     idl:
-      require: '%gcc@7.5.0'
+      require: '%gcc'
     imagemagick:
       variants:
       - +ghostscript
     intel-oneapi-advisor:
       require:
-      - '%gcc@7.5.0'
+      - '%gcc'
     intel-oneapi-compilers:
-      require: '%gcc@7.5.0'
+      require: '%gcc'
+      variants:
+      - +nvidia
     intel-oneapi-inspector:
       require:
-      - '%gcc@7.5.0'
+      - '%gcc'
+    intel-oneapi-mkl:
+      prefer:
+      - spec: '@2025'
+        when: '%oneapi@2025'
+      - spec: +gfortran threads=openmp
+        when: '%gcc'
     intel-oneapi-mpi:
       variants:
       - +external-libfabric
       - +generic-names
+    intel-oneapi-runtime:
+      prefer:
+      - spec: ^gcc-runtime@12.4.0
     intel-oneapi-vtune:
       require:
-      - '%gcc@7.5.0'
+      - '%gcc'
     ispc:
       require: '%clang'
     jasper:
       # Newer Jasper versions have caused issues in the past
       # TODO - recheck whether this is a problem now
       require:
-      - '%gcc@7.5.0'
+      - '%gcc'
       - '@:2'
     json-c:
-      require: '%gcc@7.5.0'
+      require: '%gcc'
     jsoncpp:
-      require: '%gcc@7.5.0'
-    julia:
-      require:
-      - ^llvm~clang~gold~polly
-      - ^openblas threads=openmp
+      require: '%gcc'
     krb5:
       require:
-      - '%gcc@7.5.0'
+      - '%gcc'
     libaec:
       require:
-      - '%gcc@7.5.0'
+      - '%gcc'
     libarchive:
       require:
       - compression=bz2lib,lz4,lzma,lzo2,zlib,zstd xar=expat
-      - '%gcc@7.5.0'
+      - '%gcc'
     libcap:
       require:
-      - '%gcc@7.5.0'
+      - '%gcc'
     libcatalyst:
       require:
-      - '%gcc@7.5.0'
+      - '%gcc'
     libdeflate:
-      require: '%gcc@7.5.0'
+      require: '%gcc'
     libemos:
       require:
       - one_of:
@@ -477,49 +499,39 @@ spack:
         when: grib=eccodes
     libevent:
       require:
-      - '%gcc@7.5.0'
+      - '%gcc'
     libfabric:
-      require: '%gcc@7.5.0'
+      require: '%gcc'
       variants:
       - fabrics=mrail,shm,sockets,tcp,udp,verbs
     libffi:
       require:
-      - '%gcc@7.5.0'
+      - '%gcc'
       - '@:3.3'
     libfuse:
       require: ~utils
     libgd:
       # gnuplot fails to build with newer version due to libiconv linking failure
       require: '@2.2.4'
-    libgit2:
-      # Julia is demanding...
-      require:
-      - '@1.5'
     libjpeg-turbo:
-      require: '%gcc@7.5.0'
+      require: '%gcc'
     libogg:
-      require: '%gcc@7.5.0'
+      require: '%gcc'
     libpciaccess:
       require:
-      - '%gcc@7.5.0'
+      - '%gcc'
     libpng:
-      require: '%gcc@7.5.0'
-    libssh2:
-      # Julia again...
-      require:
-      - '@1.10'
-      variants:
-      - crypto=mbedtls
+      require: '%gcc'
     libszip:
-      require: '%gcc@7.5.0'
+      require: '%gcc'
     libtheora:
-      require: '%gcc@7.5.0'
+      require: '%gcc'
     libtiff:
-      require: '%gcc@7.5.0'
+      require: '%gcc'
     libtirpc:
-      require: '%gcc@7.5.0'
+      require: '%gcc'
     libtool:
-      require: '%gcc@7.5.0'
+      require: '%gcc'
     libunwind:
       variants:
       - +cxx_exceptions
@@ -529,53 +541,42 @@ spack:
       - +zlib
       - components=setjump,ptrace,coredump
     libx11:
-      require: '%gcc@7.5.0'
+      require: '%gcc'
     libxaw:
-      require: '%gcc@7.5.0'
+      require: '%gcc'
     libxcb:
-      require: '%gcc@7.5.0'
+      require: '%gcc'
     libxcrypt:
       require:
-      - '%gcc@7.5.0'
+      - '%gcc'
     libxml2:
-      require: '%gcc@7.5.0'
+      require: '%gcc'
     linaro-forge:
-      require: '%gcc@7.5.0'
+      require:
+      - +accept-eula
+      - '%gcc'
     lustre:
       require:
-      - '%gcc@7.5.0'
+      - '%gcc'
     lwgrp:
       require:
-      - '%gcc@7.5.0'
+      - '%gcc'
     lz4:
-      require: '%gcc@7.5.0'
+      require: '%gcc'
     m4:
       require:
-      - '%gcc@7.5.0'
-    magma:
-      require:
-      - one_of:
-        # This should force packages to use the vendor-preferred solution
-        - '%oneapi ^intel-oneapi-mkl'
-        - '%gcc ^openblas'
-        - '%nvhpc ^nvhpc'
-        - '%cce ^cray-libsci'
+      - '%gcc'
     matlab:
-      require: '%gcc@7.5.0'
+      require: '%gcc'
     maven:
       require:
-      - '%gcc@7.5.0'
-    mbedtls:
-      # Julia of course...
-      require:
-      - '@2.28'
-      - libs=static,shared
+      - '%gcc'
     mesa-glu:
       require:
-      - '%gcc@7.5.0'
+      - '%gcc'
     mgard:
       require:
-      - '%gcc@7.5.0'
+      - '%gcc'
     miniconda3:
       externals:
       - spec: miniconda3@4.12.0
@@ -589,15 +590,21 @@ spack:
       - +gpfs
       - +lustre
       - +xattr
+    mvapich:
+      variants:
+      - file_systems=lustre,gpfs,nfs,ufs
+      - process_managers=auto
+      require:
+      - netmod=ofi
+      - +pbs
+      - ~cuda
     mysql:
       require:
       - spec: cxxstd=14
         when: '@8.0.19'
     ncl:
-      # Newer ESMF versions cause issues for NCL
-      # TODO - bake this into recipe?
       require:
-      - '%gcc@7.5.0'
+      - '%gcc'
       variants:
       - +gdal
       - +grib
@@ -609,20 +616,17 @@ spack:
     netcdf-c:
       variants:
       - +dap
-      - build_system=cmake
+      - +nczarr_zip
       - ~mpi
     netcdf-cxx4:
       variants:
       - ~doc
-    nghttp2:
-      # Thanks Julia...
-      require: '@1.48'
     ninja:
-      require: '%gcc@7.5.0'
+      require: '%gcc'
     numactl:
-      require: '%gcc@7.5.0'
+      require: '%gcc'
     nvhpc:
-      require: '%gcc@7.5.0'
+      require: '%gcc'
     ocl-icd:
       variants:
       - +headers
@@ -652,7 +656,7 @@ spack:
       - threads=openmp
     openjdk:
       require:
-      - '%gcc@7.5.0'
+      - '%gcc'
     openmpi:
       require:
       - fabrics=cma,ucx
@@ -671,10 +675,10 @@ spack:
         prefix: /opt/pbs
       buildable: false
       require:
-      - '%gcc@7.5.0'
+      - '%gcc'
     openssh:
       require:
-      - '%gcc@7.5.0'
+      - '%gcc'
     openssl:
       # Requiring certs=system is necessary to perform builds like rust using
       # external openssl. Also note that I've edited the package to remove the
@@ -683,13 +687,13 @@ spack:
       # itself suggests that the trusted thing to do is to use the system version
       require:
       - certs=system
-      - '%gcc@7.5.0'
+      - '%gcc'
     osmesa:
       require:
-      - '%gcc@7.5.0'
+      - '%gcc'
     ospray:
       require:
-      - '%gcc@7.5.0'
+      - '%gcc'
     pango:
       variants:
       - +X
@@ -702,9 +706,10 @@ spack:
       - any_of:
         - ~pnetcdf
         when: ~mpi
+      # Concretizer will try to use older versions to avoid automake dependencies in 2.5.0
       - one_of:
         - ^mpi-serial@2.5.0
-        when: ~mpi @2.6.2
+        when: ~mpi
     parallelio1:
       variants:
       - +pnetcdf
@@ -727,33 +732,23 @@ spack:
         # These requirements improve package reuse
       - spec: ^netcdf-c+mpi
         when: +mpi
-      - spec: ^adios2@2.10
-        when: '@5.12.0 +adios2'
     patchelf:
       # Version 0.18 breaks when using gcc@7.5.0
       require:
       - '@:0.17'
     pcre:
-      require: '%gcc@7.5.0'
+      require: '%gcc'
     pcre2:
-      require: '%gcc@7.5.0'
+      require: '%gcc'
     pegtl:
-      require: '%gcc@7.5.0'
+      require: '%gcc'
     perl:
-      require: '%gcc@7.5.0'
-    petsc:
-      require:
-      - one_of:
-        # This should force packages to use the vendor-preferred solution
-        - '%oneapi ^intel-oneapi-mkl'
-        - '%gcc ^openblas'
-        - '%nvhpc ^nvhpc'
-        - '%cce ^cray-libsci'
+      require: '%gcc'
     pkg-config:
       require:
-      - '%gcc@7.5.0'
+      - '%gcc'
     pmix:
-      require: '%gcc@7.5.0'
+      require: '%gcc'
     pocl:
       variants:
       - +icd
@@ -761,41 +756,30 @@ spack:
       variants:
       - +xml
     protobuf:
-      require: '%gcc@7.5.0'
-    py-cftime:
-      require:
-      # DAG - help METPlus use same MET
-      - ^py-cython@0.29.36
+      require: '%gcc'
     py-fypp:
       require:
-      - '%gcc@7.5.0'
-    py-mpi4py:
-      prefer:
-      - spec: '%oneapi'
-        when: ^openmpi %oneapi
-      - spec: '%gcc@13.2.0'
-        when: ^openmpi %gcc@13.2.0
+      - '%gcc'
     py-netcdf4:
       variants:
       - ~mpi
-      require:
-      # DAG - help METPlus use same MET
-      - ^py-cython@0.29.36
     py-numpy:
       require:
-      - '%gcc@7.5.0'
+      - '%gcc'
     py-pip:
       require:
-      - '%gcc@7.5.0'
+      - '%gcc'
     py-setuptools:
       # Simplifies stack to limit to 0.63, latest version used by numpy with Python < 3.12
       require:
-      - '%gcc@7.5.0'
+      - '%gcc'
       - '@:63'
     python:
-      require: '%gcc@7.5.0'
+      prefer:
+      - '@3.11'
+      require: '%gcc'
     qhull:
-      require: '%gcc@7.5.0'
+      require: '%gcc'
     qt:
       variants:
       - +dbus
@@ -807,53 +791,37 @@ spack:
       - '@5.14.2'
     qt-base:
       require:
-      - '%gcc@7.5.0'
+      - '%gcc'
     readline:
-      require: '%gcc@7.5.0'
+      require: '%gcc'
     rstudio:
       require:
-      - '%gcc@7.5.0'
+      - '%gcc'
     rsync:
       require:
-      - '%gcc@7.5.0'
+      - '%gcc'
     sed:
       require:
-      - '%gcc@7.5.0'
+      - '%gcc'
     singularityce:
       variants:
       - ~suid
     snappy:
-      require: '%gcc@7.5.0'
+      require: '%gcc'
     sqlite:
-      require: '%gcc@7.5.0'
-    superlu:
-      require:
-      - one_of:
-        # This should force packages to use the vendor-preferred solution
-        - '%oneapi ^intel-oneapi-mkl'
-        - '%gcc ^openblas'
-        - '%nvhpc ^nvhpc'
-        - '%cce ^cray-libsci'
-    superlu-dist:
-      require:
-      - one_of:
-        # This should force packages to use the vendor-preferred solution
-        - '%oneapi ^intel-oneapi-mkl'
-        - '%gcc ^openblas'
-        - '%nvhpc ^nvhpc'
-        - '%cce ^cray-libsci'
+      require: '%gcc'
     sz:
-      require: '%gcc@7.5.0'
+      require: '%gcc'
     tar:
       require:
-      - '%gcc@7.5.0'
+      - '%gcc'
     texinfo:
-      require: '%gcc@7.5.0'
+      require: '%gcc'
     texlive:
       require:
-      - '%gcc@7.5.0'
+      - '%gcc'
     ucx:
-      require: '%gcc@7.5.0'
+      require: '%gcc'
       variants:
       - +cm
       - +cma
@@ -872,9 +840,9 @@ spack:
       - +vfs
     unzip:
       require:
-      - '%gcc@7.5.0'
+      - '%gcc'
     util-linux-uuid:
-      require: '%gcc@7.5.0'
+      require: '%gcc'
     vapor:
       variants:
       - +ospray
@@ -900,15 +868,15 @@ spack:
       - ~vtkm
       require:
       # Force concretizer to use latest supported adios2
-      - ^adios2@2.7
+      - '^adios2@2.7:'
     vtk:
       require:
-      - '%gcc@7.5.0'
+      - '%gcc'
     vtk-m:
-      require: '%gcc@7.5.0'
+      require: '%gcc'
     wget:
       require:
-      - '%gcc@7.5.0'
+      - '%gcc'
     wgrib2:
       variants:
       - +netcdf4
@@ -917,20 +885,23 @@ spack:
       - ~checks
       - ~netcdf3
     which:
-      require: '%gcc@7.5.0'
+      require: '%gcc'
     wxwidgets:
       variants:
       - +opengl
     xz:
       require:
-      - '%gcc@7.5.0'
+      - '%gcc'
     zfp:
-      require: '%gcc@7.5.0'
+      variants:
+      - +tight-error
+      - round=first
+      require: '%gcc'
     zlib:
       require:
-      - '%gcc@7.5.0'
+      - '%gcc'
     zstd:
-      require: '%gcc@7.5.0'
+      require: '%gcc'
       variants:
       - +programs
   view:
@@ -966,6 +937,10 @@ spack:
         lib64/pkgconfig:
         - PKG_CONFIG_PATH
       lmod:
+        adios2:
+          environment:
+            set:
+              ADIOS2: '{prefix}'
         all:
           environment:
             set:
@@ -984,7 +959,7 @@ spack:
         charliecloud:
           environment:
             prepend_path:
-              PATH: /glade/work/csgteam/spack-deployments/casper/23.10/envs/build/wrappers/{name}/{version}/{hash:4}/bin
+              PATH: %BASEROOT%/wrappers/{name}/{version}/{hash:4}/bin
         core_compilers:
         - gcc@7.5.0
         core_specs:
@@ -1096,34 +1071,6 @@ spack:
               OMPI_CXX: icpx
               OMPI_F77: ifx
               OMPI_FC: ifx
-        intel-oneapi-compilers-classic:
-          template: ncar_intel.lua
-          autoload: none
-          filter:
-            exclude_env_vars:
-            - CMAKE_PREFIX_PATH
-            - NCAR_ROOT_INTEL_ONEAPI_COMPILERS_CLASSIC
-            - NCAR_SPACK_HASH_INTEL_ONEAPI_COMPILERS_CLASSIC
-          environment:
-            set:
-              INTEL_COMPILER_TYPE: CLASSIC
-              INTEL_PATH: '{^intel-oneapi-compilers.prefix}'
-              INTEL_VERSION: '{version}'
-              I_MPI_CC: icc
-              I_MPI_CXX: icpc
-              I_MPI_F77: ifort
-              I_MPI_F90: ifort
-              I_MPI_FC: ifort
-              NCAR_BUILD_ENV: casper-intel-{^intel-oneapi-compilers.version}
-              NCAR_BUILD_ENV_COMPILER: casper-intel-{^intel-oneapi-compilers.version}
-              NCAR_ID_COMPILER: intel-{^intel-oneapi-compilers.version}
-              NCAR_ROOT_COMPILER: '{^intel-oneapi-compilers.prefix}'
-              NCAR_ROOT_INTEL: '{^intel-oneapi-compilers.prefix}'
-              NCAR_SPACK_HASH_INTEL: '{hash}'
-              OMPI_CC: icc
-              OMPI_CXX: icpc
-              OMPI_F77: ifort
-              OMPI_FC: ifort
         intel-oneapi-inspector:
           filter:
             exclude_env_vars:
@@ -1152,8 +1099,10 @@ spack:
             - NCAR_SPACK_HASH_INTEL_ONEAPI_MPI
           environment:
             set:
+              FI_PROVIDER_PATH: '{^libfabric.prefix}'
               I_MPI_HYDRA_BOOTSTRAP: rsh
               I_MPI_HYDRA_BOOTSTRAP_EXEC: pbs_tmrsh
+              I_MPI_OFI_LIBRARY: '{^libfabric.prefix}/lib/libfabric.so.1'
               NCAR_ROOT_INTEL_MPI: '{prefix}'
               NCAR_SPACK_HASH_INTEL_MPI: '{hash}'
         intel-oneapi-vtune:
@@ -1169,8 +1118,6 @@ spack:
               LD_LIBRARY_PATH: '{prefix}/vtune/latest/lib64'
         julia:
           environment:
-            append_path:
-              PATH: '{^llvm.prefix}/bin'
             set:
               VGL_GLLIB: /usr/lib64/libGL.so.1
         llvm+clang:
@@ -1190,6 +1137,10 @@ spack:
               NCAR_ROOT_CLANG: '{prefix}'
               NCAR_ROOT_COMPILER: '{prefix}'
               NCAR_SPACK_HASH_CLANG: '{hash}'
+        matlab:
+          environment:
+            set:
+              MW_FEATURE_MathworksServiceHostIsOnByDefault: '0'
         miniconda3:
           filter:
             exclude_env_vars:
@@ -1249,25 +1200,21 @@ spack:
               NVIDIA_VERSION: '{version}'
             prepend_path:
               LD_LIBRARY_PATH: '{prefix}/Linux_x86_64/{version}/compilers/lib'
-        nvhpc@21.3:
-          environment:
-            set:
-              CRAY_CPU_TARGET: x86-rome
+        neovim:
+          template: ncar_neovim.lua
         octave:
           autoload: none
         openmpi:
           environment:
             set:
               OMPI_MCA_oob_tcp_if_exclude: mgt
+              OMPI_MCA_plm: tm
               OMPI_MCA_shmem_mmap_enable_nfs_warning: '0'
-            prepend_path:
-              LD_LIBRARY_PATH: '{prefix}/lib'
-        openmpi@5:
-          environment:
-            set:
               # https://github.com/open-mpi/ompi/issues/9647
               OMPI_MCA_rmaps_default_mapping_policy: :hwtcpus
-              OMPI_MCA_smsc: ^knem
+              OMPI_MCA_prte_silence_shared_fs: '1'
+            prepend_path:
+              LD_LIBRARY_PATH: '{prefix}/lib'
         parallel-netcdf:
           environment:
             set:
@@ -1294,7 +1241,11 @@ spack:
           autoload: none
           environment:
             prepend_path:
-              PATH: /glade/work/csgteam/spack-deployments/casper/23.10/envs/build/wrappers/{name}/{version}/{hash:4}/bin
+              PATH: %BASEROOT%/wrappers/{name}/{version}/{hash:4}/bin
+        podman:
+          environment:
+            set:
+              CONTAINERS_STORAGE_CONF: /glade/u/apps/etc/containers/storage.conf
         projections:
           all: '{name}/{version}'
           fftw+mpi: fftw-mpi/{version}
@@ -1302,7 +1253,8 @@ spack:
           hdf5+mpi: hdf5-mpi/{version}
           netcdf: netcdf/{version}
           intel-oneapi-advisor: intel-advisor/{version}
-          intel-oneapi-compilers: intel-oneapi/{version}
+          intel-oneapi-compilers@2024: intel-oneapi/{version}
+          intel-oneapi-compilers@2025: intel/{version}
           intel-oneapi-compilers-classic: intel-classic/{^intel-oneapi-compilers.version}
           intel-oneapi-inspector: intel-inspector/{version}
           intel-oneapi-mpi: intel-mpi/{version}
