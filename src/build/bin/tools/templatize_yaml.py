@@ -11,7 +11,7 @@ import os, re, copy
 from collections.abc import Iterable
 
 # Packages to exclude when pruning externals
-excluded_pkgs = ["openpbs", "cray-libsci", "cray-mpich", "miniconda3"]
+excluded_pkgs = ["openpbs", "cray-libsci", "cray-mpich", "miniconda3", "opengl"]
 
 # Infer some settings from the environment
 env_dir = os.environ["SPACK_ENV"]

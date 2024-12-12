@@ -8,7 +8,7 @@
 #           and any other packages that need it
 #
 #   Author:         Brian Vanderwende
-#   Last Revised:   19:31, 10 Dec 2024
+#   Last Revised:   14:35, 12 Dec 2024
 #
 
 
@@ -763,7 +763,7 @@ function install_specs {
             if [[ $queued_hash != $spec_hash ]]; then
                 queued_spec=$(awk -F'|' '{print $NF}' <<< ${queue_config[$queued_hash]})
                 build_steps="spack add ${queued_spec}${SEP}$build_steps"
-                ((build_tasks++))
+                build_tasks=$((build_tasks+1))
             fi
         done < <(tr '|' '\n' <<< "$install_queue" | tac)
     fi
@@ -870,7 +870,7 @@ function install_specs {
 
     # If spec is a compiler, register in the YAML file or dump cache
     if [[ ${#compiler_config[@]} -gt 0 ]]; then
-        if [[ $NCAR_SPACK_ENV_TYPE == build ]]; then
+        if [[ $SPACK_ENV == */build ]]; then
             compiler_checks
         else
             # Spack now caches whether a compiler can be found, so we have to
