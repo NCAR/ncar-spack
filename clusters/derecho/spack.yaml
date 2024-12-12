@@ -98,6 +98,9 @@ spack:
         when: '%oneapi ^hdf5'
       - spec: ^netcdf-c %oneapi
         when: '%oneapi ^netcdf-c'
+      # Try to motivate use of system libfabric for cray-mpich stuff
+      - spec: ^libfabric@1.15.2.0
+        when: '^libfabric ^cray-mpich@8.1.29'
     antlr:
       require:
       - '%gcc'
@@ -1149,15 +1152,11 @@ spack:
             - NCAR_SPACK_HASH_INTEL_ONEAPI_MPI
           environment:
             set:
-              FI_PROVIDER_PATH: /opt/cray/libfabric/1.15.2.0
               I_MPI_HYDRA_BOOTSTRAP: rsh
               I_MPI_HYDRA_BOOTSTRAP_EXEC: pbs_tmrsh
-              I_MPI_OFI_LIBRARY: /opt/cray/libfabric/1.15.2.0/lib64/libfabric.so.1
               I_MPI_OFI_PROVIDER: cxi
               NCAR_ROOT_INTEL_MPI: '{prefix}'
               NCAR_SPACK_HASH_INTEL_MPI: '{hash}'
-            prepend_path:
-              LD_LIBRARY_PATH: /opt/cray/libfabric/1.15.2.0/lib64
         intel-oneapi-vtune:
           filter:
             exclude_env_vars:
@@ -1177,6 +1176,11 @@ spack:
           environment:
             prepend_path:
               PATH: %BASEROOT%/wrappers/{name}/{version}/{hash:4}/bin
+        libfabric:
+          environment:
+            set:
+              FI_PROVIDER_PATH: '{prefix}'
+              I_MPI_OFI_LIBRARY: '{prefix}/lib64/libfabric.so.1'
         libtorch:
           filter:
             exclude_env_vars:
