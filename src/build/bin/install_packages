@@ -8,7 +8,7 @@
 #           and any other packages that need it
 #
 #   Author:         Brian Vanderwende
-#   Last Revised:   15:50, 12 Dec 2024
+#   Last Revised:   16:15, 12 Dec 2024
 #
 
 
@@ -453,6 +453,11 @@ function check_registry {
 }
 
 function modify_spec_access {
+    if [[ -z $3 ]]; then
+        tsecho "Error: invalid spec name $3 (hash $2)"
+        exit 1
+    fi
+
     # First, clean up any existing access to avoid conflicts
     spec_name=$(sed 's/[@%^+~ ].*//' <<< "$3")
     sed -i "/^[ ]*core_specs:/,/^ *[a-z]/ {/- $spec_name/d}" $SPACK_ENV/spack.yaml
@@ -461,17 +466,17 @@ function modify_spec_access {
 
     case $1 in
         core)
-            spack config add "modules:default:lmod:core_specs:$spec_name"
             tsecho " >> Setting package as core_spec: $3" $access_verbosity
+            spack config add "modules:default:lmod:core_specs:$spec_name"
             ;;
         view)
+            tsecho " >> Adding package to the view:   $3" $access_verbosity
             spack config add "modules:default:lmod:exclude:$3"
             add_spec_to_view "$3"
-            tsecho " >> Adding package to the view:   $3" $access_verbosity
             ;;
         none)
-            spack config add "modules:default:lmod:exclude:$3"
             tsecho " >> Excluding package from tree:  $3" $access_verbosity
+            spack config add "modules:default:lmod:exclude:$3"
             ;;
     esac
 }
@@ -722,7 +727,6 @@ function clear_added_specs {
             fi
 
             add_date=$(date +%FT%T) add_spec_to_registry $queued_hash
-            queued_spec=$(awk -F'|' '{print $NF}' <<< ${queue_config[$queued_hash]})
             remove_spec_from_queue $queued_hash
             modify_spec_access ${active_config[access]:-module} $queued_hash "$queued_spec"
         done < <(tr '|' '\n' <<< "$install_queue")
