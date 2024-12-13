@@ -8,7 +8,7 @@
 #           and any other packages that need it
 #
 #   Author:         Brian Vanderwende
-#   Last Revised:   16:15, 12 Dec 2024
+#   Last Revised:   09:33, 13 Dec 2024
 #
 
 
@@ -62,14 +62,12 @@ my_host=$(hostname)
 manifest_file=$SPACK_ENV/packages.cfg
 build_jobs=$(spack config get config | sed -n 's/^[ ]*build_jobs: \(.*\)/\1/p')
 header_cmd='tee $log_installs'
-access_verbosity=2
 
 # Handle user input
 while [[ $# -gt 0 ]]; do
     case $1 in
         -a|--overwrite-access)
             overwrite_access=true
-            access_verbosity=1
 
             # Since we will modify access, let's show skipped packages to make things clearer
             if [[ $log_verbosity -lt 1 ]]; then
@@ -466,16 +464,16 @@ function modify_spec_access {
 
     case $1 in
         core)
-            tsecho " >> Setting package as core_spec: $3" $access_verbosity
+            tsecho " >> Setting package as core_spec: $3"
             spack config add "modules:default:lmod:core_specs:$spec_name"
             ;;
         view)
-            tsecho " >> Adding package to the view:   $3" $access_verbosity
+            tsecho " >> Adding package to the view:   $3"
             spack config add "modules:default:lmod:exclude:$3"
             add_spec_to_view "$3"
             ;;
         none)
-            tsecho " >> Excluding package from tree:  $3" $access_verbosity
+            tsecho " >> Excluding package from tree:  $3"
             spack config add "modules:default:lmod:exclude:$3"
             ;;
     esac
@@ -818,7 +816,10 @@ function install_specs {
         my_pid=$!
         shell_pids="$shell_pids $my_pid "
 
-        tsecho "Started new install process with PID=$BCOL${my_pid}$DCOL on $host_type host $BCOL${build_hosts[$h]}$DCOL" 2
+        if [[ $task_limit -gt 1 ]]; then
+            tsecho "Started new install process with PID=$BCOL${my_pid}$DCOL on $host_type host $BCOL${build_hosts[$h]}$DCOL"
+        fi
+
         ((h++))
 
         if [[ $h -eq ${#build_hosts[@]} ]]; then

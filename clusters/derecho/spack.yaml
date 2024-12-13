@@ -270,7 +270,7 @@ spack:
     esmf:
       variants:
       - +external-lapack
-      - +parallelio
+      - +external-parallelio
       - ~mpi
       - ~pnetcdf
       - ~xerces
@@ -692,6 +692,9 @@ spack:
     numactl:
       require:
       - '%gcc'
+    nvhpc:
+      prefer:
+      - ~mpi
     octave:
       variants:
       - +arpack
