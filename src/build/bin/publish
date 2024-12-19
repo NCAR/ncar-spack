@@ -10,7 +10,7 @@
 #           shell script. So we must activate in the script!
 #
 #   Author:         Brian Vanderwende
-#   Last Revised:   22:54, 10 Dec 2024
+#   Last Revised:   21:24, 17 Dec 2024
 #
 
 
@@ -42,7 +42,7 @@ Options
     -a, --access [LEVEL]    set max access to "stack" modules [user/group/ALL]
     -d, --dry-run           show what would be published; don't make any changes
     --force                 attempt to publish changes, even if none detected
-    --resume                continue an existing publish attempt (caution!)
+    -r, --resume            continue an existing publish attempt (caution!)
     --set-default           upon publishing, make this ncarenv the default
     -v, --verbose           provide additional logging messages
 
@@ -160,6 +160,7 @@ cat > $NCAR_SPACK_ENV_BUILD/.pubstore << EOF
 force_commit=true
 set_as_default=$set_as_default
 commit_msg="$commit_msg"
+access_level=$access_level
 EOF
 }
 
@@ -255,7 +256,7 @@ while [[ $# -gt 0 ]]; do
         --force)
             force_commit=true
             ;;
-        --resume)
+        -r|--resume)
             echo "Danger: You are asking to resume a failed publish."
             read -e -p "        Are you sure (y/N)? " force_resume
             ;;
@@ -471,6 +472,13 @@ if grep -q -E '^ +specs: +\[' $SPACK_ENV/spack.yaml; then
     spack python $my_dir/tools/fix_specs.py
 fi
 
+# Store current permissions of stack module
+stack_module=$NCAR_SPACK_ROOT_MODULES/environment/$mod_type/${NCAR_SPACK_HOST_VERSION}.lua
+
+if [[ -f $stack_module ]]; then
+    current_access=$(stat -c "%a" $stack_module)
+fi
+
 # Find any packages to remove
 tsecho "Removing any packages that have been uninstalled from build"
 
@@ -510,7 +518,7 @@ if [[ -n $new_pkgs ]]; then
     tsecho "Creating manifest and installing cached packages"
     log_manifest=$log_dir/manifest.$start_time
     create_manifest $log_manifest
-    $my_dir/install_packages -n 4 -j 1 --skip-checks --prefer-cache --fail-fast $log_manifest
+    $my_dir/install_packages -p 8 -n 4 -j 1 --skip-checks --prefer-cache --fail-fast $log_manifest
 
     # Check that installs completed successfully
     if [[ ${PIPESTATUS[0]} == 1 ]]; then
@@ -562,8 +570,6 @@ if [[ -n $access_level ]]; then
     tsecho "Changing environment access level to $GCOL$access_level$DCOL"
 
     for mod_type in ncarenv ncarenv-basic; do
-        stack_module=$NCAR_SPACK_ROOT_MODULES/environment/$mod_type/${NCAR_SPACK_HOST_VERSION}.lua
-
         if [[ -f $stack_module ]]; then
             case $access_level in
                 user)
@@ -581,6 +587,8 @@ if [[ -n $access_level ]]; then
             esac
         fi
     done
+elif [[ -n $current_access ]]; then
+    chmod $current_access $stack_module
 fi
 
 for object in util config registry; do

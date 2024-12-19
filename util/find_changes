@@ -5,7 +5,7 @@
 #   incorporating those changes to this repo.
 #
 #   Author:         Brian Vanderwende
-#   Last Revised:   15:30, 10 Nov 2024
+#   Last Revised:   10:06, 18 Dec 2024
 #
 
 set -e
@@ -81,32 +81,29 @@ Comparing each tracked file from that in the specified deployment ...
 EOF
 
 declare -A path_map
-path_map[templates]=templates
-path_map[src/build]=.
-path_map[clusters/${NCAR_SPACK_HOST}]=bin
+path_map[templates/modules]=templates/modules
+path_map[templates/compilers]=templates/compilers
+path_map[src/build/bin]=bin
+path_map[src/build/bin/tools]=bin/tools
+path_map[clusters/${NCAR_SPACK_HOST}]=.
 path_map[clusters/${NCAR_SPACK_HOST}/postprocess]=postprocess
 
 cd $my_root
 
 for src_path in ${!path_map[@]}; do
-    case $src_path in
-        clusters*)
-            src_files="$src_path/postprocess"
-            ;;
-        *)
-            src_files="$(find $src_path -type f)"
-            ;;
-    esac
+    src_files="$(find $src_path -maxdepth 1 -type f)"
 
     for src_file in $src_files; do
         dep_file=$(sed "s|$src_path|${path_map[$src_path]}|" <<< $src_file)
-        
-        if cmp -s $my_root/$src_file $env_path/$dep_file; then
-            echo -e " - $src_file"
-        else
-            echo -e "${RCOL} - $src_file (changed)$DCOL\n"
-            echo -e "   Source file:   $my_root/$src_file"
-            echo -e "   Deployed file: $env_path/$dep_file\n"
+       
+        if [[ -f $env_path/$dep_file ]] && [[ $src_file != *spack.yaml ]]; then
+            if cmp -s $my_root/$src_file $env_path/$dep_file; then
+                echo -e " - $src_file"
+            else
+                echo -e "${RCOL} - $src_file (changed)$DCOL\n"
+                echo -e "   Source file:   $my_root/$src_file"
+                echo -e "   Deployed file: $env_path/$dep_file\n"
+            fi
         fi
     done
 done

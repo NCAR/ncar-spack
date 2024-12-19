@@ -89,13 +89,17 @@ if [[ -f $SPACK_ENV/constraints.cfg ]]; then
                 my_meta="${my_meta/,/ }"
                 ;;
             '}'*)
-                unset my_mode my_meta ext_flags
+                unset my_mode my_meta
                 ;;
             *)
+                tsecho "Processing line: $entry" 1
+
                 case ${my_mode// } in
                     externals)
                         if [[ " $my_meta " == *" fixed "* ]]; then
                             ext_flags=--not-buildable
+                        else
+                            ext_flags=
                         fi
 
                         if [[ $entry == /* ]]; then
@@ -143,7 +147,9 @@ if [[ -f $SPACK_ENV/constraints.cfg ]]; then
                                 done
 
                                 # Externals should also "use" the core compiler
-                                manual_require "$core" $pkg_name
+                                if [[ " $my_meta " != *" floating "* ]]; then
+                                    manual_require "$core" $pkg_name
+                                fi
                             fi
                         else
                             auto_result=$(spack external find $ext_flags $entry)

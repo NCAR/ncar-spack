@@ -69,7 +69,8 @@ spack:
       - x86_64_v3
       prefer:
       # This should force packages to use the vendor-preferred solution
-      # without needing to set it on each package
+      # without needing to set it on each package UNLESS that package needs
+      # to set its own preferences
       - spec: ^openblas
         when: '%gcc ^lapack'
       - spec: ^intel-oneapi-mkl
@@ -90,8 +91,10 @@ spack:
         when: ^pkgconfig
       - spec: ^zlib
         when: ^zlib-api
-      - spec: cuda_arch=80
-        when: +cuda
+      - spec: cuda_arch=80 ^cuda@12.3.2
+        when: ^cuda
+      - spec: ^libfabric@1.15.2.0
+        when: ^libfabric
       # Without these, these packages will use GCC versions
       # (not yet true for nvhpc/cce, but check when those runtimes are added)
       - spec: ^hdf5 %oneapi
@@ -100,7 +103,7 @@ spack:
         when: '%oneapi ^netcdf-c'
       # Try to motivate use of system libfabric for cray-mpich stuff
       - spec: ^libfabric@1.15.2.0
-        when: '^libfabric ^cray-mpich@8.1.29'
+        when: ^libfabric ^cray-mpich@8.1.29
     antlr:
       require:
       - '%gcc'
@@ -168,6 +171,9 @@ spack:
       - +ownlibs
       require:
       - '%gcc'
+    cmor:
+      variants:
+      - +python
     cp2k:
       variants:
       - +elpa
@@ -217,9 +223,8 @@ spack:
       variants:
       - +dev
     cudnn:
-      prefer:
-      - spec: ^cuda@12.3.2
-        when: '@8.9.7.29-12'
+      require:
+      - '%gcc'
     curl:
       variants:
       - +libidn2
@@ -269,11 +274,26 @@ spack:
       - +treesitter
     esmf:
       variants:
+      - ~mpi
+      - ~xerces
+      require:
+      # Apparent prefer is not strong enough to convince Spack to use nvhpc for an
+      # external-lapack. Unbelievable!
       - +external-lapack
       - +external-parallelio
-      - ~mpi
-      - ~pnetcdf
-      - ~xerces
+      - spec: ^openblas
+        when: '%gcc ^lapack'
+      - spec: ^intel-oneapi-mkl
+        when: '%oneapi ^lapack'
+      - spec: ^nvhpc
+        when: '%nvhpc ^lapack'
+      - spec: ^cray-libsci
+        when: '%cce ^lapack'
+      prefer:
+      - spec: +pnetcdf
+        when: +mpi
+      - spec: ~pnetcdf
+        when: ~mpi
     expat:
       require:
       - '%gcc'
@@ -312,7 +332,7 @@ spack:
       require:
       - '%gcc'
     freetype:
-      prefer:
+      require:
       # Newer version leads to concretization issues for Python packages
       - spec: '@:2.10.2'
     gawk:
@@ -419,7 +439,7 @@ spack:
       require:
       - '%gcc'
     h5z-zfp:
-      prefer:
+      require:
       - spec: ^hdf5~mpi
     harfbuzz:
       variants:
@@ -436,7 +456,7 @@ spack:
       - +hl
       - +szip
       - ~mpi
-      prefer:
+      require:
       - '@:1.12'
     hwloc:
       variants:
@@ -452,11 +472,18 @@ spack:
     imagemagick:
       variants:
       - +ghostscript
+    intel-oneapi-advisor:
+      require:
+      - '%gcc'
     intel-oneapi-compilers:
       variants:
       - +nvidia
+      require:
+      - '%gcc'
     intel-oneapi-mkl:
-      prefer:
+      require:
+      - spec: '@2024'
+        when: '%oneapi@2024'
       - spec: '@2025'
         when: '%oneapi@2025'
       - spec: +gfortran threads=openmp
@@ -468,6 +495,9 @@ spack:
     intel-oneapi-runtime:
       prefer:
       - spec: ^gcc-runtime@12.4.0
+    intel-oneapi-vtune:
+      require:
+      - '%gcc'
     ispc:
       require: '%clang'
     jasper:
@@ -513,6 +543,9 @@ spack:
     libcatalyst:
       require:
       - '%gcc'
+    libcxi:
+      variants:
+      - +cuda
     libdeflate:
       require:
       - '%gcc'
@@ -522,6 +555,10 @@ spack:
         - ^eccodes@2.25
         when: grib=eccodes
     libfabric:
+      variants:
+      - +cuda
+      - +uring
+      - fabrics=sockets,tcp,udp,cxi,rxm,rxd,mrail,shm
       require:
       - '%gcc'
     libffi:
@@ -598,6 +635,7 @@ spack:
     linaro-forge:
       require:
       - +accept-eula
+      - '%gcc'
     lustre:
       require:
       - '%gcc'
@@ -681,6 +719,9 @@ spack:
       - +dap
       - +nczarr_zip
       - ~mpi
+      require:
+      # Otherwise, Spack will use autotools sometimes and create duplicates
+      - build_system=cmake
     netcdf-cxx4:
       variants:
       - ~doxygen
@@ -693,7 +734,8 @@ spack:
       require:
       - '%gcc'
     nvhpc:
-      prefer:
+      require:
+      - '%gcc'
       - ~mpi
     octave:
       variants:
@@ -807,6 +849,12 @@ spack:
       require:
       # DAG - help METPlus use same MET
       - ^py-cython@0.29.36
+    py-numpy:
+      require:
+      - '%gcc'
+    py-pyyaml:
+      require:
+      - '%gcc'
     py-setuptools:
       # Newer versions cannot be used by py-numpy as of Aug 2023
       require:
@@ -814,6 +862,8 @@ spack:
     python:
       prefer:
       - spec: '@3.11'
+      require:
+      - '%gcc'
     qhull:
       require:
       - '%gcc'
@@ -928,8 +978,6 @@ spack:
       roots:
         lmod: '%MODULESROOT%'
       arch_folder: false
-      'enable:':
-      - lmod
       prefix_inspections:
         bin:
         - PATH
@@ -983,40 +1031,47 @@ spack:
         core_compilers:
         - gcc@7.5.0
         core_specs:
-        - nccmp
-        - cuda
-        - r
-        - cmake
-        - nco
-        - wgrib2
-        - ncview
-        - apptainer
-        - cdo
-        - charliecloud
-        - miniconda
-        - cudnn
-        - darshan-util
-        - ecflow
-        - eigen
-        - gmt
-        - go
-        - grads
-        - grib-util
-        - idl
         - intel-oneapi-advisor
         - intel-oneapi-vtune
+        - texlive
         - intel-oneapi-compilers
-        - julia
-        - linaro-forge
+        - nco
+        - gmt
+        - cdo
+        - nccmp
+        - ncview
+        - cray-libsci
+        - lcov
+        - neovim
+        - libtorch
         - madis
-        - matlab
-        - ncl
+        - eigen
+        - grib-util
+        - wgrib2
+        - grads
+        - ecflow
         - ncvis
-        - nvhpc
+        - julia
+        - darshan-util
+        - linaro-forge
+        - ncl
+        - cudnn
+        - charliecloud
         - peak-memusage
         - podman
-        - rstudio
+        - apptainer
+        - miniconda3
+        - cmake
+        - cuda
         - pcre
+        - nvhpc
+        - r
+        - miniconda
+        - go
+        - idl
+        - matlab
+        - rstudio
+        - libfabric
         cuda:
           template: ncar_cuda.lua
           environment:
@@ -1057,12 +1112,13 @@ spack:
               DARSHAN_SHARED_LIB: '{prefix}/lib/libdarshan.so'
         defaults:
         - netcdf@4.9.2
-        - nvhpc@24.9
+        - nvhpc@24.11
         - parallelio+mpi+shared
         - esmf+mpi
-        - cuda@12.6.2
-        - intel-oneapi-compilers@2025.0.0
-        - gcc@13.3.0
+        - cuda@12.3.2
+        - intel-oneapi-compilers@2024.2.1
+        - gcc@12.4.0
+        - libfabric@1.15.2.0
         esmf:
           autoload: none
         exclude:
@@ -1303,6 +1359,7 @@ spack:
           mvapich~cuda: mvapich/{version}-cpu
           mvapich+cuda: mvapich/{version}-cuda
           py-torch: libtorch/{version}
+          libfabric cflags=-g: libfabric/{version}-debug
         rstudio:
           filter:
             exclude_env_vars:
@@ -1325,3 +1382,5 @@ spack:
       - sles15
       sles15:
       - opensuse15
+  repos:
+  - $spack/var/spack/repos/ncar.hpcd
