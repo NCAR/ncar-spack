@@ -10,7 +10,7 @@
 #           shell script. So we must activate in the script!
 #
 #   Author:         Brian Vanderwende
-#   Last Revised:   21:24, 17 Dec 2024
+#   Last Revised:   21:00, 18 Dec 2024
 #
 
 
@@ -104,7 +104,7 @@ function create_manifest {
     declare -A config columns
 
     # Derive registry columns
-    for opt in ${install_params//|/ }; do
+    for opt in ${install_params//|/ } publish; do
         for n in ${!field_widths[@]}; do
             if [[ ${field_vars[${field_widths[$n]}]} == "config[$opt]" ]]; then
                 columns[$opt]=$n
@@ -381,7 +381,7 @@ if [[ $dry_run == true ]]; then
 
     if [[ $env_status -eq 0 ]]; then
         echo "build and public environments are in sync; no changes will be made"
-    elif [[ $env_status -eq 1 ]]; then
+    elif [[ $((env_status % 2)) -eq 1 ]]; then
         echo
         diff -U2 --color $NCAR_SPACK_ENV_PUBLIC/spack.yaml .prototype/spack.yaml
     fi
