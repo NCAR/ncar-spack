@@ -1,4 +1,5 @@
 cray_libfabric_root=${cray_libfabric_root:-$(spack location -i libfabric %gcc)}
+core_gcc_root=${core_gcc_root:-$(. $SPACK_ENV/main.cfg; spack location -i $NCAR_SPACK_CORE_GCC)}
 
 cat << EOF
   - compiler:
@@ -22,5 +23,6 @@ cat << EOF
           CRAYPE_VERSION: 1
           CRAYPE_LINK_TYPE: dynamic
         append_path:
-          LD_LIBRARY_PATH: $cray_libfabric_root/lib64
+          LD_LIBRARY_PATH: $cray_libfabric_root/lib64:$core_gcc_root/lib64
+          LIBRARY_PATH: $core_gcc_root/lib64
 EOF

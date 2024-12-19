@@ -13,18 +13,21 @@ end
 
 -- Special logic for intel modules
 local comp_name = os.getenv("LMOD_FAMILY_COMPILER")
+local comp_major = {{spec.compiler.version.up_to(1)}}
 
-if (comp_name == "intel") then
-    pushenv("FC",    "ifort")
-    pushenv("F77",   "ifort")
-elseif (comp_name == "intel-classic") then
-    pushenv("CC",    "icc")
-    pushenv("CXX",   "icpc")
-    pushenv("FC",    "ifort")
-    pushenv("F77",   "ifort")
-elseif (comp_name == "intel-oneapi") then
-    pushenv("FC",    "ifx")
-    pushenv("F77",   "ifx")
+if comp_major < 2025 then
+    if (comp_name == "intel") then
+        pushenv("FC",    "ifort")
+        pushenv("F77",   "ifort")
+    elseif (comp_name == "intel-classic") then
+        pushenv("CC",    "icc")
+        pushenv("CXX",   "icpc")
+        pushenv("FC",    "ifort")
+        pushenv("F77",   "ifort")
+    elseif (comp_name == "intel-oneapi") then
+        pushenv("FC",    "ifx")
+        pushenv("F77",   "ifx")
+    end
 end
 
 {{ super() }}

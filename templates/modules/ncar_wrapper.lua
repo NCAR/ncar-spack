@@ -13,7 +13,7 @@ end
 
 -- Special logic for intel modules
 local comp_name = os.getenv("LMOD_FAMILY_COMPILER")
-local comp_major = {{spec.version.up_to(1)}}
+local comp_major = {{spec.compiler.version.up_to(1)}}
 
 if comp_major < 2025 then
     if (comp_name == "intel") then
