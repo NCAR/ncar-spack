@@ -8,7 +8,7 @@
 #           and any other packages that need it
 #
 #   Author:         Brian Vanderwende
-#   Last Revised:   09:33, 13 Dec 2024
+#   Last Revised:   17:36, 23 Dec 2024
 #
 
 
@@ -452,7 +452,7 @@ function check_registry {
 
 function modify_spec_access {
     if [[ -z $3 ]]; then
-        tsecho "Error: invalid spec name $3 (hash $2)"
+        tsecho "Error: invalid spec name (hash $2)"
         exit 1
     fi
 
@@ -930,7 +930,7 @@ function initialize_registry {
                 fi
 
                 spec="$(awk -F\| '{print $NF}' <<< "$entry")"
-                tsecho "Removing missing spec $PCOL$spec$DCOL from registry" 1
+                tsecho "Removing missing spec $PCOL$spec$DCOL from registry"
             fi
         done < <(tail -n +3 $SPACK_ENV/registry)
         [[ $buffer_me ]] && echo
@@ -963,7 +963,7 @@ function backup_build_database {
 
             if [[ -n $spack_db ]]; then
                 rsync -a --delete --exclude=failures $spack_db/ .spack-db
-                git add .spack-db
+                git add .spack-db spack.yaml spack.lock registry
 
                 if ! git diff --cached --quiet; then
                     tsecho "Backing up changes to build environment package database"
