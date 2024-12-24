@@ -8,7 +8,7 @@
 #           and any other packages that need it
 #
 #   Author:         Brian Vanderwende
-#   Last Revised:   17:36, 23 Dec 2024
+#   Last Revised:   15:56, 24 Dec 2024
 #
 
 
@@ -456,6 +456,11 @@ function modify_spec_access {
         exit 1
     fi
 
+    # We don't need to do any of this if in the public environment (gets exported from build)
+    if [[ $SPACK_ENV == $NCAR_SPACK_ENV_PUBLIC ]]; then
+        return
+    fi
+
     # First, clean up any existing access to avoid conflicts
     spec_name=$(sed 's/[@%^+~ ].*//' <<< "$3")
     sed -i "/^[ ]*core_specs:/,/^ *[a-z]/ {/- $spec_name/d}" $SPACK_ENV/spack.yaml
@@ -875,7 +880,7 @@ function install_specs {
 
     # If spec is a compiler, register in the YAML file or dump cache
     if [[ ${#compiler_config[@]} -gt 0 ]]; then
-        if [[ $SPACK_ENV == */build ]]; then
+        if [[ $SPACK_ENV == $NCAR_SPACK_ENV_BUILD ]]; then
             compiler_checks
         else
             # Spack now caches whether a compiler can be found, so we have to

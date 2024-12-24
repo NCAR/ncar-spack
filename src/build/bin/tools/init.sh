@@ -35,6 +35,11 @@ export -f tsecho log_cmd update_log_pointers
 my_name=$(basename "$0")
 . $my_dir/../main.cfg
 
+# Make sure all config variables are exported
+for cfg_var in ${!NCAR_SPACK_*}; do
+    export $cfg_var
+done
+
 # The following variables are shared among multiple scripts
 # Note that shell arrays can't be exported, so we must define it here to be
 # reinstantiated for each script
