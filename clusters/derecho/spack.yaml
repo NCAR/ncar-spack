@@ -393,6 +393,8 @@ spack:
       - +svn
       - +tcltk
     glibc:
+      prefer:
+      - '%gcc'
       require:
       - '%gcc'
     glpk:
@@ -1031,11 +1033,16 @@ spack:
         core_compilers:
         - gcc@7.5.0
         core_specs:
+        - cudnn
+        - nco
+        - intel-oneapi-compilers
+        - libfabric
+        - rstudio
+        - idl
+        - matlab
         - intel-oneapi-advisor
         - intel-oneapi-vtune
         - texlive
-        - intel-oneapi-compilers
-        - nco
         - gmt
         - cdo
         - nccmp
@@ -1055,7 +1062,6 @@ spack:
         - darshan-util
         - linaro-forge
         - ncl
-        - cudnn
         - charliecloud
         - peak-memusage
         - podman
@@ -1068,10 +1074,6 @@ spack:
         - r
         - miniconda
         - go
-        - idl
-        - matlab
-        - rstudio
-        - libfabric
         cuda:
           template: ncar_cuda.lua
           environment:
@@ -1116,6 +1118,7 @@ spack:
         - parallelio+mpi+shared
         - esmf+mpi
         - cuda@12.3.2
+        - cudnn@8.9.7.29-12
         - intel-oneapi-compilers@2024.2.1
         - gcc@12.4.0
         - libfabric@1.15.2.0
