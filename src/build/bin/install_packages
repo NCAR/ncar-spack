@@ -8,7 +8,7 @@
 #           and any other packages that need it
 #
 #   Author:         Brian Vanderwende
-#   Last Revised:   15:56, 24 Dec 2024
+#   Last Revised:   20:15, 22 Apr 2025
 #
 
 
@@ -211,7 +211,7 @@ function refresh_config {
 }
 
 function mask_spec {
-    for my_mask in ${config[$1]}; do
+    for my_mask in ${config[$1]//,/ }; do
         if [[ $2 == ${my_mask}* ]]; then
             return
         fi
@@ -251,6 +251,8 @@ function prepare_spec {
 
     unset ${!pkg_*}
 
+    tsecho " >> Spec config = $(declare -p config | cut -d= -f2-)" 3
+    
     # Check for implications of compiler/mpi flags here
     for opt in compiler mpi compilers mpis exclude; do
         if [[ -n ${config[$opt]} ]]; then
@@ -262,21 +264,25 @@ function prepare_spec {
                     mpi=${config[$opt]}
                     ;;
                 compilers)
-                    spec_check=${spec_check:-$(mask_spec compilers $comp)}
+                    skip_check=${skip_check:-$(mask_spec compilers $comp)}
+                    [[ $skip_check == fail ]] && skip_info="mask={$(tr ' ' ',' <<< ${config[compilers]})}, comp=$comp"
                     ;;
                 mpis)
-                    spec_check=${spec_check:-$(mask_spec mpis $mpi)}
+                    skip_check=${skip_check:-$(mask_spec mpis $mpi)}
+                    [[ $skip_check == fail ]] && skip_info="mask={$(tr ' ' ',' <<< ${config[mpis]})}, mpi=$mpi"
                     ;;
                 exclude)
                     for exclusion in ${config[$opt]//,/ }; do
                         if [[ $exclusion == [a-z]*%[a-z]* ]]; then
                             if [[ $mpi == ${exclusion%\%*}* ]] && [[ $comp == ${exclusion#*%}* ]]; then
-                                spec_check=fail
+                                skip_info="comp=$comp, mpi=$mpi, exclusion=$exclusion"
+                                skip_check=fail
                             fi
                         else
                             for condition in $comp $mpi; do
                                 if [[ $condition == ${exclusion}* ]]; then
-                                    spec_check=fail
+                                    skip_info="condition=$condition, exclusion=$exclusion"
+                                    skip_check=fail
                                 fi
                             done
                         fi
@@ -289,8 +295,9 @@ function prepare_spec {
     done
 
     # Skip this spec if any checks fail
-    if [[ $spec_check == fail ]]; then
-        unset spec_check
+    if [[ $skip_check == fail ]]; then
+        tsecho " >> $spec skipped from check: $skip_info" 2
+        unset skip_check
         return 1
     fi
 
@@ -1134,10 +1141,11 @@ while read entry; do
             done
         else
             unset comp mpi
-
+            
             case $spec_type in
                 mdep|by-mpi)
                     for comp in $compilers; do
+                        #echo "|${mpis[@]}|"
                         while read mpi; do
                             prepare_spec || continue
                             check_spec
@@ -1148,6 +1156,7 @@ while read entry; do
                     for comp in $compilers; do
                         prepare_spec || continue
                         check_spec
+                        #echo "|${mpis[@]}|"
                     done
                     ;;
                 singleton)

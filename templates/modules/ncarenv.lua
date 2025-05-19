@@ -126,8 +126,8 @@ end
 
 setenv("OMP_STACKSIZE", "64000K")
 
--- System-wide dask settings
--- setenv("DASK_ROOT_CONFIG", "/glade/u/apps/config/dask")
+-- qhist config file
+setenv("QHIST_SERVER_CONFIG", "/glade/u/apps/config/qhist/%HOST%.json")
 
 -- System-wide MPI settings
 setenv("FI_CXI_RX_MATCH_MODE", "hybrid")
