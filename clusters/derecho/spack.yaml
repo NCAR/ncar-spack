@@ -1403,11 +1403,11 @@ spack:
             - GOPATH
   concretizer:
     unify: false
-    reuse: false
+    reuse: true
     os_compatible:
       opensuse15:
       - sles15
       sles15:
       - opensuse15
   repos:
-  - $spack/var/spack/repos/ncar.hpcd
+  - $spack/var/spack/repos/spack_repo/ncar.hpcd
