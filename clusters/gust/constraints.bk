@@ -1,15 +1,15 @@
 core = %gcc
 
-externals : floating {
-    gcc lustre pkg-config openssl
+externals : buildable {
     /opt/cray/[libfabric/*]
 }
 
-externals: fixed floating compiler {
-    /opt/cray/pe/[cce/1*]
+externals : floating {
+    gcc
 }
 
-externals: fixed floating {
+externals : fixed {
+    lustre pkg-config openssl
     /glade/u/apps/opt/[matlab/R2024*]
     /glade/u/apps/opt/[idl/9.*]
     /glade/u/apps/opt/[rstudio/*]

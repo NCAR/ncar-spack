@@ -46,7 +46,7 @@ function manual_require {
         tsecho "Error: Invalid requirement set ($1); perhaps no core compiler?"
         exit 1
     fi
-    
+
     mod_list=$(spack python $my_dir/tools/add_requirement.py $1 $2)
 
     for mod_pkg in $mod_list; do
@@ -67,116 +67,131 @@ function manual_external {
     fi
 }
 
+function modify_compilers {
+    if [[ " $my_meta " == *" compiler "* ]]; then
+        for spec in $@; do
+            for mod_type in all $spec; do
+                if [[ -f $SPACK_ENV/templates/compilers/modify.${mod_type}.py ]]; then
+                    tsecho " >> Adding environment modifications (type=$mod_type)"
+                    spack python $SPACK_ENV/templates/compilers/modify.${mod_type}.py $spec
+                fi
+            done
+        done
+    fi
+}
+
 # First, let's get the known external prefixes
 known_externals=$(spack config get packages | grep prefix: | awk -F: '{print $2}' | sort | uniq | xargs)
 
 # Add package configuration settings
 if [[ -f $SPACK_ENV/constraints.cfg ]]; then
-    tsecho "Finding specified package configuration in constraints.cfg"
+tsecho "Finding specified package configuration in constraints.cfg"
 
-    while read entry; do
-        if [[ -z $entry ]]; then
-            continue
-        fi
+while read entry; do
+    if [[ -z $entry ]]; then
+        continue
+    fi
 
-        case $entry in
-            *=*)
-                read var_name var_value <<< ${entry/=/ }
-                declare $var_name=$var_value
-                ;;
-            *'{'*)
-                IFS=: read my_mode my_meta <<< ${entry%%\{*}
-                my_meta="${my_meta/,/ }"
-                ;;
-            '}'*)
-                unset my_mode my_meta
-                ;;
-            *)
-                tsecho "Processing line: $entry" 1
+    case $entry in
+        *=*)
+            read var_name var_value <<< ${entry/=/ }
+            declare $var_name=$var_value
+            ;;
+        *'{'*)
+            IFS=: read my_mode my_meta <<< ${entry%%\{*}
+            my_meta="${my_meta/,/ }"
+            ;;
+        '}'*)
+            unset my_mode my_meta
+            ;;
+        *)
+            tsecho "Processing line: $entry" 1
 
-                case ${my_mode// } in
-                    externals)
-                        if [[ " $my_meta " == *" fixed "* ]]; then
-                            ext_flags=--not-buildable
-                        else
-                            ext_flags=
+            case ${my_mode// } in
+                externals)
+                    if [[ " $my_meta " == *" fixed "* ]]; then
+                        ext_flags=--not-buildable
+                    else
+                        ext_flags=
+                    fi
+
+                    if [[ $entry == /* ]]; then
+                        ext_flags="$ext_flags --path"
+
+                        if [[ $entry != *\[*\]* ]]; then
+                            tsecho "Error: spec must be delimited in path by [*]"
+                            exit 1
                         fi
 
-                        if [[ $entry == /* ]]; then
-                            ext_flags="$ext_flags --path"
-                            
-                            if [[ $entry != *\[*\]* ]]; then
-                                tsecho "Error: spec must be delimited in path by [*]"
-                                exit 1
-                            fi
+                        search_expr=$(sed 's/\[[^]]*\]/\\(\*\\)/g; s/\*/\.\*/g' <<< $entry)
+                        search_params=$(tr -cd '(' <<< $search_expr | wc -c)
+                        pkg_paths=$(echo $(tr -d '[]' <<< $entry))
 
-                            search_expr=$(sed 's/\[[^]]*\]/\\(\*\\)/g; s/\*/\.\*/g' <<< $entry)
-                            search_params=$(tr -cd '(' <<< $search_expr | wc -c)
-                            pkg_paths=$(echo $(tr -d '[]' <<< $entry))
-                           
-                            if [[ -n $pkg_paths ]]; then
-                                for pkg_path in $pkg_paths; do
-                                    if [[ $search_params -eq 1 ]]; then
-                                        pkg_spec=$(sed "s|$search_expr|\1|; s|/|@|" <<< $pkg_path)
-                                        pkg_name=${pkg_spec%@*}
-                                        pkg_version=${pkg_spec#*@}
-                                    else
-                                        read pkg_name pkg_version <<< $(sed "s|$search_expr|\1 \2|" <<< $pkg_path)
-                                        pkg_spec=${pkg_name}@$pkg_version
-                                    fi
-
-                                    if [[ -d $pkg_path ]]; then
-                                        if [[ " $known_externals " != *" ${pkg_path%%/} "* ]]; then
-                                            if [[ " $my_meta " != *" manual "* ]]; then
-                                                auto_result=$(spack external find $ext_flags $pkg_path $pkg_name)
-                                            else
-                                                unset auto_result
-                                            fi
-
-                                            if [[ $auto_result == *spack.yaml* ]]; then
-                                                tsecho "Adding external   $GCOL$pkg_spec$DCOL"
-                                            else
-                                                manual_external
-                                            fi
-
-                                            known_externals="$known_externals ${pkg_path%%/}"
-                                        fi
-                                    elif [[ $pkg_path != *sbang ]]; then
-                                        tsecho "Skipping external $BCOL${pkg_spec} (not found!)$DCOL"
-                                    fi
-                                done
-
-                                # Externals should also "use" the core compiler
-                                if [[ " $my_meta " != *" floating "* ]]; then
-                                    manual_require "$core" $pkg_name
+                        if [[ -n $pkg_paths ]]; then
+                            for pkg_path in $pkg_paths; do
+                                if [[ $search_params -eq 1 ]]; then
+                                    pkg_spec=$(sed "s|$search_expr|\1|; s|/|@|" <<< $pkg_path)
+                                    pkg_name=${pkg_spec%@*}
+                                    pkg_version=${pkg_spec#*@}
+                                else
+                                    read pkg_name pkg_version <<< $(sed "s|$search_expr|\1 \2|" <<< $pkg_path)
+                                    pkg_spec=${pkg_name}@$pkg_version
                                 fi
-                            fi
-                        else
-                            auto_result=$(spack external find $ext_flags $entry)
 
-                            if [[ $auto_result == *spack.yaml* ]]; then
-                                found_list=$(tail -n +2 <<< $auto_result | xargs)
-                                tsecho "Adding externals  $GCOL${found_list}$DCOL"
-                            fi
+                                if [[ -d $pkg_path ]]; then
+                                    if [[ " $known_externals " != *" ${pkg_path%%/} "* ]]; then
+                                        if [[ " $my_meta " != *" manual "* ]]; then
+                                            auto_result=$(spack external find $ext_flags $pkg_path $pkg_name)
+                                        else
+                                            unset auto_result
+                                        fi
 
-                            # Externals should also "use" the core compiler unless marked "floating"
+                                        if [[ $auto_result == *spack.yaml* ]]; then
+                                            tsecho "Adding external   $GCOL$pkg_spec$DCOL"
+                                        else
+                                            manual_external
+                                        fi
+
+                                        modify_compilers $pkg_spec
+                                        known_externals="$known_externals ${pkg_path%%/}"
+                                    fi
+                                elif [[ $pkg_path != *sbang ]]; then
+                                    tsecho "Skipping external $BCOL${pkg_spec} (not found!)$DCOL"
+                                fi
+                            done
+
+                            # Externals should also "use" the core compiler
                             if [[ " $my_meta " != *" floating "* ]]; then
-                                manual_require "$core" "$entry"
+                                manual_require "$core" $pkg_name
                             fi
                         fi
-                        ;;
-                    require)
-                        my_meta=$(sed "s/core/$core/" <<< $my_meta)
-                        manual_require "$my_meta" "$entry"
-                        ;;
-                    *)
-                        tsecho "Error: Unknown mode $my_mode"
-                        exit 1
-                        ;;
-                esac
-                ;;
-        esac
-    done < $SPACK_ENV/constraints.cfg
+                    else
+                        auto_result=$(spack external find $ext_flags $entry)
+
+                        if [[ $auto_result == *spack.yaml* ]]; then
+                            found_list=$(tail -n +2 <<< $auto_result | xargs)
+                            tsecho "Adding externals  $GCOL${found_list}$DCOL"
+                            modify_compilers $found_list
+                        fi
+
+                        # Externals should also "use" the core compiler unless marked "floating"
+                        if [[ " $my_meta " != *" floating "* ]]; then
+                            manual_require "$core" "$entry"
+                        fi
+                    fi
+                    ;;
+                require)
+                    my_meta=$(sed "s/core/$core/" <<< $my_meta)
+                    manual_require "$my_meta" "$entry"
+                    ;;
+                *)
+                    tsecho "Error: Unknown mode $my_mode"
+                    exit 1
+                    ;;
+            esac
+            ;;
+    esac
+done < $SPACK_ENV/constraints.cfg
 fi
 
 update_log_pointers constraints

@@ -1,0 +1,1 @@
+spack compiler add $root/Linux_x86_64/$version/compilers

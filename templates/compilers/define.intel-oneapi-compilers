@@ -1,0 +1,1 @@
+spack compiler add $root/compiler/${version%.*}

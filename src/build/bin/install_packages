@@ -8,7 +8,7 @@
 #           and any other packages that need it
 #
 #   Author:         Brian Vanderwende
-#   Last Revised:   20:15, 22 Apr 2025
+#   Last Revised:   20:05, 29 May 2025
 #
 
 
@@ -252,7 +252,7 @@ function prepare_spec {
     unset ${!pkg_*}
 
     tsecho " >> Spec config = $(declare -p config | cut -d= -f2-)" 3
-    
+
     # Check for implications of compiler/mpi flags here
     for opt in compiler mpi compilers mpis exclude; do
         if [[ -n ${config[$opt]} ]]; then
@@ -389,36 +389,61 @@ function store_compiler_config {
 function compiler_checks {
     if [[ $current_comps != *${compiler_config[comp_spec]}* ]]; then
         tsecho "Registering ${compiler_config[comp_spec]} as a compiler in spack.yaml"
-        comp_template=$NCAR_SPACK_ENV_BUILD/templates/compilers/${compiler_config[comp_spec]%%@*}
 
-        if [[ ! -f $comp_template ]]; then
-            tsecho "Error: no compiler template found for ${compiler_config[comp_spec]}"
-        fi
+        if [[ ${NCAR_SPACK_API_VERSION:-0} == 0* ]]; then
+            comp_template=$NCAR_SPACK_ENV_BUILD/templates/compilers/${compiler_config[comp_spec]%%@*}
 
-        if [[ $current_comps == *${compiler_config[comp_spec]}* ]]; then
-            tsecho "(replacing existing compiler ${compiler_config[comp_spec]})"
-            eval spack compiler remove ${compiler_config[comp_spec]}
-        fi
-
-        if [[ -z $os ]]; then
-            os=$(spack arch -o)
-        fi
-
-        if [[ ${compiler_config[build]:-true} == true ]]; then
-            read -r root version <<< $(eval spack find --format \"{prefix} {version}\" ${compiler_config[spec]})
-        else
-            if [[ ${compiler_config[modifier]} == cray ]]; then
-                root=/opt/cray
-            else
-                root=/usr
+            if [[ ! -f $comp_template ]]; then
+                tsecho "Error: no compiler template found for ${compiler_config[comp_spec]}"
             fi
 
-            version=${compiler_config[comp_spec]#*@}
-        fi
+            if [[ $current_comps == *${compiler_config[comp_spec]}* ]]; then
+                tsecho "(replacing existing compiler ${compiler_config[comp_spec]})"
+                eval spack compiler remove ${compiler_config[comp_spec]}
+            fi
 
-        sed -i 's/^\(  compilers:\)[ ]*\[\]/\1/' $SPACK_ENV/spack.yaml
-        block_end=$(expr $(sed -n "1,/^  '*compilers[:']*/d;/^  [^- ].*/ {=;q}" spack.yaml) - 1)
-        . $comp_template | sed -i "$block_end r /dev/stdin" $SPACK_ENV/spack.yaml
+            if [[ -z $os ]]; then
+                os=$(spack arch -o)
+            fi
+
+            if [[ ${compiler_config[build]:-true} == true ]]; then
+                read -r root version <<< $(eval spack find --format \"{prefix} {version}\" ${compiler_config[spec]})
+            else
+                if [[ ${compiler_config[modifier]} == cray ]]; then
+                    root=/opt/cray
+                else
+                    root=/usr
+                fi
+
+                version=${compiler_config[comp_spec]#*@}
+            fi
+
+            sed -i 's/^\(  compilers:\)[ ]*\[\]/\1/' $SPACK_ENV/spack.yaml
+            block_end=$(expr $(sed -n "1,/^  '*compilers[:']*/d;/^  [^- ].*/ {=;q}" spack.yaml) - 1)
+            . $comp_template | sed -i "$block_end r /dev/stdin" $SPACK_ENV/spack.yaml
+        elif [[ $NCAR_SPACK_API_VERSION == 1* ]]; then
+            if [[ $current_comps == *${compiler_config[comp_spec]}* ]]; then
+                tsecho "(replacing existing compiler ${compiler_config[comp_spec]})"
+                eval spack compiler remove ${compiler_config[comp_spec]}
+            fi
+
+            read -r root version <<< $(eval spack find --format \"{prefix} {version}\" ${compiler_config[spec]})
+
+            # Some compilers have special paths or need a custom template
+            if [[ -f $NCAR_SPACK_ENV_BUILD/templates/compilers/define.${compiler_config[comp_spec]%%@*} ]]; then
+                . $NCAR_SPACK_ENV_BUILD/templates/compilers/define.${compiler_config[comp_spec]%%@*} > /dev/null
+            else
+                spack compiler add $root > /dev/null
+            fi
+
+            # Do we have environment modifications to add?
+            for mod_type in all ${compiler_config[comp_spec]%%@*}; do
+                if [[ -f $NCAR_SPACK_ENV_BUILD/templates/compilers/modify.${mod_type}.py ]]; then
+                    tsecho " >> Adding environment modifications (type=$mod_type)"
+                    spack python $NCAR_SPACK_ENV_BUILD/templates/compilers/modify.${mod_type}.py $comp_spec
+                fi
+            done
+        fi
     fi
 
     compiler_config=()
@@ -519,12 +544,17 @@ function check_spec {
         comp_spec=$(sed "s/^\([^@+~ ]*\)[^@]*\(@[^+~% ]*\).*/\1\2/" <<< "$spec")
 
         if [[ $comp_spec == intel-oneapi-compilers-classic* ]]; then
-            comp_spec="${comp_spec/intel-oneapi-compilers-classic/intel}"
             config[cache]=no
-        elif [[ $comp_spec == intel-oneapi-compilers* ]]; then
-            comp_spec="${comp_spec/intel-oneapi-compilers/oneapi}"
-        elif [[ $comp_spec == llvm* ]]; then
-            comp_spec="${comp_spec/llvm/clang}"
+        fi
+
+        if [[ ${NCAR_SPACK_API_VERSION:-0} == 0* ]]; then
+            if [[ $comp_spec == intel-oneapi-compilers-classic* ]]; then
+                comp_spec="${comp_spec/intel-oneapi-compilers-classic/intel}"
+            elif [[ $comp_spec == intel-oneapi-compilers* ]]; then
+                comp_spec="${comp_spec/intel-oneapi-compilers/oneapi}"
+            elif [[ $comp_spec == llvm* ]]; then
+                comp_spec="${comp_spec/llvm/clang}"
+            fi
         fi
 
         if [[ ${config[register]:-yes} == yes ]] && [[ ${config[matrix]:-yes} == yes ]]; then
@@ -583,10 +613,10 @@ function check_spec {
         # Check for raw spec first, to avoid recreating canonical spec
         registry_data=$(sed -n '3,$ s/ | /|/gp' $SPACK_ENV/registry | awk -F\| -v spec="$spec"      \
                 '$(NF-1) == spec {print $0}')
-        
+
         # Use Spack commands to reformat into canonical Spec ordering
         parse_cmd="spack.cmd.parse_specs('$(sed "s/'/\\\'/g" <<< $spec)')[0]"
-        
+
         if [[ -z $registry_data ]]; then
             parsed_spec="$(PYTHONPATH=$pypath $SPACK_PYTHON -c "import spack.cmd; print($parse_cmd)")"
             spec="$parsed_spec"
@@ -613,7 +643,7 @@ function check_spec {
 
                 if [[ $? == 0 ]]; then
                     set -e
-                    
+
                     if [[ $NCAR_SPACK_SPEC_FORMAT == new ]]; then
                         spec_hash=$(head -1 <<< "$spack_spec_out" | awk '{print $2}')
                     else
@@ -741,7 +771,7 @@ function clear_added_specs {
             modify_spec_access ${active_config[access]:-module} $queued_hash "$queued_spec"
         done < <(tr '|' '\n' <<< "$install_queue")
     fi
-    
+
     if [[ $1 == 1 ]]; then
         backup_build_database
     fi
@@ -1141,7 +1171,7 @@ while read entry; do
             done
         else
             unset comp mpi
-            
+
             case $spec_type in
                 mdep|by-mpi)
                     for comp in $compilers; do
