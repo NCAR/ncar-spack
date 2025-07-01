@@ -9,6 +9,10 @@ if [[ ! -f $NCAR_SPACK_ROOT/bin/spack ]]; then
     exit 1
 fi
 
+if [[ -e /etc/bash.bashrc.local ]]; then
+    >&2 echo "Warning: /etc/bash.bashrc.local exists, which may contaminate environment..."
+fi
+
 NCAR_SPACK_STARTUP=$NCAR_SPACK_ROOT/share/spack/setup-env.sh
 
 if [[ $0 == *tcsh ]]; then
@@ -41,7 +45,13 @@ done
 
 # Ensure no ~/.spack contamination
 if [[ -d ~/.spack ]]; then
-    backup_root=${SCRATCH:-/glade/derecho/scratch/$USER}/.spack-backups
+    if [[ -d /glade/derecho/scratch/$USER ]]; then
+        scratch_root=/glade/derecho
+    else
+        scratch_root=/glade/gust
+    fi
+
+    backup_root=${SCRATCH:-$scratch_root/scratch/$USER}/.spack-backups
     mkdir -p $backup_root
     mv ~/.spack $backup_root/$(date +%y%m%d-%H%M%S)
 fi

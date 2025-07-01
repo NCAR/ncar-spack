@@ -42,10 +42,7 @@ spack:
       - x86_64_v3
       prefer:
       - +pic
-      #gmake:
-      #  require:
-      # This may help ioapi build
-      #  - '@:4.2'
+      - '%gcc@12.4.0'
     aocc:
       require:
       - +license-agreed
@@ -110,6 +107,8 @@ spack:
       - +libssh
       - +libssh2
       - +nghttp2
+      prefer:
+      - tls=openssl
     darshan-runtime:
       variants:
       - +parallel-netcdf
@@ -165,6 +164,9 @@ spack:
       variants:
       - +piclibs
       - languages=c,c++,fortran,go
+      prefer:
+      - spec: '%gcc@7.5.0'
+        when: '@8:'
     gdal:
       require:
       - spec: ^hdf5~mpi
@@ -209,6 +211,13 @@ spack:
       variants:
       - +svn
       - +tcltk
+    glx:
+      require:
+      - mesa
+    gmake:
+      require:
+      # This may help ioapi build
+      - '@:4.2'
     gmt:
       variants:
       - +ffmpeg
@@ -298,6 +307,9 @@ spack:
       - +cuda
       - +uring
       - fabrics=sockets,tcp,udp,cxi,rxm,rxd,mrail,shm,lnx
+    libllvm:
+      conflict:
+      - llvm-amdgpu
     libunwind:
       variants:
       - +cxx_exceptions
@@ -308,6 +320,12 @@ spack:
     linaro-forge:
       require:
       - +accept-eula
+    mesa:
+      require:
+      - +llvm
+      - '@25:'
+      prefer:
+      - ^llvm ~clang
     met:
       variants:
       - +graphics
@@ -347,7 +365,6 @@ spack:
       - process_managers=auto
       require:
       - netmod=ofi
-      - +pbs
       - spec: ~cuda
         when: '%intel-oneapi-compilers'
       - spec: +cuda
@@ -452,7 +469,7 @@ spack:
       - +webkit
       require:
       - +gtk
-      - '@5'
+      - '@5.14.2'
     singularityce:
       variants:
       - ~suid
@@ -556,11 +573,12 @@ spack:
         core_compilers:
         - gcc@12.4.0
         core_specs:
+        - libfabric
+        - go
         - cce
         - intel-oneapi-compilers
-        - nvhpc
         - gcc
-        - libfabric
+        - nvhpc
         - heaptrack
         - cuda
         - cudnn
@@ -599,7 +617,6 @@ spack:
         - pcre
         - r
         - miniconda
-        - go
         cuda:
           template: ncar_cuda.lua
           environment:
@@ -918,5 +935,3 @@ spack:
       - sles15
       sles15:
       - opensuse15
-  repos:
-  - $spack/var/spack/repos/spack_repo/ncar.hpcd

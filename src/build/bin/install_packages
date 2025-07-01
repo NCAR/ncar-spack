@@ -8,7 +8,7 @@
 #           and any other packages that need it
 #
 #   Author:         Brian Vanderwende
-#   Last Revised:   21:59, 30 Jun 2025
+#   Last Revised:   15:22, 01 Jul 2025
 #
 
 
@@ -399,7 +399,7 @@ function compiler_checks {
 
             if [[ $current_comps == *${compiler_config[comp_spec]}* ]]; then
                 tsecho "(replacing existing compiler ${compiler_config[comp_spec]})"
-                eval spack compiler remove ${compiler_config[comp_spec]}
+                eval spack compiler remove --scope env:$SPACK_ENV ${compiler_config[comp_spec]}
             fi
 
             if [[ -z $os ]]; then
@@ -424,7 +424,7 @@ function compiler_checks {
         elif [[ $NCAR_SPACK_API_VERSION == 1* ]]; then
             if [[ $current_comps == *${compiler_config[comp_spec]}* ]]; then
                 tsecho "(replacing existing compiler ${compiler_config[comp_spec]})"
-                eval spack compiler remove ${compiler_config[comp_spec]}
+                eval spack compiler remove --scope env:$SPACK_ENV ${compiler_config[comp_spec]}
             fi
 
             read -r root version <<< $(eval spack find --format \"{prefix} {version}\" ${compiler_config[spec]})
@@ -433,7 +433,7 @@ function compiler_checks {
             if [[ -f $NCAR_SPACK_ENV_BUILD/templates/compilers/define.${compiler_config[comp_spec]%%@*} ]]; then
                 . $NCAR_SPACK_ENV_BUILD/templates/compilers/define.${compiler_config[comp_spec]%%@*} > /dev/null
             else
-                spack compiler add $root > /dev/null
+                spack compiler add --scope env:$SPACK_ENV $root > /dev/null
             fi
 
             # Do we have environment modifications to add?
@@ -1032,8 +1032,19 @@ if [[ $SPACK_ENV/spack.yaml -nt $SPACK_ENV/spack.lock ]]; then
 fi
 
 # Detect available compiler information
+tsecho "Inspecting currently available compilers"
 sys_gcc=$(gcc -v |& grep "gcc version" | cut -d' ' -f3)
-current_comps=$(spack compiler list --scope env:$SPACK_ENV | grep '@')
+current_comps=$(spack compiler list --scope env:$SPACK_ENV | grep '@' | awk '{print $NF}')
+
+for comp in $current_comps; do
+    cc_c=$(spack compiler info --scope env:$SPACK_ENV $comp | grep "c:" | awk '{print $NF}')
+
+    if [[ ! -e $cc_c ]]; then
+        tsecho " >> Removing uninstalled/missing compiler ${PCOL}$comp${DCOL}"
+        spack compiler remove --scope env:$SPACK_ENV $comp > /dev/null
+        current_comps="${current_comps/$comp}"
+    fi
+done
 
 # Detect Spack and builtin commits
 tsecho "Detect Spack and repo versions"

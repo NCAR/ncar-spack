@@ -1,7 +1,7 @@
 #!/bin/bash
 #
 #   Author:         Brian Vanderwende
-#   Last Revised:   10:36, 18 Dec 2024
+#   Last Revised:   15:59, 01 Jul 2025
 #
 
 set -e
@@ -20,19 +20,21 @@ be done by this script.
 
 Options
     -h, --help                  show this help message
-    -b, --branch                override the branch of the CSG Spack fork to use
+    -b, --branch REF            override the branch of the CSG Spack fork to use
     -k, --key OPTION            determines behavior for GPG keys. options include:
                                     auto    - generate if not found at normal path
                                     PATH    - specify the path to a private GPG key
                                     new     - force generation of a new key
                                     none    - don't generate or import keys
+    -p, --production            create a production deployment (must be csgteam)
+    -r, --repo REF              override the branch of the CSG packages fork to use
     -s, --skip STEP1[,STEP2]        skip specified step of deployment process
-                                    packages    - don't install anything into build
+                                    all         - skip all of the above
                                     constraints - don't add constraints
                                     keys        - don't set up GPG keys
                                     mirrors     - don't set up local+global mirrors
-                                    all         - skip all of the above
-    -p, --production            create a production deployment (must be csgteam)
+                                    packages    - don't install anything into build
+                                    repos       - don't set up package repos
     --set-version VERSION       override version set in cluster definition
 
 EOF
@@ -81,6 +83,10 @@ while [[ $# -gt 0 ]]; do
                 >&2 echo "Error: cannot create production deployment as $my_user"
                 exit 1
             fi
+            ;;
+        -r|--repo)
+            custom_repo=$2
+            shift
             ;;
         -s|--skip)
             if [[ $1 == *=* ]]; then
@@ -264,6 +270,25 @@ if [[ $NCAR_SPACK_ROOT != $spack_clone_path ]]; then
         elif [[ -n $gpg_key ]]; then
             echo -e "\nTrusting existing GPG key ..."
             spack gpg trust $gpg_key
+        fi
+    fi
+
+    # Pull builtin package repo
+    if [[ ! $skip_steps =~ " "(repos|all)" " ]]; then
+        echo "Pulling builtin package repo into Spack clone ..."
+        spack repo update builtin
+        
+        if [[ -n $custom_repo ]]; then
+            NCAR_SPACK_PACKAGES_BRANCH=$custom_repo
+        fi
+        
+        if [[ -n $NCAR_SPACK_PACKAGES_BRANCH ]]; then
+            echo -e "\nSwitching to packages repo branch $NCAR_SPACK_PACKAGES_BRANCH ..."
+            repo_path=$(spack repo ls | awk '$0 ~ /builtin/ { print $NF }')
+            cd $repo_path
+            git fetch
+            git checkout origin/$NCAR_SPACK_PACKAGES_BRANCH
+            cd - > /dev/null
         fi
     fi
 
@@ -463,6 +488,8 @@ Build root:     $NCAR_SPACK_ENV_BUILD
 Public root:    $NCAR_SPACK_ENV_PUBLIC
 
 Github repo:    $NCAR_SPACK_GITHUB
+Spack branch:   ${NCAR_SPACK_CUSTOM_BRANCH:-ncar-mods}
+Pkgs branch:    ${NCAR_SPACK_PACKAGES_BRANCH:-ncar-mods}
 
 EOF
 
