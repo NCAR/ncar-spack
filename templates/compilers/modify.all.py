@@ -54,7 +54,7 @@ try:
             else:
                 external["extra_attributes"]["environment"] = mods
 except KeyError:
-    sys.exit("Error: external {} not found in spack.yaml".format(comp_name))
+    sys.exit("Error: external {} not found in spack.yaml".format(spec_name))
 
 # Write modified yaml to temporary file
 with open(yaml_path, 'w') as yaml_file:

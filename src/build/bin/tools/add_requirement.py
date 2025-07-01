@@ -7,11 +7,15 @@ import spack.util.spack_yaml as yaml
 import os, sys, copy
 
 if len(sys.argv) < 3:
-    raise TypeError("add_requirement.py takes 2+ arguments ({} given)".format(len(sys.argv) - 1))
+    raise TypeError("add_requirement.py takes 3+ arguments ({} given)".format(len(sys.argv) - 1))
 
 # First get our package name input
 new_req = sys.argv[1]
-pkg_list = sys.argv[2:]
+req_type = sys.argv[2]
+pkg_list = sys.argv[3:]
+
+if req_type not in ("require", "prefer"):
+    raise "Requirement type must be either 'require' or 'prefer' ({} given)".format(req_type)
 
 # Infer some settings from the environment
 env_dir = os.environ["SPACK_ENV"]
@@ -24,23 +28,23 @@ mod_list = []
 
 for pkg_name in pkg_list:
     if pkg_name in data["spack"]["packages"]:
-        if "require" in data["spack"]["packages"][pkg_name]:
-            old_req = data["spack"]["packages"][pkg_name]["require"]
+        if req_type in data["spack"]["packages"][pkg_name]:
+            old_req = data["spack"]["packages"][pkg_name][req_type]
 
             if isinstance(old_req, str):
-                data["spack"]["packages"][pkg_name]["require"] = [old_req]
+                data["spack"]["packages"][pkg_name][req_type] = [old_req]
 
                 if old_req != new_req:
-                    data["spack"]["packages"][pkg_name]["require"].append(new_req)
+                    data["spack"]["packages"][pkg_name][req_type].append(new_req)
                     mod_list.append(pkg_name)
-            elif new_req not in data["spack"]["packages"][pkg_name]["require"]:
-                data["spack"]["packages"][pkg_name]["require"].append(new_req)
+            elif new_req not in data["spack"]["packages"][pkg_name][req_type]:
+                data["spack"]["packages"][pkg_name][req_type].append(new_req)
                 mod_list.append(pkg_name)
         else:
-            data["spack"]["packages"][pkg_name]["require"] = [new_req]
+            data["spack"]["packages"][pkg_name][req_type] = [new_req]
             mod_list.append(pkg_name)
     else:
-        data["spack"]["packages"][pkg_name] = { "require" : [new_req] }
+        data["spack"]["packages"][pkg_name] = { req_type : [new_req] }
         mod_list.append(pkg_name)
 
 # Write modified yaml

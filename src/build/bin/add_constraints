@@ -47,7 +47,7 @@ function manual_require {
         exit 1
     fi
 
-    mod_list=$(spack python $my_dir/tools/add_requirement.py $1 $2)
+    mod_list=$(spack python $my_dir/tools/add_requirement.py $1 $2 $3)
 
     for mod_pkg in $mod_list; do
         tsecho "Set requirement   $GCOL$mod_pkg$DCOL to use $PCOL${1}$DCOL"
@@ -180,9 +180,9 @@ while read entry; do
                         fi
                     fi
                     ;;
-                require)
+                require|prefer)
                     my_meta=$(sed "s/core/$core/" <<< $my_meta)
-                    manual_require "$my_meta" "$entry"
+                    manual_require "$my_meta" "${my_mode// }" "$entry"
                     ;;
                 *)
                     tsecho "Error: Unknown mode $my_mode"

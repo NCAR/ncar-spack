@@ -2,7 +2,7 @@
 # file - use it to ensure that the specs are in "flow" style YAML
 # and not "block" style
 
-import ruamel.yaml as yaml
+import _vendoring.ruamel.yaml as yaml
 import os
 
 env_dir = os.environ["SPACK_ENV"]
