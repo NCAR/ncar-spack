@@ -1,7 +1,7 @@
 #!/bin/bash
 #
 #   Author:         Brian Vanderwende
-#   Last Revised:   15:59, 01 Jul 2025
+#   Last Revised:   11:51, 02 Jul 2025
 #
 
 set -e
@@ -228,7 +228,7 @@ if [[ $NCAR_SPACK_ROOT != $spack_clone_path ]]; then
 
     # Copy any found licenses to Spack install
     if [[ -d $NCAR_SPACK_DEPLOY_DIR/clusters/$NCAR_SYS/licenses ]]; then
-        cp -r $NCAR_SPACK_DEPLOY_DIR/clusters/$NCAR_SYS/licenses $spack_clone_path/etc/spack/
+        cp -rL $NCAR_SPACK_DEPLOY_DIR/clusters/$NCAR_SYS/licenses $spack_clone_path/etc/spack/
     fi
 
     # Modify permissions

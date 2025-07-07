@@ -8,7 +8,7 @@
 #           and any other packages that need it
 #
 #   Author:         Brian Vanderwende
-#   Last Revised:   15:22, 01 Jul 2025
+#   Last Revised:   16:49, 07 Jul 2025
 #
 
 
@@ -103,7 +103,7 @@ while [[ $# -gt 0 ]]; do
             shift
             ;;
         -p|--package-limit)
-            package_limit=$2
+            user_package_limit=$2
             shift
             ;;
         -r|--refresh-registry)
@@ -302,8 +302,12 @@ function prepare_spec {
     fi
 
     # Substitute compilers and MPIs
-    [[ -n $comp ]] && spec="$(sed "s|\^%CMP%|\^$comp|g" <<< "$spec")"
-    [[ -n $comp ]] && spec="$(sed "s|%CMP%|%$comp|g;t;s|$| %$comp|" <<< "$spec")"
+    if [[ -n $comp ]]; then
+        tc_comp=${toolchains[$comp]}
+        spec="$(sed "s|\^%CMP%|\^$tc_comp|g" <<< "$spec")"
+        spec="$(sed "s|%CMP%|%$tc_comp|g;t;s|$| %$tc_comp|" <<< "$spec")"
+    fi
+
     [[ -n $mpi ]]  && spec="$(sed "s|%MPI%|^$mpi|g;t;s|$| ^$mpi|" <<< "$spec")"
     spec="$(sed -r "s/%gcc( |$)/%gcc@${sys_gcc}\1/g" <<< "$spec")"
 
@@ -387,7 +391,7 @@ function store_compiler_config {
 }
 
 function compiler_checks {
-    if [[ $current_comps != *${compiler_config[comp_spec]}* ]]; then
+    if [[ $current_comps != *${compiler_config[comp_spec]}* ]] || [[ ${compiler_config[register]} == replace ]]; then
         tsecho "Registering ${compiler_config[comp_spec]} as a compiler in spack.yaml"
 
         if [[ ${NCAR_SPACK_API_VERSION:-0} == 0* ]]; then
@@ -440,9 +444,15 @@ function compiler_checks {
             for mod_type in all ${compiler_config[comp_spec]%%@*}; do
                 if [[ -f $NCAR_SPACK_ENV_BUILD/templates/compilers/modify.${mod_type}.py ]]; then
                     tsecho " >> Adding environment modifications (type=$mod_type)"
-                    spack python $NCAR_SPACK_ENV_BUILD/templates/compilers/modify.${mod_type}.py $comp_spec
+                    spack python $NCAR_SPACK_ENV_BUILD/templates/compilers/modify.${mod_type}.py ${compiler_config[comp_spec]}
                 fi
             done
+
+            # Does this compiler have a toolchain defined?
+            if [[ -n ${compiler_config[toolchain]} ]]; then
+                tsecho " >> Configuring ${compiler_config[comp_spec]} to use toolchain=${compiler_config[toolchain]}"
+                spack python $NCAR_SPACK_ENV_BUILD/templates/compilers/define.toolchain.py ${compiler_config[toolchain]} ${compiler_config[comp_spec]} ${compiler_config[blas]}
+            fi
         fi
     fi
 
@@ -557,6 +567,8 @@ function check_spec {
             fi
         fi
 
+        toolchains[$comp_spec]=${config[toolchain]:-$comp_spec}
+
         if [[ ${config[register]:-yes} == yes ]] && [[ ${config[matrix]:-yes} == yes ]]; then
             if [[ $comp_spec == gcc* ]]; then
                 compilers="$comp_spec $compilers"
@@ -603,7 +615,7 @@ function check_spec {
     if [[ ${config[build]} == false ]]; then
         tsecho "Skipping spec.. $PCOL$spec$BCOL$type_msg$DCOL (reason: build=false specified)" 1
 
-        if [[ ${config[type]} == compiler ]] && [[ ${config[register]} != no ]] && [[ $dry_run != true ]]; then
+        if [[ ${config[type]} == compiler ]] && [[ ${config[register]:-yes} == yes ]] && [[ $dry_run != true ]]; then
             store_compiler_config
             compiler_checks
         fi
@@ -669,7 +681,7 @@ function check_spec {
                     # Make sure spec is in spack.yaml
                     if [[ " $start_hashes " != *" $spec_hash "* ]]; then
                         print_spec_message "Adding to specs"
-                        eval spack add $spec > /dev/null
+                        eval spack add "$spec" > /dev/null
 
                         # Adding the spec won't make it explicit, so let's make sure...
                         spack mark -e /$spec_hash
@@ -710,6 +722,10 @@ function check_spec {
             fi
 
             if [[ ${#compiler_config[@]} -gt 0 ]]; then
+                if [[ ${compiler_config[register]} == replace ]]; then
+                    unset compiler_config[register]
+                fi
+
                 compiler_checks
             fi
         else
@@ -726,7 +742,7 @@ function check_spec {
                 log_cmd "$spec_cmd $spec" >> $log_specs
                 echo "$spack_spec_out" &>> $log_specs
                 unset spack_spec_out
-                eval spack add $spec > /dev/null
+                eval spack add "$spec" > /dev/null
 
                 if [[ $spec == lmod* ]] && ! module -v 2> /dev/null; then
                     checks_lmod=true
@@ -756,7 +772,7 @@ function clear_added_specs {
                 # If we can't find it by hash, it may still have been "installed" by virtue
                 # of existing in an upstream, so we have to search by short hash
                 if ! grep -q -e "^\[+\].*/${queued_hash:0:4}$" ${log_installs}*; then
-                    (trap '' SIGINT; eval spack remove $queued_spec) &
+                    (trap '' SIGINT; eval spack remove "$queued_spec") &
                     wait $!
                     continue
                 else
@@ -1053,17 +1069,17 @@ spack_commit=$(cd $NCAR_SPACK_ROOT_DEPLOYMENT/spack; git rev-parse HEAD)
 # Are we using sequential or concurrent install strategy?
 reuse_packages=$(spack config get concretizer | grep reuse | awk -F": " '{print $2}')
 
-if [[ -z $package_limit ]]; then
-    if [[ ${reuse_packages,,} == false ]]; then
-        package_limit=-1
-    else
-        package_limit=1
+if [[ ${reuse_packages,,} == false ]]; then
+    package_limit=${user_package_limit:-1}
+else
+    if [[ ${user_package_limit:-1} != 1 ]]; then
+        echo -e "\n${PCOL}Warning: package limit can only be 1 when reuse != false ...$DCOL"
     fi
+
+    package_limit=1
 fi
 
-if [[ $package_limit -ge -1 ]]; then
-    package_limit=${package_limit/0/-1}
-elif [[ $package_limit -ne 1 ]]; then
+if [[ $package_limit -lt 1 ]]; then
     tsecho "Error: invalid --package-limit setting ($package_limit)"
     exit 1
 fi
@@ -1143,7 +1159,7 @@ initialize_registry
 echo -e "Processing install manifest ...\n"
 
 # Associative arrays to store mpis and requested hashes
-declare -A mpis ref_list config queue_config active_config compiler_config
+declare -A mpis ref_list config queue_config active_config compiler_config toolchains
 
 # Create some global tracking variables
 spec= comp= mpi= start_installs=
@@ -1186,7 +1202,6 @@ while read entry; do
             case $spec_type in
                 mdep|by-mpi)
                     for comp in $compilers; do
-                        #echo "|${mpis[@]}|"
                         while read mpi; do
                             prepare_spec || continue
                             check_spec
@@ -1197,7 +1212,6 @@ while read entry; do
                     for comp in $compilers; do
                         prepare_spec || continue
                         check_spec
-                        #echo "|${mpis[@]}|"
                     done
                     ;;
                 singleton)
