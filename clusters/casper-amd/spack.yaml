@@ -1,4 +1,4 @@
-# *** SLES Derecho Software Stack ***
+# *** SLES Casper AMD Software Stack ***
 spack:
   config:
     install_tree:
@@ -15,6 +15,7 @@ spack:
         netcdf-fortran: netcdf/{^netcdf-c.version}/packages/{name}/{version}/{compiler.name}/{compiler.version}/{hash:4}
         netcdf-fortran^mpi: netcdf/{^netcdf-c.version}/packages/{name}/{version}/{^mpi.name}/{^mpi.version}/{compiler.name}/{compiler.version}/{hash:4}
         nvhpc: '{name}/{version}/{hash:4}'
+        aocc: '{name}/{version}/{hash:4}'
       padded_length: 128
     build_jobs: 4
     test_stage: '%TMPROOT%/$user/temp/spack/%DEPLOYMENT%/tests'
@@ -30,7 +31,7 @@ spack:
   packages:
     adios2:
       variants:
-      - +cuda
+      - +rocm
       - +hdf5
       - +python
     all:
@@ -42,8 +43,8 @@ spack:
       - x86_64_v3
       prefer:
       - +pic
-      - spec: cuda_arch=80
-        when: ^cuda
+      - spec: amdgpu_target=gfx942
+        when: ^rocm
       - '%c,cxx=gcc@12.4.0'
     aocc:
       require:
@@ -100,11 +101,9 @@ spack:
       - spec: cray-mpich@8.1.32 %intel-oneapi-compilers
         prefix: /opt/cray/pe/mpich/8.1.32/ofi/intel/2022.1
       buildable: false
-    cuda:
+    hip:
       require:
-      - +allow-unsupported-compilers
-      variants:
-      - +dev
+      - +rocm
     curl:
       variants:
       - +libidn2
@@ -283,8 +282,7 @@ spack:
       - '@1.12'
     hwloc:
       variants:
-      - +cuda
-      - +nvml
+      - +rocm
       require:
       - '%gcc@12.4.0'
     imagemagick:
@@ -292,7 +290,7 @@ spack:
       - +ghostscript
     intel-oneapi-compilers:
       variants:
-      - +nvidia
+      - +amd
     intel-oneapi-mkl:
       require:
       - spec: +gfortran threads=openmp
@@ -312,23 +310,15 @@ spack:
       - +examples
       - ~openmp
       require:
-      - spec: +cuda +wrapper ~alloc_async
+      - spec: +rocm +wrapper ~alloc_async
         when: '%gcc'
-      - spec: +cuda +wrapper ~alloc_async
-        when: '%nvhpc'
+      - spec: +rocm +apu +wrapper ~alloc_async
+        when: '%aocc'
       - spec: ^cmake@3.27
-        when: '@:4.2.01 +cuda'
+        when: '@:4.2.01 +rocm'
     libarchive:
       require:
       - compression=bz2lib,lz4,lzma,lzo2,zlib,zstd xar=expat
-    libcxi:
-      variants:
-      - +cuda
-    libfabric:
-      variants:
-      - +cuda
-      - +uring
-      - fabrics=sockets,tcp,udp,cxi,rxm,rxd,mrail,shm,lnx
     libgeotiff:
       require:
       # Doesn't build without proj as a dependency for me
@@ -374,15 +364,6 @@ spack:
     mpi:
       prefer:
       - cray-mpich
-    mpich:
-      variants:
-      - +cuda
-      require:
-      - device=ch4
-      - netmod=ofi
-      - pmi=pmi2
-      - +vci
-      - +xpmem
     mpifileutils:
       variants:
       - +gpfs
@@ -391,16 +372,6 @@ spack:
     musica:
       variants:
       - ~tuvx
-    mvapich:
-      variants:
-      - file_systems=lustre,gpfs,nfs,ufs
-      - process_managers=auto
-      require:
-      - netmod=ofi
-      - spec: ~cuda
-        when: '%intel-oneapi-compilers'
-      - spec: +cuda
-        when: '%nvhpc'
     ncl:
       variants:
       - +eemd
@@ -452,17 +423,31 @@ spack:
       variants:
       - +fortran
       - threads=openmp
+    ucx:
+      variants:
+      - +cm
+      - +cma
+      - +dc
+      - +dm
+      - +ib_hw_tm
+      - +knem
+      - +mlx5_dv
+      - +rc
+      - +rdmacm
+      - +rocm
+      - +thread_multiple
+      - +ud
+      - +verbs
+      - +vfs
     openmpi:
       require:
-      - fabrics=cma,ofi
+      - fabrics=cma,ucx
       - schedulers=tm
       - +gpfs
       - +lustre
       - +internal-pmix
-      - +cuda
       - +romio
       - romio-filesystem=nfs,gpfs,lustre,ufs
-      - spec: ^libfabric fabrics=cxi,lnx,mrail,rxd,rxm,shm,sockets,tcp,udp
     openpbs:
       externals:
       - spec: openpbs@2021.1.3
@@ -473,7 +458,7 @@ spack:
       - certs=system
     osu-micro-benchmarks:
       variants:
-      - +cuda
+      - +rocm
     pango:
       variants:
       - +X
@@ -645,8 +630,6 @@ spack:
         - darshan-util
         - linaro-forge
         - ncvis
-        - cudnn
-        - cuda
         - charliecloud
         - peak-memusage
         - pcre
@@ -708,8 +691,6 @@ spack:
         - nvhpc@25.05
         - parallelio+mpi+shared@2.6.6
         - esmf+mpi
-        - cuda@12.3.2
-        - cudnn@8.9.7.29-12
         - intel-oneapi-compilers@2024.2.1
         - gcc@12.4.0
         - libfabric@1.22.0
@@ -739,8 +720,6 @@ spack:
           template: conflict-serial.lua
         hierarchy:
         - mpi
-        include:
-        - cuda %gcc@12.4.0
         intel-oneapi-advisor:
           filter:
             exclude_env_vars:

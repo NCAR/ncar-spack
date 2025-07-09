@@ -8,7 +8,7 @@
 #           and any other packages that need it
 #
 #   Author:         Brian Vanderwende
-#   Last Revised:   16:49, 07 Jul 2025
+#   Last Revised:   22:28, 08 Jul 2025
 #
 
 
@@ -303,9 +303,19 @@ function prepare_spec {
 
     # Substitute compilers and MPIs
     if [[ -n $comp ]]; then
-        tc_comp=${toolchains[$comp]}
+        if [[ -n ${toolchains[$comp]} ]]; then
+            tc_comp=${toolchains[$comp]}
+        else
+            tc_comp=$comp
+        fi
+
         spec="$(sed "s|\^%CMP%|\^$tc_comp|g" <<< "$spec")"
-        spec="$(sed "s|%CMP%|%$tc_comp|g;t;s|$| %$tc_comp|" <<< "$spec")"
+
+        if [[ $spec =~ %(CMP|TC)% ]]; then
+            spec="$(sed "s|%TC%|%$tc_comp|g; s|%CMP%|%$comp|" <<< "$spec")"
+        else
+            spec="$(sed "s|$| %$tc_comp|" <<< "$spec")"
+        fi
     fi
 
     [[ -n $mpi ]]  && spec="$(sed "s|%MPI%|^$mpi|g;t;s|$| ^$mpi|" <<< "$spec")"
@@ -451,7 +461,7 @@ function compiler_checks {
             # Does this compiler have a toolchain defined?
             if [[ -n ${compiler_config[toolchain]} ]]; then
                 tsecho " >> Configuring ${compiler_config[comp_spec]} to use toolchain=${compiler_config[toolchain]}"
-                spack python $NCAR_SPACK_ENV_BUILD/templates/compilers/define.toolchain.py ${compiler_config[toolchain]} ${compiler_config[comp_spec]} ${compiler_config[blas]}
+                spack python $NCAR_SPACK_ENV_BUILD/templates/compilers/define.toolchain.py ${compiler_config[toolchain]} ${compiler_config[comp_spec]} ${compiler_config[blas]} ${compiler_config[lapack]}
             fi
         fi
     fi
@@ -569,7 +579,7 @@ function check_spec {
 
         toolchains[$comp_spec]=${config[toolchain]:-$comp_spec}
 
-        if [[ ${config[register]:-yes} == yes ]] && [[ ${config[matrix]:-yes} == yes ]]; then
+        if [[ ${config[register]:-yes} != no ]] && [[ ${config[matrix]:-yes} == yes ]]; then
             if [[ $comp_spec == gcc* ]]; then
                 compilers="$comp_spec $compilers"
             else
