@@ -8,7 +8,7 @@
 #           and any other packages that need it
 #
 #   Author:         Brian Vanderwende
-#   Last Revised:   22:28, 08 Jul 2025
+#   Last Revised:   09:49, 09 Jul 2025
 #
 
 
@@ -309,10 +309,10 @@ function prepare_spec {
             tc_comp=$comp
         fi
 
-        spec="$(sed "s|\^%CMP%|\^$tc_comp|g" <<< "$spec")"
+        spec="$(sed "s|\^%CMP%|\^$comp|g" <<< "$spec")"
 
         if [[ $spec =~ %(CMP|TC)% ]]; then
-            spec="$(sed "s|%TC%|%$tc_comp|g; s|%CMP%|%$comp|" <<< "$spec")"
+            spec="$(sed "s|%TC%|%$tc_comp|g; s|=%CMP%|=$comp|g; s|%CMP%|%$comp|g" <<< "$spec")"
         else
             spec="$(sed "s|$| %$tc_comp|" <<< "$spec")"
         fi
