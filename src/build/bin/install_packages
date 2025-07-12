@@ -8,7 +8,7 @@
 #           and any other packages that need it
 #
 #   Author:         Brian Vanderwende
-#   Last Revised:   09:49, 09 Jul 2025
+#   Last Revised:   19:29, 11 Jul 2025
 #
 
 
@@ -318,7 +318,7 @@ function prepare_spec {
         fi
     fi
 
-    [[ -n $mpi ]]  && spec="$(sed "s|%MPI%|^$mpi|g;t;s|$| ^$mpi|" <<< "$spec")"
+    [[ -n $mpi ]] && spec="$(sed "s|%MPI%|^$mpi|g;t;s|$| ^$mpi|" <<< "$spec")"
     spec="$(sed -r "s/%gcc( |$)/%gcc@${sys_gcc}\1/g" <<< "$spec")"
 
     # Substitute compiler/mpi-specific modifier flags
@@ -555,7 +555,7 @@ function print_spec_message {
 function check_spec {
     if [[ ${config[type]} == mpi ]]; then
         if [[ -n $comp ]] && [[ ${config[matrix]:-yes} == yes ]]; then
-            mpis[$comp]="${mpis[$comp]:+${mpis[$comp]}$SEP}$spec"
+            mpis[$comp]="${mpis[$comp]:+${mpis[$comp]}$SEP}${spec/$tc_comp/$comp}"
         else
             tsecho "Error: cannot install an MPI without setting a compiler!"
             exit 1
@@ -782,6 +782,7 @@ function clear_added_specs {
                 # If we can't find it by hash, it may still have been "installed" by virtue
                 # of existing in an upstream, so we have to search by short hash
                 if ! grep -q -e "^\[+\].*/${queued_hash:0:4}$" ${log_installs}*; then
+                    tsecho "Removing spec $queued_spec (hash /$queued_hash); not found in install logs." 2
                     (trap '' SIGINT; eval spack remove "$queued_spec") &
                     wait $!
                     continue
@@ -1060,7 +1061,7 @@ fi
 # Detect available compiler information
 tsecho "Inspecting currently available compilers"
 sys_gcc=$(gcc -v |& grep "gcc version" | cut -d' ' -f3)
-current_comps=$(spack compiler list --scope env:$SPACK_ENV | grep '@' | awk '{print $NF}')
+current_comps=$(spack compiler list --scope env:$SPACK_ENV | grep '@' | grep '[e]' | awk '{print $NF}')
 
 for comp in $current_comps; do
     cc_c=$(spack compiler info --scope env:$SPACK_ENV $comp | grep "c:" | awk '{print $NF}')
