@@ -8,7 +8,7 @@
 #           and any other packages that need it
 #
 #   Author:         Brian Vanderwende
-#   Last Revised:   19:29, 11 Jul 2025
+#   Last Revised:   20:10, 11 Jul 2025
 #
 
 
@@ -232,7 +232,7 @@ function prepare_spec {
         opt_types="${opt_types//,/ }"
 
         for opt_type in $opt_types; do
-            declare pkg_$opt_type="$opt_body"
+            declare pkg_${opt_type//-/_}="$opt_body"
         done
     done < <(tr '<' '\n' <<< "$spec" | sed -n 's/\([^>]*\)>.*/\1/p')
 
@@ -323,8 +323,10 @@ function prepare_spec {
 
     # Substitute compiler/mpi-specific modifier flags
     for mod_type in $comp ${comp%@*} $mpi ${mpi%@*}; do
-        if [[ -n ${config[$mod_type]} ]]; then
-            spec="$(sed "s|<[^>]*${config[$mod_type]}>|${config[$mod_type]}|" <<< "$spec")"
+        mod_safe=${mod_type//-/_}
+
+        if [[ -n ${config[$mod_safe]} ]]; then
+            spec="$(sed "s|<[^>]*${config[$mod_safe]}>|${config[$mod_safe]}|" <<< "$spec")"
         fi
     done
 
