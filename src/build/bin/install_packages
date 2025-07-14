@@ -8,7 +8,7 @@
 #           and any other packages that need it
 #
 #   Author:         Brian Vanderwende
-#   Last Revised:   20:10, 11 Jul 2025
+#   Last Revised:   22:01, 13 Jul 2025
 #
 
 
@@ -548,10 +548,12 @@ function print_queue_status {
 
 function print_spec_message {
     if [[ -n ${config[type]} ]]; then
-        tsecho "$1 $GCOL$spec $BCOL(${config[type]})$DCOL$cache_label"
+        tsecho "$1 $GCOL$raw_spec $BCOL(${config[type]})$DCOL$cache_label"
     else
-        tsecho "$1 $GCOL$spec$DCOL$cache_label"
+        tsecho "$1 $GCOL$raw_spec$DCOL$cache_label"
     fi
+
+    tsecho " >> Translated spec = $spec" 2
 }
 
 function check_spec {
@@ -639,10 +641,10 @@ function check_spec {
                 '$(NF-1) == spec {print $0}')
 
         # Use Spack commands to reformat into canonical Spec ordering
-        parse_cmd="spack.cmd.parse_specs('$(sed "s/'/\\\'/g" <<< $spec)')[0]"
+        parse_cmd="str(Spec('$(sed "s/'/\\\'/g" <<< $spec)'))"
 
         if [[ -z $registry_data ]]; then
-            parsed_spec="$(PYTHONPATH=$pypath $SPACK_PYTHON -c "import spack.cmd; print($parse_cmd)")"
+            parsed_spec="$(spack python -c "from spack.spec import Spec; print($parse_cmd)")"
             spec="$parsed_spec"
             registry_data=$(sed -n '3,$ s/ | /|/gp' $SPACK_ENV/registry | awk -F\| -v spec="$spec"      \
                     '$NF == spec {print $0}')
@@ -659,11 +661,11 @@ function check_spec {
             if [[ $dry_run != true ]]; then
                 # Get parsed spec if we haven't already...
                 if [[ -z $parsed_spec ]]; then
-                    spec="$(PYTHONPATH=$pypath $SPACK_PYTHON -c "import spack.cmd; print($parse_cmd)")"
+                    spec="$(spack python -c "from spack.spec import Spec; print($parse_cmd)")"
                 fi
 
                 set +e
-                spack_spec_out=$(eval $spec_cmd $spec)
+                spack_spec_out=$(eval $spec_cmd \"$spec\")
 
                 if [[ $? == 0 ]]; then
                     set -e
@@ -680,6 +682,9 @@ function check_spec {
 
                 if [[ $spec_hash != ${config[match]:-$spec_hash} ]]; then
                     tsecho "Error: computed hash ($spec_hash) for package $spec does \n       not match expected hash (${config[match]})"
+                    echo "Spec mismatch for $spec" >> $log_errors
+                    echo "  Expected hash: ${config[match]}" >> $log_errors
+                    echo -e "  Computed hash:\n$spack_spec_out" >> $log_errors
                     clear_added_specs 1
                     exit 1
                 fi
@@ -693,7 +698,7 @@ function check_spec {
                     # Make sure spec is in spack.yaml
                     if [[ " $start_hashes " != *" $spec_hash "* ]]; then
                         print_spec_message "Adding to specs"
-                        eval spack add "$spec" > /dev/null
+                        eval spack add \"$spec\" > /dev/null
 
                         # Adding the spec won't make it explicit, so let's make sure...
                         spack mark -e /$spec_hash
@@ -722,7 +727,7 @@ function check_spec {
 
         if [[ $skip_spec == true ]]; then
             if [[ " $start_hashes " == *" $spec_hash "* ]]; then
-                tsecho "Skipping spec.. $PCOL$spec$BCOL$type_msg$DCOL (reason: already installed)" 1
+                tsecho "Skipping spec.. $PCOL$raw_spec$BCOL$type_msg$DCOL (reason: already installed)" 1
 
                 if [[ ${overwrite_access:-false} == true ]]; then
                     modify_spec_access ${config[access]:-module} $spec_hash "$spec"
@@ -754,7 +759,7 @@ function check_spec {
                 log_cmd "$spec_cmd $spec" >> $log_specs
                 echo "$spack_spec_out" &>> $log_specs
                 unset spack_spec_out
-                eval spack add "$spec" > /dev/null
+                eval spack add \"$spec\" > /dev/null
 
                 if [[ $spec == lmod* ]] && ! module -v 2> /dev/null; then
                     checks_lmod=true
@@ -772,7 +777,9 @@ function check_spec {
 }
 
 function clear_added_specs {
-    if [[ $1 == 1 ]]; then
+    exit_mode=$1
+
+    if [[ $exit_mode == 1 ]]; then
         echo -e "$RCOL >>> Removing any queued specs from spack.yaml ...$DCOL\n"
     fi
 
@@ -784,8 +791,9 @@ function clear_added_specs {
                 # If we can't find it by hash, it may still have been "installed" by virtue
                 # of existing in an upstream, so we have to search by short hash
                 if ! grep -q -e "^\[+\].*/${queued_hash:0:4}$" ${log_installs}*; then
+                    exit_mode=${exit_mode:-2}
                     tsecho "Removing spec $queued_spec (hash /$queued_hash); not found in install logs." 2
-                    (trap '' SIGINT; eval spack remove "$queued_spec") &
+                    (trap '' SIGINT; eval spack remove \"$queued_spec\") &
                     wait $!
                     continue
                 else
@@ -801,8 +809,12 @@ function clear_added_specs {
         done < <(tr '|' '\n' <<< "$install_queue")
     fi
 
-    if [[ $1 == 1 ]]; then
+    if [[ $exit_mode -eq 1 ]]; then
         backup_build_database
+    elif [[ $exit_mode -eq 2 ]]; then
+        tsecho "Error: Inconsistent installation result. Refusing to continue."
+        backup_build_database
+        exit 1
     fi
 }
 
@@ -1052,6 +1064,7 @@ log_dir=$SPACK_ENV/logs
 mkdir -p $log_dir
 log_specs=$log_dir/specs.$start_time.${SUDO_USER:-$USER}
 log_installs=$log_dir/installs.$start_time.${SUDO_USER:-$USER}
+log_errors=$log_dir/error.$start_time.${SUDO_USER:-$USER}
 
 # Make sure environment reports current state
 tsecho "Verify current environment concretization"
@@ -1063,7 +1076,7 @@ fi
 # Detect available compiler information
 tsecho "Inspecting currently available compilers"
 sys_gcc=$(gcc -v |& grep "gcc version" | cut -d' ' -f3)
-current_comps=$(spack compiler list --scope env:$SPACK_ENV | grep '@' | grep '[e]' | awk '{print $NF}')
+current_comps=$(spack compiler list --scope env:$SPACK_ENV | grep '@' | grep '\[e\]' | awk '{print $NF}')
 
 for comp in $current_comps; do
     cc_c=$(spack compiler info --scope env:$SPACK_ENV $comp | grep "c:" | awk '{print $NF}')

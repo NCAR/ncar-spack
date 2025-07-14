@@ -39,6 +39,9 @@ while [[ $# -gt 0 ]]; do
                 mirror=$2; shift
             fi
             ;;
+        -v|--verbose)
+            export log_verbosity=$((log_verbosity + 1))
+            ;;
         *)
             >&2 echo "Error: unrecognized option $1"
             usage
@@ -83,13 +86,13 @@ function wait_for_jobs {
 tsecho "Using up to $max_jobs threads to populate cache"
 tsecho "Pushing to cache: ${PCOL}${mirror}${DCOL}"
 
-raw_list=$(spack find --format "{prefix} {hash} {name}@{version}%{compiler}{variants}")
+raw_list=$(spack find --format "{prefix} {hash} {name}-{version}-{hash}")
 pkg_list=$(awk -v envpath=${SPACK_ENV}/opt '$1~envpath { print $2" "$3 }' <<< "$raw_list")
 
 while [[ ${cache_list+set} != set ]]; do
     case $mirror in
         file://*|/*)
-            cache_list=$(ls ${mirror#file://}/build_cache/ 2> /dev/null || true)
+            cache_list="$(ls ${mirror#file://}/*/manifests/spec/*/*.spec.manifest.json 2> /dev/null | sed 's|.*/\(.*\).spec.manifest.json|\1|')"
             ;;
         s3://*)
             cache_list=$(spack python $my_dir/tools/list_cache_s3.py ${mirror#s3://})
@@ -112,18 +115,20 @@ while [[ ${cache_list+set} != set ]]; do
     esac
 done
 
-while read pkg spec; do
+while read hash pkg; do
     if [[ $cache_list != *$pkg* ]]; then
         if [[ -f $NCAR_SPACK_ENV_BUILD/.installs ]]; then
-            use_cache=$(awk -F: -v spec_hash="$pkg" '$2 == spec_hash {print $3}' $NCAR_SPACK_ENV_BUILD/.installs)
+            use_cache=$(awk -F: -v spec_hash="$hash" '$2 == spec_hash {print $3}' $NCAR_SPACK_ENV_BUILD/.installs)
         fi
 
         if [[ $use_cache != no ]]; then
-            tsecho "Caching package:  ${GCOL}${spec}${DCOL}"
-            log_cmd "$cache_cmd --only=package $mirror /$pkg" >> $log_file
-            $cache_cmd --only=package $mirror /$pkg &>> $log_file &
+            tsecho "Caching package:  ${GCOL}${pkg}${DCOL}"
+            log_cmd "$cache_cmd --only=package $mirror /$hash" >> $log_file
+            $cache_cmd --only=package $mirror /$hash &>> $log_file &
             job_pids[$!]=running
         fi
+    else
+        tsecho "Skipping cached package: ${PCOL}${pkg}$DCOL" 1
     fi
     
     wait_for_jobs $max_jobs

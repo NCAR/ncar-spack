@@ -10,7 +10,7 @@
 #           shell script. So we must activate in the script!
 #
 #   Author:         Brian Vanderwende
-#   Last Revised:   21:00, 18 Dec 2024
+#   Last Revised:   11:09, 13 Jul 2025
 #
 
 
@@ -504,21 +504,21 @@ while read spec; do
             spack uninstall --dependents --remove -y /$spec_hash
         else
             tsecho "Removing package $PCOL$spec$DCOL" 1
-            eval spack remove $spec
+            eval spack remove \"$spec\"
         fi
 
         sed -i "/^${spec_hash} .*/d" $SPACK_ENV/registry
     fi
-done < <(sed '1,/  specs:/d' $SPACK_ENV/spack.yaml | sed 's/^[ -]*//' | tac)
+done < <(sed -n '/^  specs:/,/^[^-]*$/p' $SPACK_ENV/spack.yaml | grep - | sed 's/^[ -]*//' | tac)
 
 # If there are new packages, install sequentially to improve determinism
-new_pkgs=$(grep -xv -f <(sed '1,/  specs:/d' spack.yaml) <(sed '1,/  specs:/d' $NCAR_SPACK_ENV_BUILD/spack.yaml) || [[ $? == 1 ]])
+new_pkgs=$(grep -xv -f <(sed -n '/^  specs:/,/^[^-]*$/p' spack.yaml | grep -) <(sed -n '/^  specs:/,/^[^-]*$/p' $NCAR_SPACK_ENV_BUILD/spack.yaml | grep -) || [[ $? == 1 ]])
 
 if [[ -n $new_pkgs ]]; then
     tsecho "Creating manifest and installing cached packages"
     log_manifest=$log_dir/manifest.$start_time
     create_manifest $log_manifest
-    $my_dir/install_packages -p 8 -n 4 -j 1 --skip-checks --prefer-cache --fail-fast $log_manifest
+    $my_dir/install_packages -p 1 -n 1 -j 1 --skip-checks --prefer-cache --fail-fast $log_manifest
 
     # Check that installs completed successfully
     if [[ ${PIPESTATUS[0]} == 1 ]]; then
