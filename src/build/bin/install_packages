@@ -8,7 +8,7 @@
 #           and any other packages that need it
 #
 #   Author:         Brian Vanderwende
-#   Last Revised:   22:01, 13 Jul 2025
+#   Last Revised:   22:08, 13 Jul 2025
 #
 
 
@@ -792,8 +792,8 @@ function clear_added_specs {
                 # of existing in an upstream, so we have to search by short hash
                 if ! grep -q -e "^\[+\].*/${queued_hash:0:4}$" ${log_installs}*; then
                     exit_mode=${exit_mode:-2}
-                    tsecho "Removing spec $queued_spec (hash /$queued_hash); not found in install logs." 2
-                    (trap '' SIGINT; eval spack remove \"$queued_spec\") &
+                    tsecho "Removing spec $queued_spec (hash /$queued_hash); not found in install logs."
+                    (trap '' SIGINT; spack python $my_dir/tools/remove_spec.py "$queued_spec") &
                     wait $!
                     continue
                 else

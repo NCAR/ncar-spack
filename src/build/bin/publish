@@ -10,7 +10,7 @@
 #           shell script. So we must activate in the script!
 #
 #   Author:         Brian Vanderwende
-#   Last Revised:   11:09, 13 Jul 2025
+#   Last Revised:   22:09, 13 Jul 2025
 #
 
 
@@ -504,7 +504,7 @@ while read spec; do
             spack uninstall --dependents --remove -y /$spec_hash
         else
             tsecho "Removing package $PCOL$spec$DCOL" 1
-            eval spack remove \"$spec\"
+            spack python $my_dir/tools/remove_spec.py "$spec"
         fi
 
         sed -i "/^${spec_hash} .*/d" $SPACK_ENV/registry
