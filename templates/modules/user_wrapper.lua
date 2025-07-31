@@ -11,6 +11,10 @@ if os.getenv("LMOD_FAMILY_MPI") then
     prepend_path("PATH", pathJoin("{{spec.prefix.bin}}", "mpi"))
 end
 
+if isloaded("hip") then
+    prepend_path("PATH", pathJoin("{{spec.prefix.bin}}", "hip"))
+end
+
 -- Special logic for intel modules
 local comp_name = os.getenv("LMOD_FAMILY_COMPILER")
 local comp_major = {{spec.compiler.version.up_to(1)}}

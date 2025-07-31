@@ -10,7 +10,7 @@
 #           shell script. So we must activate in the script!
 #
 #   Author:         Brian Vanderwende
-#   Last Revised:   22:09, 13 Jul 2025
+#   Last Revised:   21:20, 30 Jul 2025
 #
 
 
@@ -126,7 +126,7 @@ function create_manifest {
             tsecho "Error: package $spec not found in registry file"
             exit 1
         elif [[ " $build_hashes " != *" $spec_hash "* ]]; then
-            tsecho "Error: package $spec not found in build environment roots"
+            tsecho "Error: package $spec (hash=/$spec_hash) not found in build environment roots"
             exit 1
         fi
 
