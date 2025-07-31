@@ -3,7 +3,7 @@
 
 # Hopefully this API doesn't change often...
 import spack.util.spack_yaml as yaml
-from _vendoring.ruamel.yaml.comments import CommentedMap
+from spack.vendor.ruamel.yaml.comments import CommentedMap
 import os, sys
 
 def deep_merge(p: dict, a: dict):

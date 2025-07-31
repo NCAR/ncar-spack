@@ -174,7 +174,7 @@ while read entry; do
                         if [[ $auto_result == *spack.yaml* ]]; then
                             found_list=$(tail -n +2 <<< $auto_result | xargs)
                             tsecho "Adding externals  $GCOL${found_list}$DCOL"
-                            modify_compilers $found_list
+                            #modify_compilers $found_list
                         fi
 
                         # Externals should also "use" the core compiler unless marked "floating"

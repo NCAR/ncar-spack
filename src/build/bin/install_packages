@@ -8,7 +8,7 @@
 #           and any other packages that need it
 #
 #   Author:         Brian Vanderwende
-#   Last Revised:   22:08, 13 Jul 2025
+#   Last Revised:   20:39, 30 Jul 2025
 #
 
 
@@ -311,15 +311,15 @@ function prepare_spec {
 
         spec="$(sed "s|\^%CMP%|\^$comp|g" <<< "$spec")"
 
-        if [[ $spec =~ %(CMP|TC)% ]]; then
-            spec="$(sed "s|%TC%|%$tc_comp|g; s|=%CMP%|=$comp|g; s|%CMP%|%$comp|g" <<< "$spec")"
+        if [[ $spec =~ %(CMP|TC|GC)% ]]; then
+            spec="$(sed "s|%TC%|%$tc_comp|g; s|%GC%|%${comp%%@*}|g; s|=%CMP%|=$comp|g; s|%CMP%|%$comp|g" <<< "$spec")"
         else
             spec="$(sed "s|$| %$tc_comp|" <<< "$spec")"
         fi
     fi
 
     [[ -n $mpi ]] && spec="$(sed "s|%MPI%|^$mpi|g;t;s|$| ^$mpi|" <<< "$spec")"
-    spec="$(sed -r "s/%gcc( |$)/%gcc@${sys_gcc}\1/g" <<< "$spec")"
+    spec="$(sed -r "s/%SYS%/%gcc@${sys_gcc}/g" <<< "$spec")"
 
     # Substitute compiler/mpi-specific modifier flags
     for mod_type in $comp ${comp%@*} $mpi ${mpi%@*}; do
@@ -444,21 +444,6 @@ function compiler_checks {
             fi
 
             read -r root version <<< $(eval spack find --format \"{prefix} {version}\" ${compiler_config[spec]})
-
-            # Some compilers have special paths or need a custom template
-            if [[ -f $NCAR_SPACK_ENV_BUILD/templates/compilers/define.${compiler_config[comp_spec]%%@*} ]]; then
-                . $NCAR_SPACK_ENV_BUILD/templates/compilers/define.${compiler_config[comp_spec]%%@*} > /dev/null
-            else
-                spack compiler add --scope env:$SPACK_ENV $root > /dev/null
-            fi
-
-            # Do we have environment modifications to add?
-            for mod_type in all ${compiler_config[comp_spec]%%@*}; do
-                if [[ -f $NCAR_SPACK_ENV_BUILD/templates/compilers/modify.${mod_type}.py ]]; then
-                    tsecho " >> Adding environment modifications (type=$mod_type)"
-                    spack python $NCAR_SPACK_ENV_BUILD/templates/compilers/modify.${mod_type}.py ${compiler_config[comp_spec]}
-                fi
-            done
 
             # Does this compiler have a toolchain defined?
             if [[ -n ${compiler_config[toolchain]} ]]; then
@@ -792,7 +777,7 @@ function clear_added_specs {
                 # of existing in an upstream, so we have to search by short hash
                 if ! grep -q -e "^\[+\].*/${queued_hash:0:4}$" ${log_installs}*; then
                     exit_mode=${exit_mode:-2}
-                    tsecho "Removing spec $queued_spec (hash /$queued_hash); not found in install logs."
+                    tsecho "Removing spec $queued_spec (hash /$queued_hash); not found in install logs"
                     (trap '' SIGINT; spack python $my_dir/tools/remove_spec.py "$queued_spec") &
                     wait $!
                     continue
@@ -1076,13 +1061,15 @@ fi
 # Detect available compiler information
 tsecho "Inspecting currently available compilers"
 sys_gcc=$(gcc -v |& grep "gcc version" | cut -d' ' -f3)
-current_comps=$(spack compiler list --scope env:$SPACK_ENV | grep '@' | grep '\[e\]' | awk '{print $NF}')
+current_comps=$(spack compiler list --scope env:$SPACK_ENV | grep '@' | awk '{print $NF}')
+external_comps=$(grep '\[e\]' <<< $current_comps | awk '{print $NF}')
+current_comps=$(awk '{print $NF}' <<< $current_comps)
 
-for comp in $current_comps; do
+for comp in $external_comps; do
     cc_c=$(spack compiler info --scope env:$SPACK_ENV $comp | grep "c:" | awk '{print $NF}')
 
     if [[ ! -e $cc_c ]]; then
-        tsecho " >> Removing uninstalled/missing compiler ${PCOL}$comp${DCOL}"
+        tsecho " >> Removing missing external compiler ${PCOL}$comp${DCOL}"
         spack compiler remove --scope env:$SPACK_ENV $comp > /dev/null
         current_comps="${current_comps/$comp}"
     fi
