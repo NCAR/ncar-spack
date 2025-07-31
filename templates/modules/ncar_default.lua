@@ -15,7 +15,11 @@ whatis([[Short description : {{ short_description }}]])
 whatis([[Configure options : {{ configure_options }}]])
 {% endif %}
 
+help([[Name   : {{ spec.name }}]])
+help([[Version: {{ spec.version }}]])
+help([[Target : {{ spec.target }}]])
 {% if long_description %}
+help()
 help([[{{ long_description| textwrap(72)| join() }}]])
 {% endif %}
 {% endblock %}
@@ -81,10 +85,13 @@ setenv("LMOD_{{ name|upper() }}_VERSION", "{{ version_part }}")
 
 {% block autoloads %}
 {% for module in autoload %}
-{% if verbose %}
-LmodMessage("Autoloading {{ module }}")
-{% endif %}
 depends_on("{{ module }}")
+{% endfor %}
+{% endblock %}
+{#  #}
+{% block conflict %}
+{% for name in conflicts %}
+conflict("{{ name }}")
 {% endfor %}
 {% endblock %}
 
@@ -92,9 +99,9 @@ depends_on("{{ module }}")
 {% for command_name, cmd in environment_modifications %}
 {% if command_name == 'PrependPath' %}
 prepend_path("{{ cmd.name }}", "{{ cmd.value }}", "{{ cmd.separator }}")
-{% elif command_name == 'AppendPath' %}
+{% elif command_name in ('AppendPath', 'AppendFlagsEnv') %}
 append_path("{{ cmd.name }}", "{{ cmd.value }}", "{{ cmd.separator }}")
-{% elif command_name == 'RemovePath' %}
+{% elif command_name in ('RemovePath', 'RemoveFlagsEnv') %}
 remove_path("{{ cmd.name }}", "{{ cmd.value }}", "{{ cmd.separator }}")
 {% elif command_name == 'SetEnv' %}
 setenv("{{ cmd.name }}", "{{ cmd.value }}")
@@ -102,8 +109,12 @@ setenv("{{ cmd.name }}", "{{ cmd.value }}")
 unsetenv("{{ cmd.name }}")
 {% endif %}
 {% endfor %}
+{# Make sure system man pages are enabled by appending trailing delimiter to MANPATH #}
+{% if has_manpath_modifications %}
+append_path("MANPATH", "", ":")
+{% endif %}
 {% endblock %}
 
 {% block footer %}
-{# In case the module needs to be extended with custom LUA code #}
+{# In case the module needs to be extended with custom Lua code #}
 {% endblock %}
