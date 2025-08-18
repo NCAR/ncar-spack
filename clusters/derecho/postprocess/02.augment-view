@@ -6,7 +6,7 @@
 #       make user software easier to build (e.g., RPC symlinking).
 #
 #   Author:         Brian Vanderwende
-#   Last Revised:   11:48, 29 Jul 2025
+#   Last Revised:   17:28, 18 Aug 2025
 #
 
 #
@@ -34,7 +34,6 @@ ncar_utils[qsub]=pbstools
 ncar_utils[launch_cf]=pbstools
 ncar_utils[qhist]=qhist
 ncar_utils[gladequota]=gladequota
-ncar_utils[snapls]=gladequota
 ncar_utils[set_gpu_rank]=mpitools
 ncar_utils[mpibind]=mpitools
 ncar_utils[cpu_bind]=mpitools
@@ -47,11 +46,6 @@ ncar_utils[sudox]=termtools
 ncar_utils[licstatus]=termtools
 ncar_utils[dumpenv]=termtools
 ncar_utils[vncmgr]=vncmgr
-ncar_utils[gedit]=leap-container/$suse_major
-ncar_utils[gv]=leap-container/$suse_major
-ncar_utils[evince]=leap-container/$suse_major
-ncar_utils[diffmerge]=precise-container
-ncar_utils[diffuse]=precise-container
 ncar_utils[esgfsearch]=cmipap-configuration
 ncar_utils[esgfdownload]=cmipap-configuration
 
@@ -59,6 +53,15 @@ if [[ $NCAR_SPACK_HOST == casper ]]; then
     ncar_utils[dask_resource_monitor]=negin513:ncar-dask-monitor
     ncar_utils[casper_resource_monitor]=negin513:ncar-dask-monitor
     ncar_utils[qvscode]=neumanbrett:qvscode
+fi
+
+if [[ $NCAR_SPACK_HOST != gust ]]; then
+    ncar_utils[gedit]=leap-container/$suse_major
+    ncar_utils[gv]=leap-container/$suse_major
+    ncar_utils[evince]=leap-container/$suse_major
+    ncar_utils[diffmerge]=precise-container
+    ncar_utils[diffuse]=precise-container
+    ncar_utils[snapls]=gladequota
 fi
 
 # These utilites don't actually come from github tracked repos, so let's not
@@ -99,7 +102,7 @@ if [[ $SPACK_ENV == $NCAR_SPACK_ENV_PUBLIC ]]; then
 
         if [[ ! -e $NCAR_SPACK_ROOT_BASE/utils/bin/$util ]]; then
             # First, let's make sure the repo is up to date (and submodules pulled)
-            if [[ $my_user == $utils_owner ]] && [[ " $skip_clone " != *" $repo_name "* ]]; then
+            if [[ $my_user == $utils_owner ]] && [[ -d $util_root/$repo_name/.git ]]; then
                 cd $util_root/$repo_name
                 git pull > /dev/null
 
@@ -109,7 +112,10 @@ if [[ $SPACK_ENV == $NCAR_SPACK_ENV_PUBLIC ]]; then
                 cd - > /dev/null
             fi
 
-            if [[ -e $util_root/$repo_name/bin/$util ]]; then
+            if [[ -e $util_root/$repo_name/default/bin/$util ]]; then
+                tsecho "    adding $GCOL$util$DCOL"
+                ln -s $util_root/$repo_name/default/bin/$util $NCAR_SPACK_ROOT_BASE/utils/bin/
+            elif [[ -e $util_root/$repo_name/bin/$util ]]; then
                 tsecho "    adding $GCOL$util$DCOL"
                 ln -s $util_root/$repo_name/bin/$util $NCAR_SPACK_ROOT_BASE/utils/bin/
             elif [[ -e $util_root/$repo_name/$util ]]; then
