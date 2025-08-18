@@ -1,4 +1,13 @@
 #!/bin/bash
+#
+#   This script is used to add both "externals" - packages found in the current
+#   environment that you wish to use - and "requirements/preferences" - settings
+#   you wish to impose on packages en masse... typically compiling requirements
+#   - to the YAML file.
+#
+#   Author:         Brian Vanderwende
+#   Last Revised:   10:42, 18 Aug 2025
+#
 
 function usage {
 cat << EOF
@@ -70,12 +79,19 @@ function manual_external {
 function modify_compilers {
     if [[ " $my_meta " == *" compiler "* ]]; then
         for spec in $@; do
-            for mod_type in all $spec; do
-                if [[ -f $SPACK_ENV/templates/compilers/modify.${mod_type}.py ]]; then
-                    tsecho " >> Adding environment modifications (type=$mod_type)"
-                    spack python $SPACK_ENV/templates/compilers/modify.${mod_type}.py $spec
+            if [[ " $my_meta " == *" gccbase "* ]]; then
+                if [[ -z $gcc_root ]]; then
+                    gcc_root=$(spack location -i $NCAR_SPACK_CORE_GCC)
                 fi
-            done
+
+                tsecho " >> Adding environment modifications (type=gccbase)"
+                spack python $SPACK_ENV/templates/compilers/modify.gccbase.py "$spec" $gcc_root
+            fi
+
+            if [[ -f $SPACK_ENV/templates/compilers/modify.${pkg_name}.py ]]; then
+                tsecho " >> Adding environment modifications (type=${pkg_name})"
+                spack python $SPACK_ENV/templates/compilers/modify.${pkg_name}.py "$spec"
+            fi
         done
     fi
 }
@@ -174,7 +190,7 @@ while read entry; do
                         if [[ $auto_result == *spack.yaml* ]]; then
                             found_list=$(tail -n +2 <<< $auto_result | xargs)
                             tsecho "Adding externals  $GCOL${found_list}$DCOL"
-                            #modify_compilers $found_list
+                            modify_compilers $found_list
                         fi
 
                         # Externals should also "use" the core compiler unless marked "floating"
@@ -184,7 +200,7 @@ while read entry; do
                     fi
                     ;;
                 require|prefer)
-                    my_meta=$(sed "s/core/$core/" <<< $my_meta)
+                    my_meta=$(sed "s/core/%$NCAR_SPACK_CORE_GCC/" <<< $my_meta)
                     manual_require "$my_meta" "${my_mode// }" "$entry"
                     ;;
                 *)
