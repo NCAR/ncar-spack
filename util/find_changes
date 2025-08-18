@@ -5,7 +5,7 @@
 #   incorporating those changes to this repo.
 #
 #   Author:         Brian Vanderwende
-#   Last Revised:   10:06, 18 Dec 2024
+#   Last Revised:   14:56, 18 Aug 2025
 #
 
 set -e
@@ -91,7 +91,7 @@ path_map[clusters/${NCAR_SPACK_HOST}/postprocess]=postprocess
 cd $my_root
 
 for src_path in ${!path_map[@]}; do
-    src_files="$(find $src_path -maxdepth 1 -type f)"
+    src_files="$(find $src_path -maxdepth 1 -type f,l)"
 
     for src_file in $src_files; do
         dep_file=$(sed "s|$src_path|${path_map[$src_path]}|" <<< $src_file)
