@@ -121,6 +121,8 @@ spack:
       prefer:
       - '%gcc@12.5.0'
     cmor:
+      variants:
+      - python
       prefer:
       - '%gcc@12.5.0'
       - ^udunits %gcc@12.5.0
@@ -299,6 +301,7 @@ spack:
       - '%gcc@12.5.0'
     flex:
       prefer:
+      - '@2.6.4'
       - '%gcc@12.5.0'
     gawk:
       prefer:
@@ -360,17 +363,13 @@ spack:
     gettext:
       prefer:
       - '%gcc@12.5.0'
-      - spec: +libxml2
-        when: '%gcc@8:'
+      - +libxml2
     git:
       variants:
       - +svn
       - +tcltk
       prefer:
       - '%gcc@12.5.0'
-    glx:
-      require:
-      - mesa
     gmake:
       variants:
       - ~guile
@@ -456,7 +455,7 @@ spack:
       - +external-xdr
       prefer:
       - spec: cflags='-std=c90 -Wno-error=int-conversion'
-        when: '%gcc@15'
+        when: '%gcc@15:'
       - spec: cflags='-std=c90 -Wno-error=int-conversion'
         when: '%cce'
       - spec: cflags='-std=c90 -Wno-error=int-conversion'
@@ -584,6 +583,9 @@ spack:
       require:
       # Doesn't build without proj as a dependency for me
       - +proj
+    libglx:
+      require:
+      - mesa
     libibn2:
       prefer:
       - '%gcc@12.5.0'
@@ -621,6 +623,9 @@ spack:
       prefer:
       - '%gcc@12.5.0'
     libtiff:
+      require:
+      - build_system=cmake
+      - +pic
       prefer:
       - '%gcc@12.5.0'
     libtirpc:
@@ -657,6 +662,9 @@ spack:
     libyaml:
       prefer:
       - '%gcc@12.5.0'
+    libzip:
+      prefer:
+      - +gnutls
     linaro-forge:
       require:
       - +accept-eula
@@ -781,12 +789,16 @@ spack:
       - ~mpi
     netcdf-c:
       variants:
-      - +dap
-      - +nczarr_zip
       - ~mpi
       prefer:
       # Would do require, but ncvis barfs
       - build_system=cmake
+      - +dap
+      require:
+      - +nczarr_zip
+    nettle:
+      require:
+      - ^gmp %gcc@12.5.0
     nghttp2:
       prefer:
       - '%gcc@12.5.0'
@@ -838,7 +850,10 @@ spack:
       - +cuda
       - +romio
       - romio-filesystem=nfs,gpfs,lustre,ufs
-      - spec: ^libfabric fabrics=cxi,lnx,mrail,rxd,rxm,shm,sockets,tcp,udp
+      - +fortran
+      - ^libfabric fabrics=cxi,lnx,mrail,rxd,rxm,shm,sockets,tcp,udp
+      - spec: ldflags=-ldl
+        when: '%aocc'
     openpbs:
       externals:
       - spec: openpbs@2021.1.3
@@ -869,16 +884,17 @@ spack:
       - +examples
       prefer:
       - spec: cflags='-std=c17 -Wno-error=incompatible-pointer-types -Wno-error=implicit-function-declaration -Wno-error=int-conversion'
-        when: '%gcc@15'
+        when: '%gcc@15:'
     parallelio:
       variants:
       - +ncint
-      - +pnetcdf
       - ~logging
       require:
       - +fortran
       - spec: ~pnetcdf
         when: ~mpi
+      - spec: +pnetcdf
+        when: +mpi
     parallelio1:
       variants:
       - +pnetcdf
@@ -900,6 +916,10 @@ spack:
     podman:
       prefer:
       - '%gcc@12.5.0'
+    py-beautifulsoup4:
+      # Spack is using old broken version to avoid a dependency. D:
+      prefer:
+      - '@4.12:'
     py-cython:
       prefer:
       - '%gcc@12.5.0'
@@ -974,7 +994,7 @@ spack:
       - +openmp
       prefer:
       - spec: cflags='-std=gnu17 -Wno-error=implicit-function-declaration -Wno-error=int-conversion'
-        when: '%gcc@15'
+        when: '%gcc@15:'
       - spec: ^openblas %gcc@15.1.0
         when: '%gcc@15.1.0 ^openblas'
     szip:
@@ -1015,6 +1035,9 @@ spack:
       require:
       - +gui
       - +gtk
+    wget:
+      prefer:
+      - ssl=openssl
     wgrib2:
       variants:
       - +ipolates
@@ -1115,7 +1138,8 @@ spack:
         cdo:
           autoload: none
         chapel:
-          template: chapel.lua
+          conflict:
+          - ncarcompilers
           environment:
             set:
               CHPL_HOME: '{prefix}'
@@ -1229,9 +1253,11 @@ spack:
         - lmod
         exclude_implicits: true
         fftw+mpi:
-          template: conflict-mpi.lua
+          conflict:
+          - fftw
         fftw~mpi:
-          template: conflict-serial.lua
+          conflict:
+          - fftw-mpi
         gcc:
           environment:
             set:
@@ -1244,9 +1270,11 @@ spack:
               PE_ENV: GNU
         hash_length: 0
         hdf5+mpi:
-          template: conflict-mpi.lua
+          conflict:
+          - hdf5
         hdf5~mpi:
-          template: conflict-serial.lua
+          conflict:
+          - hdf5-mpi
         hierarchy:
         - mpi
         include:
@@ -1397,9 +1425,11 @@ spack:
         netcdf:
           autoload: all
         netcdf+mpi:
-          template: conflict-mpi.lua
+          conflict:
+          - netcdf
         netcdf~mpi:
-          template: conflict-serial.lua
+          conflict:
+          - netcdf-mpi
         nvhpc:
           environment:
             set:
@@ -1413,10 +1443,6 @@ spack:
               PE_ENV: NVIDIA
             prepend_path:
               LD_LIBRARY_PATH: '{prefix}/Linux_x86_64/{version}/compilers/lib'
-        nvhpc@21.3:
-          environment:
-            set:
-              CRAY_CPU_TARGET: x86-rome
         octave:
           autoload: none
         openmpi:
