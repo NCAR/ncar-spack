@@ -51,7 +51,7 @@ if [[ -d ~/.spack ]]; then
         scratch_root=/glade/gust
     fi
 
-    backup_root=${SCRATCH:-$scratch_root/scratch/$USER}/.spack-backups
+    backup_root=$scratch_root/scratch/$USER/.spack-backups
     mkdir -p $backup_root
     mv ~/.spack $backup_root/$(date +%y%m%d-%H%M%S)
 fi
