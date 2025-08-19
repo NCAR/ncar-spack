@@ -6,7 +6,7 @@
 #   - to the YAML file.
 #
 #   Author:         Brian Vanderwende
-#   Last Revised:   10:42, 18 Aug 2025
+#   Last Revised:   10:50, 19 Aug 2025
 #
 
 function usage {
@@ -39,7 +39,7 @@ export my_dir="$( cd "$(dirname "$0")" ; pwd )"
 while [[ $# -gt 0 ]]; do
     case $1 in
         -v|--verbose)
-            export log_verbosity=1
+            export log_verbosity=$((log_verbosity + 1))
             ;;
     esac
 
@@ -96,121 +96,141 @@ function modify_compilers {
     fi
 }
 
+function process_entry {
+    if [[ -z $stored_entry ]]; then
+        tsecho "Error: No stored entry to process. Likely indicates a syntax error."
+        exit 1
+    fi
+
+    case ${my_mode// } in
+        externals)
+            if [[ " $my_meta " == *" fixed "* ]]; then
+                ext_flags=--not-buildable
+            else
+                ext_flags=
+            fi
+
+            if [[ $stored_entry == /* ]]; then
+                ext_flags="$ext_flags --path"
+
+                if [[ $stored_entry != *\[*\]* ]]; then
+                    tsecho "Error: spec must be delimited in path by [*]"
+                    exit 1
+                fi
+
+                search_expr=$(sed 's/\[[^]]*\]/\\(\*\\)/g; s/\*/\.\*/g' <<< $stored_entry)
+                search_params=$(tr -cd '(' <<< $search_expr | wc -c)
+                pkg_paths=$(echo $(tr -d '[]' <<< $stored_entry))
+
+                if [[ -n $pkg_paths ]]; then
+                    for pkg_path in $pkg_paths; do
+                        if [[ $search_params -eq 1 ]]; then
+                            pkg_spec=$(sed "s|$search_expr|\1|; s|/|@|" <<< $pkg_path)
+                            pkg_name=${pkg_spec%@*}
+                            pkg_version=${pkg_spec#*@}
+                        else
+                            read pkg_name pkg_version <<< $(sed "s|$search_expr|\1 \2|" <<< $pkg_path)
+                            pkg_spec=${pkg_name}@$pkg_version
+                        fi
+
+                        if [[ -d $pkg_path ]]; then
+                            if [[ " $known_externals " != *" ${pkg_path%%/} "* ]]; then
+                                if [[ " $my_meta " != *" manual "* ]]; then
+                                    auto_result=$(spack external find $ext_flags $pkg_path $pkg_name)
+                                else
+                                    unset auto_result
+                                fi
+
+                                if [[ $auto_result == *spack.yaml* ]]; then
+                                    tsecho "Adding external   $GCOL$pkg_spec$DCOL"
+                                else
+                                    manual_external
+                                fi
+
+                                modify_compilers $pkg_spec
+                                known_externals="$known_externals ${pkg_path%%/}"
+                            fi
+                        elif [[ $pkg_path != *sbang ]]; then
+                            tsecho "Skipping external $BCOL${pkg_spec} (not found!)$DCOL"
+                        fi
+                    done
+
+                    # Externals should also "use" the core compiler
+                    if [[ " $my_meta " != *" floating "* ]]; then
+                        manual_require "$core" $pkg_name
+                    fi
+                fi
+            else
+                auto_result=$(spack external find $ext_flags $stored_entry)
+
+                if [[ $auto_result == *spack.yaml* ]]; then
+                    found_list=$(tail -n +2 <<< $auto_result | xargs)
+                    tsecho "Adding externals  $GCOL${found_list}$DCOL"
+                    modify_compilers $found_list
+                fi
+
+                # Externals should also "use" the core compiler unless marked "floating"
+                if [[ " $my_meta " != *" floating "* ]]; then
+                    manual_require "$core" "$stored_entry"
+                fi
+            fi
+            ;;
+        require|prefer)
+            my_meta=$(sed "s/core/%$NCAR_SPACK_CORE_GCC/" <<< $my_meta)
+            manual_require "$my_meta" "${my_mode// }" "$stored_entry"
+            ;;
+        *)
+            tsecho "Error: Unknown mode $my_mode"
+            exit 1
+            ;;
+    esac
+
+    unset stored_entry
+}
+
 # First, let's get the known external prefixes
 known_externals=$(spack config get packages | grep prefix: | awk -F: '{print $2}' | sort | uniq | xargs)
 
 # Add package configuration settings
 if [[ -f $SPACK_ENV/constraints.cfg ]]; then
-tsecho "Finding specified package configuration in constraints.cfg"
+    tsecho "Finding specified package configuration in constraints.cfg"
 
-while read entry; do
-    if [[ -z $entry ]]; then
-        continue
-    fi
-
-    case $entry in
-        \#*)
+    while read entry; do
+        if [[ -z $entry ]]; then
             continue
-            ;;
-        *=*)
-            read var_name var_value <<< ${entry/=/ }
-            declare $var_name=$var_value
-            ;;
-        *'{'*)
-            IFS=: read my_mode my_meta <<< ${entry%%\{*}
-            my_meta="${my_meta/,/ }"
-            ;;
-        '}'*)
-            unset my_mode my_meta
-            ;;
-        *)
-            tsecho "Processing line: $entry" 1
+        fi
 
-            case ${my_mode// } in
-                externals)
-                    if [[ " $my_meta " == *" fixed "* ]]; then
-                        ext_flags=--not-buildable
-                    else
-                        ext_flags=
-                    fi
+        case $entry in
+            \#*)
+                continue
+                ;;
+            *=*)
+                read var_name var_value <<< ${entry/=/ }
+                declare $var_name=$var_value
+                ;;
+            *'{'*)
+                IFS=: read my_mode my_meta <<< ${entry%%\{*}
+                my_meta="${my_meta/,/ }"
+                ;;
+            *'}'*)
+                process_entry
+                unset my_mode my_meta
+                ;;
+            *)
+                if [[ $stored_entry == /* ]]; then
+                    process_entry
+                fi
 
-                    if [[ $entry == /* ]]; then
-                        ext_flags="$ext_flags --path"
+                tsecho "Processing line: $entry" 1
+                stored_entry="${stored_entry:+$stored_entry }$entry"
+                tsecho "Current entry: $stored_entry" 2
+                ;;
+        esac
+    done < $SPACK_ENV/constraints.cfg
+fi
 
-                        if [[ $entry != *\[*\]* ]]; then
-                            tsecho "Error: spec must be delimited in path by [*]"
-                            exit 1
-                        fi
-
-                        search_expr=$(sed 's/\[[^]]*\]/\\(\*\\)/g; s/\*/\.\*/g' <<< $entry)
-                        search_params=$(tr -cd '(' <<< $search_expr | wc -c)
-                        pkg_paths=$(echo $(tr -d '[]' <<< $entry))
-
-                        if [[ -n $pkg_paths ]]; then
-                            for pkg_path in $pkg_paths; do
-                                if [[ $search_params -eq 1 ]]; then
-                                    pkg_spec=$(sed "s|$search_expr|\1|; s|/|@|" <<< $pkg_path)
-                                    pkg_name=${pkg_spec%@*}
-                                    pkg_version=${pkg_spec#*@}
-                                else
-                                    read pkg_name pkg_version <<< $(sed "s|$search_expr|\1 \2|" <<< $pkg_path)
-                                    pkg_spec=${pkg_name}@$pkg_version
-                                fi
-
-                                if [[ -d $pkg_path ]]; then
-                                    if [[ " $known_externals " != *" ${pkg_path%%/} "* ]]; then
-                                        if [[ " $my_meta " != *" manual "* ]]; then
-                                            auto_result=$(spack external find $ext_flags $pkg_path $pkg_name)
-                                        else
-                                            unset auto_result
-                                        fi
-
-                                        if [[ $auto_result == *spack.yaml* ]]; then
-                                            tsecho "Adding external   $GCOL$pkg_spec$DCOL"
-                                        else
-                                            manual_external
-                                        fi
-
-                                        modify_compilers $pkg_spec
-                                        known_externals="$known_externals ${pkg_path%%/}"
-                                    fi
-                                elif [[ $pkg_path != *sbang ]]; then
-                                    tsecho "Skipping external $BCOL${pkg_spec} (not found!)$DCOL"
-                                fi
-                            done
-
-                            # Externals should also "use" the core compiler
-                            if [[ " $my_meta " != *" floating "* ]]; then
-                                manual_require "$core" $pkg_name
-                            fi
-                        fi
-                    else
-                        auto_result=$(spack external find $ext_flags $entry)
-
-                        if [[ $auto_result == *spack.yaml* ]]; then
-                            found_list=$(tail -n +2 <<< $auto_result | xargs)
-                            tsecho "Adding externals  $GCOL${found_list}$DCOL"
-                            modify_compilers $found_list
-                        fi
-
-                        # Externals should also "use" the core compiler unless marked "floating"
-                        if [[ " $my_meta " != *" floating "* ]]; then
-                            manual_require "$core" "$entry"
-                        fi
-                    fi
-                    ;;
-                require|prefer)
-                    my_meta=$(sed "s/core/%$NCAR_SPACK_CORE_GCC/" <<< $my_meta)
-                    manual_require "$my_meta" "${my_mode// }" "$entry"
-                    ;;
-                *)
-                    tsecho "Error: Unknown mode $my_mode"
-                    exit 1
-                    ;;
-            esac
-            ;;
-    esac
-done < $SPACK_ENV/constraints.cfg
+if [[ -n $stored_entry ]]; then
+    tsecho "Error: Unbounded section detected. Check for completed {} sets."
 fi
 
 update_log_pointers constraints
