@@ -5,7 +5,7 @@
 #   incorporating those changes to this repo.
 #
 #   Author:         Brian Vanderwende
-#   Last Revised:   14:56, 18 Aug 2025
+#   Last Revised:   09:25, 07 Sep 2025
 #
 
 set -e
@@ -17,6 +17,8 @@ Usage: $0 [OPTIONS] BUILD_ENV_PATH
 
 Options
     -h, --help                  show this help message
+    -b, --brief                 only show files that have changed
+    -c, --cluster               use different cluster name than auto-detected
     -v, --verbose               provide detail on the differences in each file
 
 EOF
@@ -40,6 +42,13 @@ while [[ $# -gt 0 ]]; do
     case $key in
         -h|--help)
             usage
+            ;;
+        -b|--brief)
+            output_mode=brief
+            ;;
+        -c|--cluster)
+            cluster=$2
+            shift
             ;;
         -v|--verbose)
             output_mode=verbose
@@ -69,7 +78,7 @@ cat << EOF
 Comparing changes from active deployment
 
 Path:   $env_path
-Host:   $NCAR_SPACK_HOST
+Host:   ${cluster:=$NCAR_SPACK_HOST}
 Type:   $NCAR_SPACK_DEPLOY_TYPE
 
 Output mode:    $output_mode
@@ -85,8 +94,8 @@ path_map[templates/modules]=templates/modules
 path_map[templates/compilers]=templates/compilers
 path_map[src/build/bin]=bin
 path_map[src/build/bin/tools]=bin/tools
-path_map[clusters/${NCAR_SPACK_HOST}]=.
-path_map[clusters/${NCAR_SPACK_HOST}/postprocess]=postprocess
+path_map[clusters/$cluster]=.
+path_map[clusters/$cluster/postprocess]=postprocess
 
 cd $my_root
 
@@ -98,7 +107,9 @@ for src_path in ${!path_map[@]}; do
        
         if [[ -f $env_path/$dep_file ]] && [[ $src_file != *spack.yaml ]]; then
             if cmp -s $my_root/$src_file $env_path/$dep_file; then
-                echo -e " - $src_file"
+                if [[ $output_mode != brief ]]; then
+                    echo -e " - $src_file"
+                fi
             else
                 echo -e "${RCOL} - $src_file (changed)$DCOL\n"
                 echo -e "   Source file:   $my_root/$src_file"

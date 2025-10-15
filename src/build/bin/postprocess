@@ -4,7 +4,7 @@
 #   subdirectory of the build environment.
 #
 #   Author:         Brian Vanderwende
-#   Last Revised:   20:09, 27 Nov 2024
+#   Last Revised:   21:54, 25 Aug 2025
 #
 
 function usage {
@@ -101,10 +101,6 @@ if [[ ${skip_execution:-false} != true ]]; then
         if [[ ! -d $MOD_DEPLOYMENT ]]; then
             spack module lmod refresh --upstream-modules -y
         fi
-
-        # Then, let's make sure utils and localrc exist
-        tsecho "Refreshing module init scripts"
-        . $my_dir/tools/make_localinit.sh ${NCAR_SPACK_ENV_TYPE:-build}
     fi
 fi
 

@@ -6,7 +6,7 @@
 #   - to the YAML file.
 #
 #   Author:         Brian Vanderwende
-#   Last Revised:   10:50, 19 Aug 2025
+#   Last Revised:   21:44, 25 Aug 2025
 #
 
 function usage {
@@ -101,6 +101,8 @@ function process_entry {
         tsecho "Error: No stored entry to process. Likely indicates a syntax error."
         exit 1
     fi
+
+    tsecho " >> Processing: $stored_entry (type=${BCOL}$my_mode${DCOL})" 1
 
     case ${my_mode// } in
         externals)
@@ -217,13 +219,12 @@ if [[ -f $SPACK_ENV/constraints.cfg ]]; then
                 unset my_mode my_meta
                 ;;
             *)
-                if [[ $stored_entry == /* ]]; then
+                if [[ $entry == /* ]] && [[ -n $stored_entry ]]; then
                     process_entry
                 fi
 
-                tsecho "Processing line: $entry" 1
                 stored_entry="${stored_entry:+$stored_entry }$entry"
-                tsecho "Current entry: $stored_entry" 2
+                tsecho "Pending: $stored_entry" 2
                 ;;
         esac
     done < $SPACK_ENV/constraints.cfg

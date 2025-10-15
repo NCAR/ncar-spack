@@ -8,7 +8,7 @@
 #           and any other packages that need it
 #
 #   Author:         Brian Vanderwende
-#   Last Revised:   20:39, 30 Jul 2025
+#   Last Revised:   10:17, 15 Oct 2025
 #
 
 
@@ -318,7 +318,15 @@ function prepare_spec {
         fi
     fi
 
-    [[ -n $mpi ]] && spec="$(sed "s|%MPI%|^$mpi|g;t;s|$| ^$mpi|" <<< "$spec")"
+    if [[ -n $mpi ]]; then
+        if [[ $spec =~ %MPI%[^^]*% ]]; then
+            mpi_only="${mpi%%%*}"
+            spec="$(sed "s|%MPI%|^$mpi_only|g" <<< "$spec")"
+        else
+            spec="$(sed "s|%MPI%|^$mpi|g;t;s|$| ^$mpi|" <<< "$spec")"
+        fi
+    fi
+
     spec="$(sed -r "s/%SYS%/%gcc@${sys_gcc}/g" <<< "$spec")"
 
     # Substitute compiler/mpi-specific modifier flags
@@ -794,12 +802,16 @@ function clear_added_specs {
         done < <(tr '|' '\n' <<< "$install_queue")
     fi
 
-    if [[ $exit_mode -eq 1 ]]; then
-        backup_build_database
-    elif [[ $exit_mode -eq 2 ]]; then
-        tsecho "Error: Inconsistent installation result. Refusing to continue."
-        backup_build_database
-        exit 1
+    if [[ $exit_mode -ge 1 ]]; then
+        update_log_pointers specs installs
+
+        if [[ $exit_mode -eq 1 ]]; then
+            backup_build_database
+        elif [[ $exit_mode -eq 2 ]]; then
+            tsecho "Error: Inconsistent installation result. Refusing to continue."
+            backup_build_database
+            exit 1
+        fi
     fi
 }
 

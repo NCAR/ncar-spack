@@ -5,8 +5,10 @@ cat << EOF
 Usage: $0 [-j JOBS] [-m MIRROR]
 
 Options
-    -j, --jobs      number of concurrent pkgs to cache (default 1)
-    -m, --mirror    specify name or path to custom mirror
+    -j, --jobs          number of concurrent pkgs to cache (default 1)
+    -m, --mirror        specify name or path to custom mirror
+    -s, --skip-errors   don't halt if one push fails
+    -v, --verbose       more information (can be specified multiple times)
 
 EOF
 exit
@@ -38,6 +40,16 @@ while [[ $# -gt 0 ]]; do
             else
                 mirror=$2; shift
             fi
+            ;;
+        -p|--profile)
+            if [[ $1 == *=* ]]; then
+                profile=${1#*=}
+            else
+                profile=$2; shift
+            fi
+            ;;
+        -s|--skip-errors)
+            skip_errors=true
             ;;
         -v|--verbose)
             export log_verbosity=$((log_verbosity + 1))
@@ -75,18 +87,22 @@ function wait_for_jobs {
         done
     done
 
-    if [[ -f $log_file ]] && grep -q Error $log_file; then
+    if [[ -f $log_file ]] && [[ $errors_reported != true ]] && grep -q Error $log_file; then
+        errors_reported=true
         tsecho "Error: pushed failed! See $log_file for details."
-        tsecho "Waiting for jobs to finish"
-        wait
-        exit 1
+
+        if [[ ${skip_errors:-false} == false ]]; then
+            tsecho "Waiting for jobs to finish"
+            wait
+            exit 1
+        fi
     fi
 }
 
 tsecho "Using up to $max_jobs threads to populate cache"
 tsecho "Pushing to cache: ${PCOL}${mirror}${DCOL}"
 
-raw_list=$(spack find --format "{prefix} {hash} {name}-{version}-{hash}")
+raw_list=$(spack find --format "{prefix} {hash} {name}|{version}|{hash}")
 pkg_list=$(awk -v envpath=${SPACK_ENV}/opt '$1~envpath { print $2" "$3 }' <<< "$raw_list")
 
 while [[ ${cache_list+set} != set ]]; do
@@ -95,7 +111,7 @@ while [[ ${cache_list+set} != set ]]; do
             cache_list="$(ls ${mirror#file://}/*/manifests/spec/*/*.spec.manifest.json 2> /dev/null | sed 's|.*/\(.*\).spec.manifest.json|\1|')"
             ;;
         s3://*)
-            cache_list=$(spack python $my_dir/tools/list_cache_s3.py ${mirror#s3://})
+            cache_list="$(spack python $my_dir/tools/list_cache_s3.py ${mirror#s3://} ${profile:=$NCAR_SPACK_MIRROR_PROFILE})"
 
             if [[ $? == 1 ]]; then
                 tsecho "Error: S3 cache could not be accessed. See above error."
@@ -103,7 +119,7 @@ while [[ ${cache_list+set} != set ]]; do
             fi
             ;;
         *)
-            mirror_path=$(spack mirror list --scope env:$SPACK_ENV | awk -v mirror=$mirror '$1 == mirror {print $3}')
+            read mirror_path profile <<< $(spack python $my_dir/tools/get_mirror_info.py $mirror)
 
             if [[ -z $mirror_path ]]; then
                 tsecho "Error: specified mirror not found in environment"
@@ -115,7 +131,10 @@ while [[ ${cache_list+set} != set ]]; do
     esac
 done
 
-while read hash pkg; do
+while read hash triplet; do
+    pkg=${triplet//|/-}
+    name=${triplet%%|*}
+
     if [[ $cache_list != *$pkg* ]]; then
         if [[ -f $NCAR_SPACK_ENV_BUILD/.installs ]]; then
             use_cache=$(awk -F: -v spec_hash="$hash" '$2 == spec_hash {print $3}' $NCAR_SPACK_ENV_BUILD/.installs)
@@ -126,6 +145,41 @@ while read hash pkg; do
             log_cmd "$cache_cmd --only=package $mirror /$hash" >> $log_file
             $cache_cmd --only=package $mirror /$hash &>> $log_file &
             job_pids[$!]=running
+
+            if [[ " ${NCAR_SPACK_LINKED_PACKAGES[@]} " == *" $name "* ]]; then
+                unset linked_pkg
+
+                for key in ${!NCAR_SPACK_LINKED_PACKAGES[@]}; do
+                    if [[ ${NCAR_SPACK_LINKED_PACKAGES[$key]} == $name ]]; then
+                        linked_pkg=$key
+                    fi
+                done
+
+                tsecho " >> Checking for linked package ${PCOL}${linked_pkg}$DCOL in dependents"
+                linked_hash=$(spack dependents -i /$hash | grep " ${linked_pkg}@" | awk '{print $1}')
+
+                if [[ -n $linked_hash ]]; then
+                    if ! grep -q "^$linked_hash.* ${linked_pkg}@" <<< "$pkg_list"; then
+                        tsecho "Error: Linked package $linked_pkg must be installed before $name can be pushed!"
+                        exit 1
+                    fi
+                else
+                    tsecho "Error: Linked package ${NCAR_SPACK_LINKED_PACKAGES[$name]} not found in dependents"
+                    exit 1
+                fi
+            elif [[ " ${!NCAR_SPACK_LINKED_PACKAGES[@]} " == *" $name "* ]]; then
+                tsecho " >> Force pushing linked package ${PCOL}${NCAR_SPACK_LINKED_PACKAGES[$name]}$DCOL"
+                linked_hash=$(spack find -Ld /$hash | grep " ${NCAR_SPACK_LINKED_PACKAGES[$name]}@" | awk '{print $1}')
+
+                if [[ -n $linked_hash ]]; then
+                    log_cmd "$cache_cmd --only=package --force $mirror /$linked_hash" >> $log_file
+                    $cache_cmd --only=package --force $mirror /$linked_hash &>> $log_file &
+                    job_pids[$!]=running
+                else
+                    tsecho "Error: Linked package ${NCAR_SPACK_LINKED_PACKAGES[$name]} not found in dependencies"
+                    exit 1
+                fi
+            fi
         fi
     else
         tsecho "Skipping cached package: ${PCOL}${pkg}$DCOL" 1
