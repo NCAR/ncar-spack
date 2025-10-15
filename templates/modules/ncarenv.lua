@@ -184,6 +184,7 @@ pushenv("CURL_CA_BUNDLE", "/etc/ssl/ca-bundle.pem")
 
 -- Add base packages utilities to PATHS
 prepend_path("PATH",            pathJoin(basepath, "utils/bin"))
+prepend_path("PATH",            pathJoin(basepath, "wrappers/bin"))
 append_path("PATH",             pathJoin(viewpath, "bin"))
 append_path("MANPATH",          pathJoin(viewpath, "man"))
 append_path("MANPATH",          pathJoin(viewpath, "share/man"))

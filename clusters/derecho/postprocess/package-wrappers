@@ -7,7 +7,7 @@
 #       modify the environment at runtime for script invocation.
 #
 #   Author:         Brian Vanderwende
-#   Last Revised:   12:25, 15 Nov 2024
+#   Last Revised:   07:57, 14 Oct 2025
 #
 
 #
@@ -79,10 +79,10 @@ cat > $TMP_FILE << EOF
 
 my_root=$wrapper_root
 
-if [[ -n \$NCAR_${my_type^^}_LIBRARY_DIRTY ]]; then
-    export ${libvar_map[$my_type]}=$2:\$${libvar_map[$my_type]}
+if [[ -n \$NCAR_${3^^}_LIBRARY_DIRTY ]]; then
+    export ${libvar_map[$3]}=$2:\$${libvar_map[$3]}
 else
-    export ${libvar_map[$my_type]}=$2
+    export ${libvar_map[$3]}=$2
 fi
 
 # Remove self from the PATH
@@ -114,7 +114,7 @@ for my_script in ${!wrapped_scripts[@]}; do
             mkdir -p $wrapper_root
 
             for bin_name in $(find $spec_root/bin -type f -executable -printf "%f\n"); do 
-                write_script_wrapper $bin_name "$my_libpath"
+                write_script_wrapper $bin_name "$my_libpath" $my_type
                 mv $TMP_FILE $wrapper_root/$bin_name
                 chmod +x $wrapper_root/$bin_name
             done
@@ -124,8 +124,8 @@ for my_script in ${!wrapped_scripts[@]}; do
         my_deps=$(spack find --format '{hash} {name}@{version} {prefix}' $my_type)
         wrapper_root=$BASE_ROOT/wrappers/bin
         mkdir -p $wrapper_root
-        write_script_wrapper $my_script "$(find_libpath "$my_deps")"
-        mv $TMP_FILE $wrapper_root/$script
-        chmod +x $wrapper_root/$script
+        write_script_wrapper $my_script "$(find_libpath "$my_deps")" python
+        mv $TMP_FILE $wrapper_root/$my_script
+        chmod +x $wrapper_root/$my_script
     fi
 done
