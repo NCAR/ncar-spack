@@ -76,8 +76,12 @@ spack:
         when: '%gcc ^lapack'
       - spec: ^intel-oneapi-mkl
         when: '%oneapi ^lapack'
-      - spec: ^nvhpc
-        when: '%nvhpc ^lapack'
+      - spec: ^nvhpc@24.11
+        when: '%nvhpc@24.11 ^lapack'
+      - spec: ^nvhpc@25.1
+        when: '%nvhpc@25.1 ^lapack'
+      - spec: ^nvhpc@25.5
+        when: '%nvhpc@25.5 ^lapack'
       - spec: ^openblas
         when: '%gcc ^blas'
       - spec: ^intel-oneapi-mkl
@@ -88,8 +92,8 @@ spack:
         when: ^pkgconfig
       - spec: ^zlib
         when: ^zlib-api
-      - spec: cuda_arch=60,70,80
-        when: +cuda
+      - spec: cuda_arch=60,70,80,89,90 ^cuda@12.3.2
+        when: ^cuda
       # Without these, these packages will use GCC versions
       # (not yet true for nvhpc/cce, but check when those runtimes are added)
       - spec: ^hdf5 %oneapi
@@ -170,10 +174,9 @@ spack:
       - +allow-unsupported-compilers
       - '%gcc'
     cudnn:
+      require: '%gcc'
       prefer:
       - spec: ^cuda@12.3.2
-        when: '@8.9.7.29-12'
-      require: '%gcc'
     curl:
       require:
       - '%gcc'
@@ -227,11 +230,31 @@ spack:
       - +treesitter
     esmf:
       variants:
-      - +external-parallelio
-      - +parallelio
       - ~mpi
       - ~pnetcdf
       - ~xerces
+      require:
+      # Apparent prefer is not strong enough to convince Spack to use nvhpc for an
+      # external-lapack. Unbelievable!
+      - +external-lapack
+      - +external-parallelio
+      - spec: ^openblas
+        when: '%gcc ^lapack'
+      - spec: ^intel-oneapi-mkl
+        when: '%oneapi ^lapack'
+      - spec: ^nvhpc@24.11
+        when: '%nvhpc@24.11 ^lapack'
+      - spec: ^nvhpc@25.1
+        when: '%nvhpc@25.1 ^lapack'
+      - spec: ^nvhpc@25.5
+        when: '%nvhpc@25.5 ^lapack'
+      - spec: ^cray-libsci
+        when: '%cce ^lapack'
+      prefer:
+      - spec: +pnetcdf
+        when: +mpi
+      - spec: ~pnetcdf
+        when: ~mpi
     expat:
       require: '%gcc'
     ferret:
@@ -327,8 +350,6 @@ spack:
     giflib:
       require: '%gcc'
     gimp:
-      # Turning docs on adds the dependency to itstool, which breaks a lot of reuse
-      # because of libxml2+python requirement
       variants:
       - ~doc
     git:
@@ -339,6 +360,9 @@ spack:
       require:
       - '%gcc'
     glew:
+      require:
+      - '%gcc'
+    glibc:
       require:
       - '%gcc'
     glpk:
@@ -395,7 +419,7 @@ spack:
       require:
       - '%gcc'
     h5z-zfp:
-      prefer:
+      require:
       - spec: ^hdf5~mpi
     harfbuzz:
       variants:
@@ -420,7 +444,7 @@ spack:
       - +hl
       - +szip
       - ~mpi
-      prefer:
+      require:
       - '@:1.12'
     hwloc:
       require:
@@ -453,11 +477,13 @@ spack:
       require:
       - '%gcc'
     intel-oneapi-mkl:
-      prefer:
+      require:
       - spec: '@2024'
         when: '%oneapi@2024'
-      - spec: '@2025'
-        when: '%oneapi@2025'
+      - spec: '@2025.0'
+        when: '%oneapi@2025.0'
+      - spec: '@2025.1'
+        when: '%oneapi@2025.1'
       - spec: +gfortran threads=openmp
         when: '%gcc'
     intel-oneapi-mpi:
@@ -629,8 +655,8 @@ spack:
       - ~cuda
     mysql:
       require:
-      - spec: cxxstd=14
-        when: '@8.0.19'
+      - spec: cxxstd=17
+        when: '@8.0.29:'
     ncl:
       require:
       - '%gcc'
@@ -638,15 +664,26 @@ spack:
       - +gdal
       - +grib
       - +hdf4
+    nco:
+      require:
+      - spec: ^netcdf-c@:4.8 build_system=autotools
+        when: '@4.8.1'
     netcdf:
       variants:
       - +dap
       - ~mpi
+      require:
+      # I can't believe I have to specify this now...
+      - spec: ^netcdf-fortran %oneapi
+        when: '%oneapi'
     netcdf-c:
       variants:
       - +dap
       - +nczarr_zip
       - ~mpi
+      prefer:
+      # Otherwise concretizer will mix and match and create more installs
+      - build_system=cmake
     netcdf-cxx4:
       variants:
       - ~doc
@@ -655,7 +692,12 @@ spack:
     numactl:
       require: '%gcc'
     nvhpc:
-      require: '%gcc'
+      require:
+      - '%gcc'
+      - ~mpi
+    nvtop:
+      variants:
+      - support=nvidia
     ocl-icd:
       variants:
       - +headers
@@ -684,6 +726,10 @@ spack:
       - +fortran
       - threads=openmp
     opengl:
+      externals:
+      - spec: opengl@4.5
+        prefix: /usr
+      buildable: false
       require:
       - '%gcc'
     openjdk:
@@ -699,9 +745,8 @@ spack:
       - +gpfs
       - +lustre
       - +internal-pmix
-      - any_of:
-        - ^cuda@12
-        when: '@4.1.6 +cuda'
+      - spec: cflags='-Wno-error=incompatible-function-pointer-types'
+        when: '@5.0.6 %oneapi'
       variants:
       - +cuda
     openpbs:
@@ -745,8 +790,7 @@ spack:
         - ~pnetcdf
         when: ~mpi
       # Concretizer will try to use older versions to avoid automake dependencies in 2.5.0
-      - one_of:
-        - ^mpi-serial@2.5.0
+      - spec: ^mpi-serial@2.5.0
         when: ~mpi
     parallelio1:
       variants:
@@ -767,9 +811,11 @@ spack:
       - +qt
       - +visitbridge
       require:
-        # These requirements improve package reuse
+      # This requirement improves package reuse
       - spec: ^netcdf-c+mpi
         when: +mpi
+      # Paraview fails to find hdf5_hl when netcdf-c uses CMake
+      - spec: ^netcdf-c build_system=autotools
     patchelf:
       require:
       # Version 0.18 breaks when using gcc@7.5.0
@@ -808,16 +854,19 @@ spack:
     py-pip:
       require:
       - '%gcc'
+    py-pyyaml:
+      require:
+      - '%gcc'
     py-setuptools:
       require:
       - '%gcc'
-      prefer:
       # Simplifies stack to limit to 0.63, latest version used by numpy with Python < 3.12
       - '@:63'
     python:
       prefer:
       - '@3.11'
-      require: '%gcc'
+      require:
+      - '%gcc'
     qhull:
       require: '%gcc'
     qt:
@@ -892,6 +941,8 @@ spack:
     vapor:
       variants:
       - +ospray
+      require:
+      - '%gcc'
     vim:
       variants:
       - +cscope
@@ -1009,42 +1060,51 @@ spack:
         core_compilers:
         - gcc@7.5.0
         core_specs:
+        - nvhpc
+        - nco
         - visit
+        - linaro-forge
+        - vapor
+        - intel-oneapi-compilers
+        - ucx
+        - cmake
+        - lrose-core
+        - cuda
+        - cudnn
+        - idl
+        - rstudio
+        - matlab
+        - intel-oneapi-advisor
+        - intel-oneapi-vtune
+        - texlive
         - paraview
         - octave
-        - gsl
-        - nco
         - gmt
         - cdo
         - nccmp
         - ncview
+        - madis
+        - ferret
+        - grads
+        - ncvis
+        - nvtop
+        - gsl
         - eigen
-        - vapor
+        - julia
         - darshan-util
         - ecflow
         - neovim
-        - madis
-        - ferret
         - doxygen
-        - linaro-forge
         - grib-util
         - wgrib2
-        - grads
-        - ncvis
-        - ucx
         - ncl
-        - cudnn
-        - cuda
         - charliecloud
         - peak-memusage
         - podman
-        - pcre
         - apptainer
         - miniconda3
-        - cmake
+        - pcre
         - go
-        - intel-oneapi-compilers
-        - nvhpc
         - r
         cuda:
           environment:
@@ -1076,13 +1136,15 @@ spack:
               DARSHAN_SHARED_LIB: '{prefix}/lib/libdarshan.so'
         defaults:
         - netcdf@4.9.2
-        - openmpi@5.0.2
-        - cuda@11.8.0
-        - gcc@13.2.0
-        - intel-oneapi-compilers@2024.1.0
-        - nvhpc@24.3
+        - openmpi@5.0.6
+        - cuda@12.3.2
+        - cudnn@8.9.7.29-12
+        - gcc@12.4.0
+        - intel-oneapi-compilers@2024.2.1
+        - nvhpc@24.11
         - parallelio+mpi
         - esmf+mpi
+        - ucx~debug
         esmf:
           autoload: none
         exclude:
@@ -1280,9 +1342,10 @@ spack:
               # https://github.com/open-mpi/ompi/issues/9647
               OMPI_MCA_oob_tcp_if_exclude: mgt
               OMPI_MCA_plm: tm
-              OMPI_MCA_prte_silence_shared_fs: '1'
               OMPI_MCA_rmaps_default_mapping_policy: :hwtcpus
               OMPI_MCA_shmem_mmap_enable_nfs_warning: '0'
+              OMPI_MCA_smsc: ^knem
+              PRTE_MCA_prte_silence_shared_fs: '1'
             prepend_path:
               LD_LIBRARY_PATH: '{prefix}/lib'
         parallel-netcdf:
@@ -1322,6 +1385,7 @@ spack:
           netcdf+mpi: netcdf-mpi/{version}
           hdf5+mpi: hdf5-mpi/{version}
           netcdf: netcdf/{version}
+          netcdf-cxx: netcdf-cxx-legacy/{version}
           intel-oneapi-advisor: intel-advisor/{version}
           intel-oneapi-compilers@2024: intel-oneapi/{version}
           intel-oneapi-compilers@2025: intel/{version}
@@ -1333,6 +1397,8 @@ spack:
           miniconda3: conda/latest
           parallelio1: parallelio/{version}
           llvm+clang: clang/{version}
+          ucx+debug: ucx/{version}-debug
+          visit~python: visit/{version}-old
         rstudio:
           filter:
             exclude_env_vars:

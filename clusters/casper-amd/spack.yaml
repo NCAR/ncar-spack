@@ -8,7 +8,7 @@ spack:
         ^cxx: '{name}/{version}/{compiler.name}/{compiler.version}/{hash:4}'
         ^fortran: '{name}/{version}/{compiler.name}/{compiler.version}/{hash:4}'
         ^mpi: '{name}/{version}/{^mpi.name}/{^mpi.version}/{compiler.name}/{compiler.version}/{hash:4}'
-        all: '{name}/{version}/{compiler.name}/{compiler.version}/{hash:4}'
+        all: '{name}/{version}/{hash:4}'
         c: '{name}/{version}/{hash:4}'
         netcdf-c: netcdf/{version}/packages/{name}/{version}/{compiler.name}/{compiler.version}/{hash:4}
         netcdf-c^mpi: netcdf/{version}/packages/{name}/{version}/{^mpi.name}/{^mpi.version}/{compiler.name}/{compiler.version}/{hash:4}
@@ -53,6 +53,8 @@ spack:
         when: '%gcc@12.5.0 ^udunits'
       - spec: ^openblas %gcc@12.5.0
         when: '%gcc@12.5.0 ^openblas'
+      - spec: ^openblas %gcc@13.4.0
+        when: '%gcc@13.4.0 ^openblas'
       - spec: ^openblas %gcc@15.1.0
         when: '%gcc@15.1.0 ^openblas'
     amdblis:
@@ -67,16 +69,37 @@ spack:
       - '%blas=amdblis'
       variants:
       - threads=openmp
+    antlr:
+      prefer:
+      - '%gcc@12.5.0'
     aocc:
       require:
       - +license-agreed
+    aocl-utils:
+      require:
+      - '%aocc'
+    apptainer:
+      prefer:
+      - '%gcc@12.5.0'
     arpack-ng:
       variants:
       - ~mpi
+    arrow:
+      prefer:
+      - '%gcc@12.5.0'
+    assimp:
+      prefer:
+      - '%gcc@12.5.0'
     automake:
       prefer:
       - '%gcc@12.5.0'
+    bash:
+      prefer:
+      - '%gcc@12.5.0'
     berkeley-db:
+      prefer:
+      - '%gcc@12.5.0'
+    bison:
       prefer:
       - '%gcc@12.5.0'
     bzip2:
@@ -92,17 +115,31 @@ spack:
       - +png
       - +svg
       - +zlib
+      prefer:
+      - '%gcc@12.5.0'
+      # Spack uses older version to avoid pixman :(
+      - '@1.18:'
     cdo:
-      variants:
+      prefer:
       - +curl
+      - +netcdf
+      - +hdf5
+      - +fftw3
+      - +libxml2
+      - +udunits2
+      - '%gcc@12.5.0'
+    charliecloud:
+      prefer:
+      - '%gcc@12.5.0'
     cmake:
       variants:
       - +ownlibs
+      prefer:
+      - '%gcc@12.5.0'
     cmor:
-      variants:
-      - +python
       prefer:
       - ^udunits %gcc@12.5.0
+      - '%gcc@12.5.0'
     comgr:
       prefer:
       - '%gcc@12.5.0'
@@ -134,6 +171,11 @@ spack:
     darshan-util:
       variants:
       - +bzip2
+      prefer:
+      - '%gcc@12.5.0'
+    dbus:
+      prefer:
+      - '%gcc@12.5.0'
     diffutils:
       prefer:
       - '%gcc@12.5.0'
@@ -152,6 +194,14 @@ spack:
       require:
       - +pic
       - +ui
+      prefer:
+      - '%gcc@12.5.0'
+    eigen:
+      prefer:
+      - '%gcc@12.5.0'
+    elfutils:
+      prefer:
+      - '%gcc@12.5.0'
     emacs:
       variants:
       - +X
@@ -159,6 +209,7 @@ spack:
       - +treesitter
       prefer:
       - gui=x11
+      - '%gcc@12.5.0'
     esmf:
       variants:
       - ~mpi
@@ -170,6 +221,9 @@ spack:
       - one_of:
         - +pnetcdf +mpi
         - ~pnetcdf ~mpi
+    expat:
+      prefer:
+      - '%gcc@12.5.0'
     ffmpeg:
       variants:
       - +X
@@ -195,9 +249,16 @@ spack:
     findutils:
       prefer:
       - '%gcc@12.5.0'
+    flatbuffers:
+      prefer:
+      - '%gcc@12.5.0'
     flex:
       prefer:
       - '@2.6.4'
+      - '%gcc@12.5.0'
+    fmt:
+      prefer:
+      - '%gcc@12.5.0'
     gawk:
       prefer:
       - '%gcc@12.5.0'
@@ -214,27 +275,25 @@ spack:
       require:
       - spec: ^hdf5~mpi
         when: +hdf5
-      variants:
+      # libcsf, pcidsk, pdfium can't actually be used... why are they variants???
+      # Need to specify these as requirements b/c Spack will be lazy and avoid even
+      # with prefer
       - +blosc
       - +curl
       - +deflate
       - +expat
       - +geos
       - +gif
-      - +grib
       - +hdf5
       - +iconv
       - +jpeg
       - +libaec
-      - +libcsf
       - +liblzma
       - +libxml2
       - +lz4
       - +netcdf
       - +openjpeg
       - +parquet
-      - +pcidsk
-      - +pdfium
       - +png
       - +qhull
       - +sqlite3
@@ -250,6 +309,8 @@ spack:
       - +tui
       - ~debuginfod
       - ~python
+      prefer:
+      - '%gcc@12.5.0'
     gdbm:
       prefer:
       - '%gcc@12.5.0'
@@ -261,6 +322,8 @@ spack:
       variants:
       - +svn
       - +tcltk
+      prefer:
+      - '%gcc@12.5.0'
     gmake:
       variants:
       - ~guile
@@ -285,12 +348,24 @@ spack:
       - +lapack
       - spec: '^ffmpeg@7:'
         when: +ffmpeg
+      prefer:
+      - '%gcc@12.5.0'
     gnuplot:
       variants:
       - +X
       - +wx
       prefer:
       - +qt
+      - '%gcc@12.5.0'
+    gnutls:
+      prefer:
+      - '%gcc@12.5.0'
+    go:
+      prefer:
+      - '%gcc@12.5.0'
+    googletest:
+      prefer:
+      - '%gcc@12.5.0'
     gptl:
       variants:
       - +nestedomp
@@ -303,12 +378,29 @@ spack:
       require:
       - +dap
       - +hdf4
+    graphite2:
+      prefer:
+      - '%gcc@12.5.0'
+    grep:
+      prefer:
+      - '%gcc@12.5.0'
+    grib-util:
+      prefer:
+      - '%gcc@12.5.0'
+    gtkplus:
+      prefer:
+      - '%gcc@12.5.0'
+    gzip:
+      prefer:
+      - '%gcc@12.5.0'
     h5z-ftp:
       require:
       - ^hdf5~mpi
     harfbuzz:
       variants:
       - +graphite2
+      prefer:
+      - '%gcc@12.5.0'
     hdf:
       variants:
       - +fortran
@@ -328,24 +420,56 @@ spack:
       - +map
       - +szip
       - ~mpi
+      require:
+      - spec: ldflags=-lpthread
+        when: +threadsafe @1.14
+    heaptrack:
+      prefer:
+      - '%gcc@12.5.0'
+    help2man:
+      prefer:
+      - '%gcc@12.5.0'
     hip:
       require:
       - +rocm
+      prefer:
+      - '%gcc@12.5.0'
+    hipblas:
+      require:
+      - '%gcc@12.5.0'
     hipcc:
+      prefer:
+      - '%gcc@12.5.0'
+    hipcub:
+      require:
+      - '%gcc@12.5.0'
+    hipfort:
+      prefer:
+      - '%gcc@12.5.0'
+    hipify-clang:
+      prefer:
+      - '%gcc@12.5.0'
+    hiprand:
+      require:
+      - '%gcc@12.5.0'
+    hsa-rocr-dev:
       prefer:
       - '%gcc@12.5.0'
     hwloc:
       require:
       - +rocm
-      - amdgpu_target=gfx942
-      prefer:
       - '%gcc@12.5.0'
     imagemagick:
       variants:
       - +ghostscript
+    intel-oneapi-advisor:
+      prefer:
+      - '%gcc@12.5.0'
     intel-oneapi-compilers:
       variants:
       - +amd
+      prefer:
+      - '%gcc@12.5.0'
     intel-oneapi-mkl:
       require:
       - spec: +gfortran threads=openmp
@@ -357,6 +481,9 @@ spack:
     intel-oneapi-runtime:
       prefer:
       - ^gcc-runtime@12.5.0
+    intel-oneapi-vtune:
+      prefer:
+      - '%gcc@12.5.0'
     ip:
       prefer:
       - '%lapack=openblas'
@@ -366,6 +493,12 @@ spack:
     jasper:
       prefer:
       - '@:2'
+      - '%gcc@12.5.0'
+    jq:
+      prefer:
+      - '%gcc@12.5.0'
+    json-c:
+      prefer:
       - '%gcc@12.5.0'
     kokkos:
       variants:
@@ -378,21 +511,83 @@ spack:
         when: '%aocc'
       - spec: ^cmake@3.27
         when: '@:4.2.01 +rocm'
+    krb5:
+      prefer:
+      - '%gcc@12.5.0'
+    lcov:
+      prefer:
+      - '%gcc@12.5.0'
+    lerc:
+      prefer:
+      - '%gcc@12.5.0'
     libarchive:
       require:
       - compression=bz2lib,lz4,lzma,lzo2,zlib,zstd xar=expat
+    libcap:
+      prefer:
+      - '%gcc@12.5.0'
+    libcerf:
+      prefer:
+      - '%gcc@12.5.0'
+    libdeflate:
+      prefer:
+      - '%gcc@12.5.0'
     libdrm:
       prefer:
       - '@2.4.124'
+      - '%gcc@12.5.0'
+    libepoxy:
+      prefer:
+      - '%gcc@12.5.0'
+    libevent:
+      prefer:
+      - '%gcc@12.5.0'
+    libffi:
+      prefer:
+      - '%gcc@12.5.0'
+    libfuse:
+      prefer:
+      - '%gcc@12.5.0'
+    libgd:
+      prefer:
       - '%gcc@12.5.0'
     libgeotiff:
       require:
       # Doesn't build without proj as a dependency for me
       - +proj
+      prefer:
+      - '%gcc@12.5.0'
     libglx:
       prefer:
       - opengl
+    libibn2:
+      prefer:
+      - '%gcc@12.5.0'
+    libiconv:
+      prefer:
+      - '%gcc@12.5.0'
+    libjpeg:
+      prefer:
+      - '%gcc@12.5.0'
+    libjpeg-turbo:
+      prefer:
+      - '%gcc@12.5.0'
+    libpng:
+      prefer:
+      - '%gcc@12.5.0'
+    librsvg:
+      prefer:
+      - '%gcc@12.5.0'
+    libseccomp:
+      prefer:
+      - '%gcc@12.5.0'
     libsigsegv:
+      prefer:
+      - '%gcc@12.5.0'
+    libslirp:
+      prefer:
+      - '%gcc@12.5.0'
+    libssh2:
       prefer:
       - '%gcc@12.5.0'
     libszip:
@@ -402,6 +597,11 @@ spack:
       require:
       - build_system=cmake
       - +pic
+      prefer:
+      - '%gcc@12.5.0'
+    libtirpc:
+      prefer:
+      - '%gcc@12.5.0'
     libtool:
       prefer:
       - '%gcc@12.5.0'
@@ -415,6 +615,24 @@ spack:
       - +xz
       - +zlib
       - components=setjmp,ptrace,coredump
+    libuv:
+      prefer:
+      - '%gcc@12.5.0'
+    libwebp:
+      prefer:
+      - '%gcc@12.5.0'
+    libx11:
+      prefer:
+      - '%gcc@12.5.0'
+    libxcrypt:
+      prefer:
+      - '%gcc@12.5.0'
+    libxft:
+      prefer:
+      - '%gcc@12.5.0'
+    libyaml:
+      prefer:
+      - '%gcc@12.5.0'
     libzip:
       prefer:
       - +gnutls
@@ -425,7 +643,22 @@ spack:
     llvm-amdgpu:
       require:
       - '%gcc@12.5.0'
+    lmod:
+      prefer:
+      - '%gcc@12.5.0'
+    lua:
+      prefer:
+      - '%gcc@12.5.0'
+    lz4:
+      prefer:
+      - '%gcc@12.5.0'
+    lzo:
+      prefer:
+      - '%gcc@12.5.0'
     m4:
+      prefer:
+      - '%gcc@12.5.0'
+    madis:
       prefer:
       - '%gcc@12.5.0'
     mesa:
@@ -447,6 +680,14 @@ spack:
       - +makeplots
       - +plotdataplane
       - +series_analysis
+    miniconda3:
+      externals:
+      - spec: miniconda3@4.12.0
+        prefix: /glade/u/apps/opt/conda
+      buildable: false
+    motif:
+      prefer:
+      - '%gcc@12.5.0'
     mpc:
       prefer:
       - '%gcc@12.5.0'
@@ -461,12 +702,24 @@ spack:
       - +gpfs
       - +lustre
       - +xattr
+    muparser:
+      prefer:
+      - '%gcc@12.5.0'
     musica:
       variants:
       - ~tuvx
+    nano:
+      prefer:
+      - '%gcc@12.5.0'
+    nasm:
+      prefer:
+      - '%gcc@12.5.0'
     ncarcompilers:
       variants:
       - +hip
+    nccmp:
+      prefer:
+      - '%gcc@12.5.0'
     ncl:
       variants:
       - +eemd
@@ -478,18 +731,25 @@ spack:
     nco:
       prefer:
       - ^udunits %gcc@12.5.0
+      - '%gcc@12.5.0'
     ncurses:
       prefer:
       - '%gcc@12.5.0'
     ncview:
       prefer:
       - ^udunits %gcc@12.5.0
+      - '%gcc@12.5.0'
     ncvis:
       require:
-      - ^netcdf-c build_system=autotool
+      - ^netcdf-c build_system=autotools
+      prefer:
+      - '%gcc@12.5.0'
+    neovim:
+      prefer:
+      - '%gcc@12.5.0'
     netcdf:
       variants:
-      - +dav
+      - +dap
       - ~mpi
     netcdf-c:
       variants:
@@ -497,12 +757,19 @@ spack:
       prefer:
       # Would do require, but ncvis barfs
       - build_system=cmake
-      - +dap
+      - +blosc
       require:
+      - +dap
       - +nczarr_zip
     nettle:
       require:
       - ^gmp %gcc@12.5.0
+    nghttp2:
+      prefer:
+      - '%gcc@12.5.0'
+    ninja:
+      prefer:
+      - '%gcc@12.5.0'
     numactl:
       require:
       - '%gcc@12.5.0'
@@ -511,6 +778,8 @@ spack:
       - +blas
       - +lapack
       - ~mpi
+      prefer:
+      - '%gcc@12.5.0'
     nvtop:
       require:
       - support:=amd
@@ -544,6 +813,9 @@ spack:
       - spec: opengl@4.5
         prefix: /usr
       buildable: false
+    openjpeg:
+      prefer:
+      - '%gcc@12.5.0'
     openmpi:
       require:
       - fabrics=cma,ucx
@@ -551,20 +823,27 @@ spack:
       - +gpfs
       - +lustre
       - +internal-pmix
+      - ~internal-hwloc
       - +romio
       - romio-filesystem=nfs,gpfs,lustre,ufs
       - +fortran
+      - +rocm
+      - +rsh
+      - amdgpu_target=gfx942
       - spec: ldflags=-ldl
         when: '%aocc'
       prefer:
       # Otherwise concretizer will try to use old versions
-      - spec: ^ucx@1.18.1
+      - spec: ^ucx@1.19.0
         when: '@5.0.8'
     openpbs:
       externals:
       - spec: openpbs@2021.1.3
         prefix: /opt/pbs
       buildable: false
+    openssh:
+      prefer:
+      - '%gcc@12.5.0'
     openssl:
       require:
       - certs=system
@@ -577,6 +856,8 @@ spack:
     pango:
       variants:
       - +X
+      prefer:
+      - '%gcc@12.5.0'
     parallel-netcdf:
       variants:
       - +examples
@@ -596,16 +877,36 @@ spack:
     parallelio1:
       require:
       - +pnetcdf
+    pcre:
+      prefer:
+      - '%gcc@12.5.0'
+    pcre2:
+      prefer:
+      - '%gcc@12.5.0'
+    peak-memusage:
+      prefer:
+      - '%gcc@12.5.0'
     perl:
       prefer:
       - '%gcc@12.5.0'
     pkgconfig:
       prefer:
       - pkg-config
+    podman:
+      prefer:
+      - '%gcc@12.5.0'
+    postgresql:
+      require:
+      - +icu
+      - +xml
+      prefer:
+      - '%gcc@12.5.0'
     py-beautifulsoup4:
-      # Spack is using old broken version to avoid a dependency. D:
       prefer:
       - '@4.12:'
+    py-cython:
+      prefer:
+      - '%gcc@12.5.0'
     py-netcdf4:
       variants:
       - ~mpi
@@ -617,6 +918,13 @@ spack:
       - +ssl
       - '@3.11'
       - '%gcc@12.5.0'
+      prefer:
+      - +pyexpat
+      - +uuid
+      - '%gcc@12.5.0'
+    qhull:
+      prefer:
+      - '%gcc@12.5.0'
     qt:
       variants:
       - +dbus
@@ -625,48 +933,137 @@ spack:
       - +webkit
       require:
       - +gtk
+      - +gui
       - +ssl
       - '@5.14.2'
+      prefer:
+      - '%gcc@12.5.0'
+    rapidjson:
+      prefer:
+      - '%gcc@12.5.0'
     rccl:
       require:
-      - amdgpu_target=gfx942
+      - '%gcc@12.5.0'
     readline:
       prefer:
       - '%gcc@12.5.0'
+    ripgrep:
+      prefer:
+      - '%gcc@12.5.0'
     rocblas:
+      require:
+      - '%gcc@12.5.0'
       prefer:
       - +tensile
       - amdgpu_target=gfx942
     rocfft:
+      require:
+      - '%gcc@12.5.0'
       prefer:
       - amdgpu_target=gfx942
       - amdgpu_target_sram_ecc=gfx942
-    rocrand:
+    rocm-core:
       prefer:
-      - ~hiprand
-      - amdgpu_target:=gfx942
+      - '%gcc@12.5.0'
+    rocm-examples:
+      prefer:
+      - '%gcc@12.5.0'
+    rocm-gdb:
+      prefer:
+      - '%gcc@12.5.0'
+    rocm-openmp-extras:
+      prefer:
+      - '%gcc@12.5.0'
+    rocm-smi-lib:
+      prefer:
+      - '%gcc@12.5.0'
+    rocminfo:
+      prefer:
+      - '%gcc@12.5.0'
+    rocprim:
+      require:
+      - '%gcc@12.5.0'
+    rocprofiler-compute:
+      prefer:
+      - '%gcc@12.5.0'
+    rocprofiler-register:
+      prefer:
+      - '%gcc@12.5.0'
+    rocprofiler-systems:
+      require:
+      - ~internal-dyninst
+      - +rocm
+      - +perfetto_tools
+      - +python
+      prefer:
+      - '%gcc@12.5.0'
+    rocrand:
+      require:
+      - '%gcc@12.5.0'
+    rocthrust:
+      require:
+      - '%gcc@12.5.0'
+    roctracer-dev:
+      require:
+      - '%gcc@12.5.0'
+    ruby:
+      prefer:
+      - '%gcc@12.5.0'
+    rust:
+      prefer:
+      - '%gcc@12.5.0'
+    sed:
+      prefer:
+      - '%gcc@12.5.0'
     singularityce:
       variants:
       - ~suid
+    slirp4netns:
+      prefer:
+      - '%gcc@12.5.0'
     snappy:
-      require:
-      # Required for arrow, which is needed for parquet support in GDAL
+      prefer:
+      # Reduce concretizer duplication (arrow wants ~shared; needed for GDAL parquet support)
       - ~shared
+    source-highlight:
+      prefer:
+      - '%gcc@12.5.0'
+    sqlite:
+      prefer:
+      - '%gcc@12.5.0'
+    squashfs:
+      prefer:
+      - '%gcc@12.5.0'
+    squashfuse:
+      prefer:
+      - '%gcc@12.5.0'
+    superlu:
+      require:
+      - +fortran
     superlu-dist:
       variants:
       - +openmp
       prefer:
       - spec: cflags='-std=gnu17 -Wno-error=implicit-function-declaration -Wno-error=int-conversion'
         when: '%gcc@15:'
-      - spec: ^openblas %gcc@15.1.0
-        when: '%gcc@15.1.0 ^openblas'
+      - spec: ^openblas %gcc@13.4.0
+        when: '%gcc@13.4.0 ^openblas'
     szip:
       prefer:
       - libszip
     tbb:
       prefer:
       - intel-oneapi-tbb
+    tcl:
+      prefer:
+      - '%gcc@12.5.0'
     texinfo:
+      prefer:
+      - '%gcc@12.5.0'
+    tk:
+      prefer:
+      - '%gcc@12.5.0'
+    tmux:
       prefer:
       - '%gcc@12.5.0'
     tree:
@@ -689,6 +1086,14 @@ spack:
       - ~knem
       require:
       - +rocm
+      - ^hsa-rocr-dev@6.3.3
+      - '%gcc@12.5.0'
+    unzip:
+      prefer:
+      - '%gcc@12.5.0'
+    uuid:
+      prefer:
+      - util-linux-uuid
     vim:
       variants:
       - +cscope
@@ -701,6 +1106,8 @@ spack:
       require:
       - +gtk
       - +gui
+      prefer:
+      - '%gcc@12.5.0'
     wget:
       prefer:
       - ssl=openssl
@@ -711,6 +1118,8 @@ spack:
       - +proj4
       - +udf
       - ~netcdf3
+      prefer:
+      - '%gcc@12.5.0'
     wxwidgets:
       variants:
       - +opengl
@@ -721,6 +1130,20 @@ spack:
       require:
       # Wont build without this, actually!
       - +motif
+      prefer:
+      - '%gcc@12.5.0'
+    xsimd:
+      prefer:
+      - '%gcc@12.5.0'
+    xxd-standalone:
+      prefer:
+      - '%gcc@12.5.0'
+    xxdiff:
+      prefer:
+      - '%gcc@12.5.0'
+    xz:
+      prefer:
+      - '%gcc@12.5.0'
     zfp:
       variants:
       - +tight-error
@@ -736,6 +1159,8 @@ spack:
       - +compat
       - +new_strategies
       - +shared
+      prefer:
+      - '%gcc@12.5.0'
     zstd:
       variants:
       - +programs
@@ -805,67 +1230,74 @@ spack:
             prepend_path:
               PATH: %BASEROOT%/wrappers/{name}/{version}/{hash:4}/bin
         core_compilers:
-        - gcc@12.5.0
+        - gcc@7.5.0
         core_specs:
-        - rocprim
-        - hipcub
-        - hiprand
-        - rocrand
-        - hip
-        - hsa-rocr-dev
-        - rocm-core
+        - miniconda3
+        - rocsparse
+        - rocm-openmp-extras
+        - cmor
+        - nco
+        - gmt
+        - cdo
+        - nccmp
+        - ncview
+        - madis
+        - ncvis
+        - rocm-examples
+        - hipify-clang
         - rocfft
         - roctracer-dev
-        - rocprofiler-systems
-        - rocprofiler-compute
+        - hipcub
+        - hiprand
+        - hipblas
+        - hip
+        - comgr
         - rocm-gdb
+        - rocthrust
+        - rocprim
+        - rocrand
         - rocblas
         - rccl
+        - hsa-rocr-dev
         - ucx
+        - gcc
+        - rocprofiler-compute
+        - rocm-core
+        - eigen
+        - rstudio
+        - idl
+        - matlab
+        - ncl
+        - heaptrack
+        - lcov
+        - neovim
+        - grib-util
+        - wgrib2
+        - ecflow
+        - texlive
+        - darshan-util
+        - linaro-forge
+        - charliecloud
         - peak-memusage
+        - podman
         - pcre
+        - apptainer
         - go
         - meson
         - cmake
         - aocc
-        - gcc
-        - darshan-util
-        - linaro-forge
-        - miniconda3
+        - rocprofiler-systems
         - intel-oneapi-compilers
         - cce
         - intel-oneapi-mkl
         - nvhpc
-        - heaptrack
         - libfabric
-        - cmor
-        - nco
-        - cdo
-        - nccmp
-        - ncview
-        - lcov
-        - neovim
-        - madis
-        - eigen
-        - grib-util
-        - wgrib2
-        - ecflow
         - intel-oneapi-advisor
         - intel-oneapi-vtune
-        - ncvis
-        - charliecloud
-        - rstudio
-        - idl
-        - matlab
-        - texlive
-        - gmt
         - cray-libsci
         - libtorch
         - grads
         - julia
-        - ncl
-        - podman
-        - apptainer
         - r
         - miniconda
         darshan-runtime:
@@ -881,7 +1313,6 @@ spack:
         - parallelio+mpi+shared@2.6.6
         - esmf+mpi
         - intel-oneapi-compilers@2024.2.1
-        - gcc@12.5.0
         - libfabric@1.22.0
         esmf:
           autoload: none
@@ -919,6 +1350,14 @@ spack:
             set:
               # Needed for FastEddy
               NCAR_INC_HIPRAND2: '{prefix.include}/hiprand'
+        hsa-rocr-dev:
+          environment:
+            append_path:
+              CMAKE_PREFIX_PATH: '{^llvm-amdgpu.prefix}'
+              LD_LIBRARY_PATH: '{^llvm-amdgpu.prefix.lib}'
+              PATH: '{^llvm-amdgpu.prefix.bin}'
+            set:
+              HSA_XNACK: '1'
         intel-oneapi-advisor:
           filter:
             exclude_env_vars:
@@ -1117,7 +1556,8 @@ spack:
           fftw+mpi: fftw-mpi/{version}
           netcdf+mpi: netcdf-mpi/{version}
           hdf5+mpi: hdf5-mpi/{version}
-          netcdf: netcdf/{version}
+          esmf+mpi: esmf-mpi/{version}
+          parallelio~mpi: parallelio-serial/{version}
           intel-oneapi-advisor: intel-advisor/{version}
           intel-oneapi-compilers@2024: intel-oneapi/{version}
           intel-oneapi-compilers@2025: intel/{version}
