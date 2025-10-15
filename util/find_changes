@@ -5,7 +5,7 @@
 #   incorporating those changes to this repo.
 #
 #   Author:         Brian Vanderwende
-#   Last Revised:   10:35, 15 Oct 2025
+#   Last Revised:   11:11, 15 Oct 2025
 #
 
 set -e
@@ -101,7 +101,7 @@ path_map[clusters/$cluster/postprocess]=postprocess
 cd $my_root
 
 for src_path in ${!path_map[@]}; do
-    src_files="$(find $src_path -maxdepth 1 -type f,l)"
+    src_files="$(find -L $src_path -maxdepth 1 -type f,l)"
 
     for src_file in $src_files; do
         dep_file=$(sed "s|$src_path|${path_map[$src_path]}|" <<< $src_file)

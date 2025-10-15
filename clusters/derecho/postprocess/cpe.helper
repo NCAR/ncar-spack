@@ -6,7 +6,7 @@
 #       versions for a particular CPE installation.
 #
 #   Author:         Brian Vanderwende
-#   Last Revised:   19:45, 15 Nov 2024
+#   Last Revised:   14:02, 23 Sep 2025
 #
 
 #
@@ -14,10 +14,13 @@
 #
 
 # CPE module paths
-cray_mpath=/opt/cray/pe/lmod/modulefiles/core:/opt/cray/modulefiles:/opt/cray/pe/lmod/modulefiles/craype-targets/default
+cray_mpath=/opt/cray/pe/lmod/modulefiles/core:/opt/cray/modulefiles:/opt/cray/pals/lmod/modulefiles/core:/opt/cray/pe/lmod/modulefiles/craype-targets/default
 
 # Which network type are we using (ofi or ucx)
 cray_network=ofi
+
+# Determine the pals version by the current default on the system
+pals_version=$(basename $(readlink -f /opt/cray/pals/default))
 
 # Determine the libfabric version on the system (hopefully one?)
 ofi_version=$(basename $(ls -1 -d --color=never /opt/cray/libfabric/* | tail -1))
