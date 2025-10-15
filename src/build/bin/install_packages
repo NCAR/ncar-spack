@@ -8,7 +8,7 @@
 #           and any other packages that need it
 #
 #   Author:         Brian Vanderwende
-#   Last Revised:   10:17, 15 Oct 2025
+#   Last Revised:   10:39, 15 Oct 2025
 #
 
 
@@ -452,12 +452,16 @@ function compiler_checks {
             fi
 
             read -r root version <<< $(eval spack find --format \"{prefix} {version}\" ${compiler_config[spec]})
+        fi
+    else
+        tsecho "Compiler already registered in spack.yaml" 2
+    fi
 
-            # Does this compiler have a toolchain defined?
-            if [[ -n ${compiler_config[toolchain]} ]]; then
-                tsecho " >> Configuring ${compiler_config[comp_spec]} to use toolchain=${compiler_config[toolchain]}"
-                spack python $NCAR_SPACK_ENV_BUILD/templates/compilers/define.toolchain.py ${compiler_config[toolchain]} ${compiler_config[comp_spec]} ${compiler_config[blas]} ${compiler_config[lapack]}
-            fi
+    # Does this compiler have a toolchain defined?
+    if [[ -n ${compiler_config[toolchain]} ]]; then
+        if ! grep -q "^ *${compiler_config[toolchain]}:$" $SPACK_ENV/spack.yaml; then
+            tsecho " >> Configuring ${compiler_config[comp_spec]} to use toolchain=${compiler_config[toolchain]}"
+            spack python $NCAR_SPACK_ENV_BUILD/templates/compilers/define.toolchain.py ${compiler_config[toolchain]} ${compiler_config[comp_spec]} ${compiler_config[blas]} ${compiler_config[lapack]}
         fi
     fi
 

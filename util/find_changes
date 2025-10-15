@@ -5,7 +5,7 @@
 #   incorporating those changes to this repo.
 #
 #   Author:         Brian Vanderwende
-#   Last Revised:   09:25, 07 Sep 2025
+#   Last Revised:   10:35, 15 Oct 2025
 #
 
 set -e
@@ -69,6 +69,7 @@ elif [[ ! -f $env_path/main.cfg ]]; then
     exit 1
 else
     . $env_path/main.cfg
+    cluster=${cluster:-$NCAR_SPACK_HOST}
 fi
 
 cat << EOF
@@ -78,7 +79,7 @@ cat << EOF
 Comparing changes from active deployment
 
 Path:   $env_path
-Host:   ${cluster:=$NCAR_SPACK_HOST}
+Host:   $cluster
 Type:   $NCAR_SPACK_DEPLOY_TYPE
 
 Output mode:    $output_mode
