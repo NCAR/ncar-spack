@@ -10,7 +10,7 @@
 #           shell script. So we must activate in the script!
 #
 #   Author:         Brian Vanderwende
-#   Last Revised:   21:20, 30 Jul 2025
+#   Last Revised:   10:07, 12 Sep 2025
 #
 
 
@@ -309,14 +309,15 @@ EOF
 exit 1
 fi
 
-tsecho "Checking Spack repo for uncommitted changes"
-spack_test=$(cd $SPACK_ROOT; git status --porcelain | grep var/spack/repos/builtin || true)
+tsecho "Checking Spack package repo for uncommitted changes"
+package_root=$(spack repo list | grep builtin | awk '{print $NF}')
+spack_test=$(cd $package_root; git status --porcelain | grep repos/spack_repo/builtin || true)
 
 if [[ -n $spack_test ]]; then
 if [[ $NCAR_SPACK_DEPLOY_TYPE == production ]]; then
 >&2 cat << EOF
 
-Error:  Uncommitted package changes detected in the deployment's Spack repo.
+Error:  Uncommitted package changes detected in the deployment's builtin repo.
         Publishing a build from an uncommitted package recipe reduces
         reproducibility and is not allowed. The following files must be
         committed:
