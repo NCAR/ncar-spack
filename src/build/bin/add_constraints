@@ -6,7 +6,7 @@
 #   - to the YAML file.
 #
 #   Author:         Brian Vanderwende
-#   Last Revised:   21:44, 25 Aug 2025
+#   Last Revised:   22:54, 15 Oct 2025
 #
 
 function usage {
@@ -135,7 +135,7 @@ function process_entry {
                             pkg_spec=${pkg_name}@$pkg_version
                         fi
 
-                        if [[ -d $pkg_path ]]; then
+                        if [[ -d $pkg_path ]] && [[ ! -L $pkg_path ]]; then
                             if [[ " $known_externals " != *" ${pkg_path%%/} "* ]]; then
                                 if [[ " $my_meta " != *" manual "* ]]; then
                                     auto_result=$(spack external find $ext_flags $pkg_path $pkg_name)
@@ -152,7 +152,7 @@ function process_entry {
                                 modify_compilers $pkg_spec
                                 known_externals="$known_externals ${pkg_path%%/}"
                             fi
-                        elif [[ $pkg_path != *sbang ]]; then
+                        elif [[ $pkg_path != *sbang ]] && [[ ! -e $pkg_path ]]; then
                             tsecho "Skipping external $BCOL${pkg_spec} (not found!)$DCOL"
                         fi
                     done
@@ -166,7 +166,7 @@ function process_entry {
                 auto_result=$(spack external find $ext_flags $stored_entry)
 
                 if [[ $auto_result == *spack.yaml* ]]; then
-                    found_list=$(tail -n +2 <<< $auto_result | xargs)
+                    found_list=$(grep "^[^=-]" <<< $auto_result | xargs)
                     tsecho "Adding externals  $GCOL${found_list}$DCOL"
                     modify_compilers $found_list
                 fi
