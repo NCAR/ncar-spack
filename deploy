@@ -1,13 +1,16 @@
 #!/bin/bash
 #
 #   Author:         Brian Vanderwende
-#   Last Revised:   11:51, 02 Jul 2025
+#   Last Revised:   21:44, 15 Oct 2025
 #
 
 set -e
 export NCAR_SPACK_DEPLOY_TIME=$(date +%y%m%dT%H%M)
 export NCAR_SPACK_DEPLOY_DIR="$( cd "$(dirname "$0")" ; pwd )"
 export NCAR_SPACK_DEPLOY_TYPE=testing
+
+# Source functions from init script, but skip environment activation
+NCAR_SPACK_SETUP_DEPLOY=1 . $NCAR_SPACK_DEPLOY_DIR/src/build/bin/tools/init.sh
 
 function usage {
 cat << EOF
@@ -42,7 +45,8 @@ exit ${1:-0}
 }
 
 function export_gpg_key {
-    echo -e "\nExporting new GPG key to $key_root ..."
+    echo
+    tsecho "Exporting new GPG key to $key_root ..."
     spack gpg export $key_root/${key_user}-key.pub
     spack gpg export --secret $key_root/${key_user}-key.priv
     chmod 640 $key_root/${key_user}-key.*
@@ -80,7 +84,7 @@ while [[ $# -gt 0 ]]; do
             if [[ $my_user == csgteam ]]; then
                 NCAR_SPACK_DEPLOY_TYPE=production
             else
-                >&2 echo "Error: cannot create production deployment as $my_user"
+                tsecho "Error: cannot create production deployment as $my_user"
                 exit 1
             fi
             ;;
@@ -105,12 +109,12 @@ while [[ $# -gt 0 ]]; do
                 tmp_file_path=$(mktemp ${TMPDIR:-/tmp}/ns-cluster.XXXXXXXX)
                 shift
             else
-                >&2 echo "Error: --set-version requires an argument"
+                tsecho "Error: --set-version requires an argument"
                 usage 1
             fi
             ;;
         -*)
-            >&2 echo "Error: unrecognized option $key"
+            tsecho "Error: unrecognized option $key"
             usage 1
             ;;
         *)
@@ -122,10 +126,10 @@ while [[ $# -gt 0 ]]; do
 done
 
 if [[ -z $NCAR_SYS ]]; then
-    >&2 echo "Error: deployment configuration must be specified"
+    tsecho "Error: deployment configuration must be specified"
     usage 1
 elif [[ ! -f $NCAR_SPACK_DEPLOY_DIR/clusters/$NCAR_SYS/main.cfg ]]; then
-    >&2 echo "Error: deployment "$NCAR_SYS" not recognized from available options"
+    tsecho "Error: deployment "$NCAR_SYS" not recognized from available options"
     exit 1
 fi
 
@@ -142,9 +146,9 @@ fi
 
 # Check if Github repo exists
 if [[ -n $NCAR_SPACK_GITHUB ]] && [[ $skip_github != yes ]]; then
-    echo -e "Checking status of $NCAR_SPACK_GITHUB ...\n"
+    tsecho "Checking status of $NCAR_SPACK_GITHUB"
     
-    if ! git ls-remote -h "$NCAR_SPACK_GITHUB"; then
+    if ! git ls-remote -h "$NCAR_SPACK_GITHUB" > /dev/null; then
         exit 1
     fi
 fi
@@ -152,8 +156,7 @@ fi
 # Check key status
 if [[ ! $gpg_opt =~ (auto|new|none) ]]; then
     if [[ ! -f $gpg_opt ]]; then
-        >&2 echo "Error:  No GPG key found at ${gpg_opt}."
-        >&2 echo "        Check input and try again."
+        tsecho "Error: No GPG key found at ${gpg_opt}.\n       Check input and try again."
         exit 1
     else
         gpg_key=$gpg_opt
@@ -174,14 +177,14 @@ spack_clone_path=$NCAR_SPACK_ROOT_DEPLOYMENT/spack
 
 if [[ $NCAR_SPACK_ROOT != $spack_clone_path ]]; then 
     if [[ -d $NCAR_SPACK_ROOT_DEPLOYMENT ]]; then
-        >&2 echo "Error:  Existing deployment found at ${NCAR_SPACK_ROOT_DEPLOYMENT}. Will not"
-        >&2 echo -e "        overwrite. Resolve and rerun this script.\n"
+        tsecho "Error:  Existing deployment found at ${NCAR_SPACK_ROOT_DEPLOYMENT}. Will not\n        overwrite. Resolve and rerun this script."
         exit 1
     fi
 
     # Install latest source from GitHub and checkout specified version
-    echo "Installing Spack into $spack_clone_path ..."
+    tsecho "Installing Spack into ${GCOL}$spack_clone_path${DCOL}"
     git clone -c feature.manyFiles=true git@github.com:NCAR/csg-spack-fork.git $spack_clone_path
+    echo
     cd $spack_clone_path
 
     if [[ -n $custom_branch ]]; then
@@ -189,11 +192,13 @@ if [[ $NCAR_SPACK_ROOT != $spack_clone_path ]]; then
     fi
 
     if [[ -n $NCAR_SPACK_CUSTOM_BRANCH ]]; then
-        echo -e "\nSwitching to custom branch $NCAR_SPACK_CUSTOM_BRANCH ..."
+        tsecho " ==> Switching to custom branch ${PCOL}${NCAR_SPACK_CUSTOM_BRANCH}$DCOL"
         git checkout $NCAR_SPACK_CUSTOM_BRANCH
+        echo
     elif git branch -r | grep -q /$NCAR_SPACK_HOST_VERSION; then
-        echo -e "\nSwitching to existing version branch $NCAR_SPACK_HOST_VERSION ..."
+        tsecho " ==> Switching to existing version branch ${PCOL}${NCAR_SPACK_HOST_VERSION}$DCOL"
         git checkout $NCAR_SPACK_HOST_VERSION
+        echo
     fi
 
     # Check whether Spack should use new spec output
@@ -241,6 +246,32 @@ if [[ $NCAR_SPACK_ROOT != $spack_clone_path ]]; then
     # Activate spack installation
     . $spack_clone_path/share/spack/setup-env.sh
 
+    # Pull builtin package repo
+    if [[ ! $skip_steps =~ " "(repos|all)" " ]]; then
+        tsecho "Pulling builtin package repo into Spack clone"
+        spack repo update builtin
+
+        repo_path=$(spack repo ls | awk '$0 ~ /builtin/ { print $NF }')
+        cd $repo_path
+        git remote set-url origin git@github.com:NCAR/csg-spack-packages.git
+        git remote add upstream git@github.com:spack/spack-packages.git
+        echo
+        
+        if [[ -n $custom_repo ]]; then
+            NCAR_SPACK_PACKAGES_BRANCH=$custom_repo
+        fi
+        
+        if [[ -n $NCAR_SPACK_PACKAGES_BRANCH ]]; then
+            echo
+            tsecho " ==> Switching to packages repo branch ${PCOL}${NCAR_SPACK_PACKAGES_BRANCH}$DCOL"
+            git fetch
+            git checkout origin/$NCAR_SPACK_PACKAGES_BRANCH
+            echo
+        fi
+        
+        cd - > /dev/null
+    fi
+
     # Create trusted GPG key in spack install
     if [[ ! $skip_steps =~ " "(keys|all)" "  ]]; then
         if [[ $gpg_opt == new ]]; then
@@ -250,7 +281,7 @@ if [[ $NCAR_SPACK_ROOT != $spack_clone_path ]]; then
                 key_person="$(getent passwd $key_user | awk -F[,:] '{ print $5 }')"
             fi
 
-            echo -e "\nCreating trusted GPG key for build cache creation ..."
+            tsecho "Creating trusted GPG key for build cache creation"
             spack gpg create "$key_person" "<$key_user@ucar.edu>"
 
             if [[ -f $key_root/${key_user}-key.priv ]]; then
@@ -268,30 +299,14 @@ if [[ $NCAR_SPACK_ROOT != $spack_clone_path ]]; then
                 export_gpg_key
             fi
         elif [[ -n $gpg_key ]]; then
-            echo -e "\nTrusting existing GPG key ..."
+            tsecho "Trusting existing GPG key"
             spack gpg trust $gpg_key
+            echo
         fi
     fi
 
-    # Pull builtin package repo
-    if [[ ! $skip_steps =~ " "(repos|all)" " ]]; then
-        echo "Pulling builtin package repo into Spack clone ..."
-        spack repo update builtin
-        
-        if [[ -n $custom_repo ]]; then
-            NCAR_SPACK_PACKAGES_BRANCH=$custom_repo
-        fi
-        
-        if [[ -n $NCAR_SPACK_PACKAGES_BRANCH ]]; then
-            echo -e "\nSwitching to packages repo branch $NCAR_SPACK_PACKAGES_BRANCH ..."
-            repo_path=$(spack repo ls | awk '$0 ~ /builtin/ { print $NF }')
-            cd $repo_path
-            git fetch
-            git checkout origin/$NCAR_SPACK_PACKAGES_BRANCH
-            cd - > /dev/null
-        fi
-    fi
-
+    tsecho "Activating new spack installation"
+    
     # Make sure environment is clean
     cd $NCAR_SPACK_DEPLOY_DIR
     $spack_clone_path/bin/clean_bash $0 "${user_args[@]}"
@@ -314,7 +329,7 @@ EOF
 exit 1
 fi
 
-echo -e "\nCreating env at $NCAR_SPACK_ENV_BUILD ..."
+tsecho "Creating env at ${GCOL}${NCAR_SPACK_ENV_BUILD}$DCOL"
 
 # All spack needs for an env is a directory with spack.yaml
 mkdir -p $NCAR_SPACK_ENV_BUILD/logs
@@ -367,6 +382,7 @@ spack env status
 spack config add 'concretizer:unify:false'
 
 # Set Spack-version specific bootstrap path to avoid conflicts
+tsecho "Set bookstrap location to ${GCOL}${NCAR_SPACK_ROOT_BOOTSTRAP}$DCOL"
 spack bootstrap root $NCAR_SPACK_ROOT_BOOTSTRAP
 
 # Add package constraints from initial config file
@@ -374,7 +390,9 @@ if [[ -f clusters/$NCAR_SYS/constraints.cfg ]]; then
     cp clusters/$NCAR_SYS/constraints.cfg $NCAR_SPACK_ENV_BUILD
     
     if [[ ! $skip_steps =~ " "(constraints|all)" "  ]]; then
+        tsecho "Setting package constraints"
         $NCAR_SPACK_ENV_BUILD/bin/add_constraints
+        echo
     fi
 fi
 
@@ -396,6 +414,7 @@ if [[ ! $skip_steps =~ " "(mirrors|all)" "  ]]; then
         mirror=${!mirror_variable}
 
         if [[ -n $mirror ]]; then
+            tsecho "Adding mirror ${GCOL}${mirror}$DCOL"
             if [[ $mirror == /* ]] && [[ ! -d $mirror ]]; then
                 if [[ $(sed 's/production/GLOBAL/;s/testing/LOCAL/' <<< $NCAR_SPACK_DEPLOY_TYPE) == $mtype ]]; then
                     spack mirror create -d $mirror -a
@@ -419,7 +438,9 @@ if [[ ! $skip_steps =~ " "(mirrors|all)" "  ]]; then
     done
 
     # Install any known keys from the cache
+    tsecho "Adding trusted keys from buildcaches"
     spack buildcache keys --install --trust
+    echo
 fi
 
 # Add custom repos
@@ -444,28 +465,31 @@ fi
 #
 
 if [[ ! $skip_steps =~ " "(packages|all)" "  ]]; then
-    echo -e "Building packages in build environment ...\n"
+    tsecho "Building packages in build environment"
+    echo
+
     # Build packages from source in build environment
     cd $NCAR_SPACK_ENV_BUILD
     bin/install_packages
 
     # Run script to populate the binary build_cache
     if [[ $NCAR_SPACK_PAD_LENGTH != 0 ]]; then
-        echo -e "Populating build cache with package binaries ...\n"
+        tsecho "Populating build cache with package binaries"
+        echo
         bin/populate_build_cache
     else
-        echo "Skipping build cache due to pad length = 0 ..."
+        tsecho "Skipping build cache due to pad length = 0"
     fi
 
     # Create modules in build environment
     if [[ -n $NCAR_SPACK_ROOT_MODULES ]]; then
-        echo "Generating modules in build environment ..."
+        tsecho "Generating modules in build environment"
         spack module lmod refresh -y
     fi
 
     # Some clusters (e.g., Cray) need to run extra commands to prep environment
     if [[ -f $NCAR_SPACK_ENV_BUILD/bin/postprocess ]]; then
-        echo "Running postprocessing on the build environment ..."
+        tsecho "Running postprocessing on the build environment"
         $NCAR_SPACK_ENV_BUILD/bin/postprocess
     fi
 fi

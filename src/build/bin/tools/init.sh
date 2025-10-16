@@ -32,6 +32,16 @@ function update_log_pointers {
 
 export -f tsecho log_cmd update_log_pointers
 
+# Pretty colors and other formatting
+export GCOL=$(printf "\033[1;32m") BCOL=$(printf "\033[1;34m") PCOL=$(printf "\033[1;35m")
+export RCOL=$(printf "\033[1;31m") FCOL=$(printf "\033[0;37m") DCOL=$(printf "\033[0m") SEP=$'\n'
+export COLOR_LIST="GCOL BCOL PCOL RCOL FCOL DCOL"
+
+# If we are running the deploy script, stop here
+if [[ -n $NCAR_SPACK_SETUP_DEPLOY ]]; then
+    return
+fi
+
 my_name=$(basename "$0")
 . $my_dir/../main.cfg
 
@@ -88,11 +98,6 @@ elif [[ -z $SPACK_ENV ]]; then
     export my_host=$(hostname)
     export my_env_type=${NCAR_SPACK_ENV_TYPE:-build}
     export start_time=${NCAR_SPACK_DEPLOY_TIME:-$(date +%y%m%dT%H%M)}
-
-    # Pretty colors and other formatting
-    export GCOL=$(printf "\033[1;32m") BCOL=$(printf "\033[1;34m") PCOL=$(printf "\033[1;35m")
-    export RCOL=$(printf "\033[1;31m") FCOL=$(printf "\033[0;37m") DCOL=$(printf "\033[0m") SEP=$'\n'
-    export COLOR_LIST="GCOL BCOL PCOL RCOL FCOL DCOL"
 
     tsecho "Activating Spack $my_env_type environment" ${quiet_mode:+9999}
     
