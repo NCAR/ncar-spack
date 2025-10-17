@@ -6,7 +6,7 @@
 #   - to the YAML file.
 #
 #   Author:         Brian Vanderwende
-#   Last Revised:   22:54, 15 Oct 2025
+#   Last Revised:   13:59, 16 Oct 2025
 #
 
 function usage {
@@ -76,21 +76,23 @@ function manual_external {
     fi
 }
 
-function modify_compilers {
+function add_compilers {
+    # Some compilers are provided in a subdirectory of the package root, and thus
+    # won't be added if we add the root as an external. We can add these compilers
+    # via a second step
     if [[ " $my_meta " == *" compiler "* ]]; then
         for spec in $@; do
-            if [[ " $my_meta " == *" gccbase "* ]]; then
-                if [[ -z $gcc_root ]]; then
-                    gcc_root=$(spack location -i $NCAR_SPACK_CORE_GCC)
+            read pkg_name version <<< ${spec/@/ }
+
+            if [[ -f $SPACK_ENV/templates/compilers/define.${pkg_name} ]]; then
+                if [[ -n $pkg_path ]]; then
+                    root=$pkg_path
+                else
+                    root=$(spack location -i $spec)
                 fi
 
-                tsecho " >> Adding environment modifications (type=gccbase)"
-                spack python $SPACK_ENV/templates/compilers/modify.gccbase.py "$spec" $gcc_root
-            fi
-
-            if [[ -f $SPACK_ENV/templates/compilers/modify.${pkg_name}.py ]]; then
-                tsecho " >> Adding environment modifications (type=${pkg_name})"
-                spack python $SPACK_ENV/templates/compilers/modify.${pkg_name}.py "$spec"
+                tsecho " >> Adding compiler definitions (subdirectory requirement)"
+                . $SPACK_ENV/templates/compilers/define.${pkg_name}
             fi
         done
     fi
@@ -149,7 +151,7 @@ function process_entry {
                                     manual_external
                                 fi
 
-                                modify_compilers $pkg_spec
+                                add_compilers $pkg_spec
                                 known_externals="$known_externals ${pkg_path%%/}"
                             fi
                         elif [[ $pkg_path != *sbang ]] && [[ ! -e $pkg_path ]]; then
@@ -161,6 +163,8 @@ function process_entry {
                     if [[ " $my_meta " != *" floating "* ]]; then
                         manual_require "$core" $pkg_name
                     fi
+
+                    unset pkg_spec pkg_name pkg_version pkg_path
                 fi
             else
                 auto_result=$(spack external find $ext_flags $stored_entry)
@@ -168,7 +172,7 @@ function process_entry {
                 if [[ $auto_result == *spack.yaml* ]]; then
                     found_list=$(grep "^[^=-]" <<< $auto_result | xargs)
                     tsecho "Adding externals  $GCOL${found_list}$DCOL"
-                    modify_compilers $found_list
+                    add_compilers $found_list
                 fi
 
                 # Externals should also "use" the core compiler unless marked "floating"

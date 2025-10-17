@@ -47,51 +47,51 @@ spack:
       - x86_64_v3
       prefer:
       - +pic
-      - spec: ^hdf5 %gcc@14.3.0
-        when: '%gcc@14.3.0 ^hdf5'
-      - spec: ^udunits %gcc@14.3.0
-        when: '%gcc@14.3.0 ^udunits'
-      - spec: ^openblas %gcc@14.3.0
-        when: '%gcc@14.3.0 ^openblas'
+      - spec: ^hdf5 %gcc@12.5.0
+        when: '%gcc@12.5.0 ^hdf5'
+      - spec: ^udunits %gcc@12.5.0
+        when: '%gcc@12.5.0 ^udunits'
+      - spec: ^openblas %gcc@12.5.0
+        when: '%gcc@12.5.0 ^openblas'
       require:
       - spec: cuda_arch=80
         when: ^cuda
     antlr:
       prefer:
-      - '%gcc@14.3.0'
+      - '%gcc@12.5.0'
     aocc:
       require:
       - +license-agreed
     apptainer:
       prefer:
-      - '%gcc@14.3.0'
+      - '%gcc@12.5.0'
     arpack-ng:
       variants:
       - ~mpi
     arrow:
       prefer:
-      - '%gcc@14.3.0'
+      - '%gcc@12.5.0'
     assimp:
       prefer:
-      - '%gcc@14.3.0'
+      - '%gcc@12.5.0'
     automake:
       prefer:
-      - '%gcc@14.3.0'
+      - '%gcc@12.5.0'
     bash:
       prefer:
-      - '%gcc@14.3.0'
+      - '%gcc@12.5.0'
     berkeley-db:
       prefer:
-      - '%gcc@14.3.0'
+      - '%gcc@12.5.0'
     bison:
       prefer:
-      - '%gcc@14.3.0'
+      - '%gcc@12.5.0'
     bzip2:
       prefer:
-      - '%gcc@14.3.0'
+      - '%gcc@12.5.0'
     c-blosc:
       prefer:
-      - '%gcc@14.3.0'
+      - '%gcc@12.5.0'
     cairo:
       variants:
       - +X
@@ -103,25 +103,25 @@ spack:
       - +svg
       - +zlib
       prefer:
-      - '%gcc@14.3.0'
+      - '%gcc@12.5.0'
     cdo:
       variants:
       - +curl
       prefer:
-      - '%gcc@14.3.0'
-      - ^udunits %gcc@14.3.0
+      - '%gcc@12.5.0'
+      - ^udunits %gcc@12.5.0
     charliecloud:
       prefer:
-      - '%gcc@14.3.0'
+      - '%gcc@12.5.0'
     cmake:
       variants:
       - +ownlibs
       prefer:
-      - '%gcc@14.3.0'
+      - '%gcc@12.5.0'
     cmor:
       prefer:
-      - '%gcc@14.3.0'
-      - ^udunits %gcc@14.3.0
+      - '%gcc@12.5.0'
+      - ^udunits %gcc@12.5.0
     cp2k:
       variants:
       - +elpa
@@ -206,7 +206,7 @@ spack:
       - +nghttp2
       prefer:
       - tls=openssl
-      - '%gcc@14.3.0'
+      - '%gcc@12.5.0'
     darshan-runtime:
       variants:
       - +parallel-netcdf
@@ -221,13 +221,13 @@ spack:
       variants:
       - +bzip2
       prefer:
-      - '%gcc@14.3.0'
+      - '%gcc@12.5.0'
     dbus:
       prefer:
-      - '%gcc@14.3.0'
+      - '%gcc@12.5.0'
     diffutils:
       prefer:
-      - '%gcc@14.3.0'
+      - '%gcc@12.5.0'
     doxygen:
       variants:
       - +graphviz
@@ -244,10 +244,10 @@ spack:
       - +pic
       - +ui
       prefer:
-      - '%gcc@14.3.0'
+      - '%gcc@12.5.0'
     eigen:
       prefer:
-      - '%gcc@14.3.0'
+      - '%gcc@12.5.0'
     emacs:
       variants:
       - +X
@@ -255,7 +255,7 @@ spack:
       - +treesitter
       prefer:
       - gui=x11
-      - '%gcc@14.3.0'
+      - '%gcc@12.5.0'
     esmf:
       variants:
       - ~mpi
@@ -269,7 +269,7 @@ spack:
         - ~pnetcdf ~mpi
     expat:
       prefer:
-      - '%gcc@14.3.0'
+      - '%gcc@12.5.0'
     ffmpeg:
       variants:
       - +X
@@ -294,21 +294,21 @@ spack:
       - ~mpi
     findutils:
       prefer:
-      - '%gcc@14.3.0'
+      - '%gcc@12.5.0'
     flatbuffers:
       prefer:
-      - '%gcc@14.3.0'
+      - '%gcc@12.5.0'
     flex:
       prefer:
-      - '%gcc@14.3.0'
+      - '%gcc@12.5.0'
     gawk:
       prefer:
-      - '%gcc@14.3.0'
+      - '%gcc@12.5.0'
     gcc:
       prefer:
       - spec: '%gcc@7.5.0'
         when: '@:12'
-      - spec: '%gcc@14.3.0'
+      - spec: '%gcc@12.5.0'
         when: '@13:'
       variants:
       - +piclibs
@@ -354,13 +354,13 @@ spack:
       - ~debuginfod
       - ~python
       prefer:
-      - '%gcc@14.3.0'
+      - '%gcc@12.5.0'
     gdbm:
       prefer:
-      - '%gcc@14.3.0'
+      - '%gcc@12.5.0'
     gettext:
       prefer:
-      - '%gcc@14.3.0'
+      - '%gcc@12.5.0'
       - spec: +libxml2
         when: '%gcc@8:'
     git:
@@ -368,7 +368,7 @@ spack:
       - +svn
       - +tcltk
       prefer:
-      - '%gcc@14.3.0'
+      - '%gcc@12.5.0'
     glx:
       require:
       - mesa
@@ -379,10 +379,10 @@ spack:
       # This may help ioapi build
       - '@:4.2'
       prefer:
-      - '%gcc@14.3.0'
+      - '%gcc@12.5.0'
     gmp:
       prefer:
-      - '%gcc@14.3.0'
+      - '%gcc@12.5.0'
     gmt:
       variants:
       - +ffmpeg
@@ -397,23 +397,23 @@ spack:
       - spec: '^ffmpeg@7:'
         when: +ffmpeg
       prefer:
-      - '%gcc@14.3.0'
+      - '%gcc@12.5.0'
     gnuplot:
       variants:
       - +X
       - +wx
       prefer:
       - +qt
-      - '%gcc@14.3.0'
+      - '%gcc@12.5.0'
     gnutls:
       prefer:
-      - '%gcc@14.3.0'
+      - '%gcc@12.5.0'
     go:
       prefer:
-      - '%gcc@14.3.0'
+      - '%gcc@12.5.0'
     googletest:
       prefer:
-      - '%gcc@14.3.0'
+      - '%gcc@12.5.0'
     gptl:
       variants:
       - +nestedomp
@@ -428,19 +428,19 @@ spack:
       - +hdf4
     graphite2:
       prefer:
-      - '%gcc@14.3.0'
+      - '%gcc@12.5.0'
     grep:
       prefer:
-      - '%gcc@14.3.0'
+      - '%gcc@12.5.0'
     grib-util:
       prefer:
-      - '%gcc@14.3.0'
+      - '%gcc@12.5.0'
     gtkplus:
       prefer:
-      - '%gcc@14.3.0'
+      - '%gcc@12.5.0'
     gzip:
       prefer:
-      - '%gcc@14.3.0'
+      - '%gcc@12.5.0'
     h5z-ftp:
       require:
       - ^hdf5~mpi
@@ -448,7 +448,7 @@ spack:
       variants:
       - +graphite2
       prefer:
-      - '%gcc@14.3.0'
+      - '%gcc@12.5.0'
     hdf:
       variants:
       - +fortran
@@ -472,10 +472,10 @@ spack:
       - ~mpi
     heaptrack:
       prefer:
-      - '%gcc@14.3.0'
+      - '%gcc@12.5.0'
     help2man:
       prefer:
-      - '%gcc@14.3.0'
+      - '%gcc@12.5.0'
     hwloc:
       variants:
       - +cuda
@@ -485,12 +485,12 @@ spack:
       - +ghostscript
     intel-oneapi-advisor:
       prefer:
-      - '%gcc@14.3.0'
+      - '%gcc@12.5.0'
     intel-oneapi-compilers:
       variants:
       - +nvidia
       prefer:
-      - '%gcc@14.3.0'
+      - '%gcc@12.5.0'
     intel-oneapi-mkl:
       require:
       - spec: +gfortran threads=openmp
@@ -501,10 +501,10 @@ spack:
       - +generic-names
     intel-oneapi-runtime:
       prefer:
-      - ^gcc-runtime@14.3.0
+      - ^gcc-runtime@12.5.0
     intel-oneapi-vtune:
       prefer:
-      - '%gcc@14.3.0'
+      - '%gcc@12.5.0'
     ip:
       prefer:
       - '%lapack=openblas'
@@ -514,13 +514,13 @@ spack:
     jasper:
       prefer:
       - '@:2'
-      - '%gcc@14.3.0'
+      - '%gcc@12.5.0'
     jq:
       prefer:
-      - '%gcc@14.3.0'
+      - '%gcc@12.5.0'
     json-c:
       prefer:
-      - '%gcc@14.3.0'
+      - '%gcc@12.5.0'
     kokkos:
       variants:
       - +examples
@@ -534,107 +534,107 @@ spack:
         when: '@:4.2.01 +cuda'
     krb5:
       prefer:
-      - '%gcc@14.3.0'
+      - '%gcc@12.5.0'
     lcov:
       prefer:
-      - '%gcc@14.3.0'
+      - '%gcc@12.5.0'
     lerc:
       prefer:
-      - '%gcc@14.3.0'
+      - '%gcc@12.5.0'
     libarchive:
       require:
       - compression=bz2lib,lz4,lzma,lzo2,zlib,zstd xar=expat
     libcap:
       prefer:
-      - '%gcc@14.3.0'
+      - '%gcc@12.5.0'
     libcerf:
       prefer:
-      - '%gcc@14.3.0'
+      - '%gcc@12.5.0'
     libcxi:
       variants:
       - +cuda
     libdeflate:
       prefer:
-      - '%gcc@14.3.0'
+      - '%gcc@12.5.0'
     libepoxy:
       prefer:
-      - '%gcc@14.3.0'
+      - '%gcc@12.5.0'
     libevent:
       prefer:
-      - '%gcc@14.3.0'
+      - '%gcc@12.5.0'
     libfabric:
       variants:
       - +cuda
       - +uring
       - fabrics=sockets,tcp,udp,cxi,rxm,rxd,mrail,shm,lnx
       prefer:
-      - spec: '%gcc@14.3.0'
+      - spec: '%gcc@12.5.0'
         when: '@2:'
       - spec: '%gcc@7.5.0'
         when: '@1'
     libffi:
       prefer:
-      - '%gcc@14.3.0'
+      - '%gcc@12.5.0'
     libfuse:
       prefer:
-      - '%gcc@14.3.0'
+      - '%gcc@12.5.0'
     libgd:
       prefer:
-      - '%gcc@14.3.0'
+      - '%gcc@12.5.0'
     libgeotiff:
       require:
       # Doesn't build without proj as a dependency for me
       - +proj
       prefer:
-      - '%gcc@14.3.0'
+      - '%gcc@12.5.0'
     libibn2:
       prefer:
-      - '%gcc@14.3.0'
+      - '%gcc@12.5.0'
     libiconv:
       prefer:
-      - '%gcc@14.3.0'
+      - '%gcc@12.5.0'
     libjpeg:
       prefer:
-      - '%gcc@14.3.0'
+      - '%gcc@12.5.0'
     libjpeg-turbo:
       prefer:
-      - '%gcc@14.3.0'
+      - '%gcc@12.5.0'
     libllvm:
       conflict:
       - llvm-amdgpu
     libpng:
       prefer:
-      - '%gcc@14.3.0'
+      - '%gcc@12.5.0'
     librsvg:
       prefer:
-      - '%gcc@14.3.0'
+      - '%gcc@12.5.0'
     libseccomp:
       prefer:
-      - '%gcc@14.3.0'
+      - '%gcc@12.5.0'
     libsigsegv:
       prefer:
-      - '%gcc@14.3.0'
+      - '%gcc@12.5.0'
     libslirp:
       prefer:
-      - '%gcc@14.3.0'
+      - '%gcc@12.5.0'
     libssh2:
       prefer:
-      - '%gcc@14.3.0'
+      - '%gcc@12.5.0'
     libszip:
       prefer:
-      - '%gcc@14.3.0'
+      - '%gcc@12.5.0'
     libtiff:
       prefer:
-      - '%gcc@14.3.0'
+      - '%gcc@12.5.0'
     libtirpc:
       prefer:
-      - '%gcc@14.3.0'
+      - '%gcc@12.5.0'
     libtool:
       prefer:
-      - '%gcc@14.3.0'
+      - '%gcc@12.5.0'
     libtree:
       prefer:
-      - '%gcc@14.3.0'
+      - '%gcc@12.5.0'
     libunwind:
       variants:
       - +cxx_exceptions
@@ -644,43 +644,43 @@ spack:
       - components=setjmp,ptrace,coredump
     libuv:
       prefer:
-      - '%gcc@14.3.0'
+      - '%gcc@12.5.0'
     libwebp:
       prefer:
-      - '%gcc@14.3.0'
+      - '%gcc@12.5.0'
     libx11:
       prefer:
-      - '%gcc@14.3.0'
+      - '%gcc@12.5.0'
     libxcrypt:
       prefer:
-      - '%gcc@14.3.0'
+      - '%gcc@12.5.0'
     libxft:
       prefer:
-      - '%gcc@14.3.0'
+      - '%gcc@12.5.0'
     libyaml:
       prefer:
-      - '%gcc@14.3.0'
+      - '%gcc@12.5.0'
     linaro-forge:
       require:
       - +accept-eula
     lmod:
       prefer:
-      - '%gcc@14.3.0'
+      - '%gcc@12.5.0'
     lua:
       prefer:
-      - '%gcc@14.3.0'
+      - '%gcc@12.5.0'
     lz4:
       prefer:
-      - '%gcc@14.3.0'
+      - '%gcc@12.5.0'
     lzo:
       prefer:
-      - '%gcc@14.3.0'
+      - '%gcc@12.5.0'
     m4:
       prefer:
-      - '%gcc@14.3.0'
+      - '%gcc@12.5.0'
     madis:
       prefer:
-      - '%gcc@14.3.0'
+      - '%gcc@12.5.0'
     mesa:
       require:
       - +llvm
@@ -702,13 +702,13 @@ spack:
       - +series_analysis
     motif:
       prefer:
-      - '%gcc@14.3.0'
+      - '%gcc@12.5.0'
     mpc:
       prefer:
-      - '%gcc@14.3.0'
+      - '%gcc@12.5.0'
     mpfr:
       prefer:
-      - '%gcc@14.3.0'
+      - '%gcc@12.5.0'
     mpi:
       prefer:
       - cray-mpich
@@ -728,7 +728,7 @@ spack:
       - +xattr
     muparser:
       prefer:
-      - '%gcc@14.3.0'
+      - '%gcc@12.5.0'
     musica:
       variants:
       - ~tuvx
@@ -744,13 +744,13 @@ spack:
         when: '%nvhpc'
     nano:
       prefer:
-      - '%gcc@14.3.0'
+      - '%gcc@12.5.0'
     nasm:
       prefer:
-      - '%gcc@14.3.0'
+      - '%gcc@12.5.0'
     nccmp:
       prefer:
-      - '%gcc@14.3.0'
+      - '%gcc@12.5.0'
     ncl:
       variants:
       - +eemd
@@ -761,23 +761,23 @@ spack:
       - +hdf4
     nco:
       prefer:
-      - '%gcc@14.3.0'
-      - ^udunits %gcc@14.3.0
+      - '%gcc@12.5.0'
+      - ^udunits %gcc@12.5.0
     ncurses:
       prefer:
-      - '%gcc@14.3.0'
+      - '%gcc@12.5.0'
     ncview:
       prefer:
-      - '%gcc@14.3.0'
-      - ^udunits %gcc@14.3.0
+      - '%gcc@12.5.0'
+      - ^udunits %gcc@12.5.0
     ncvis:
       require:
       - ^netcdf-c build_system=autotools
       prefer:
-      - '%gcc@14.3.0'
+      - '%gcc@12.5.0'
     neovim:
       prefer:
-      - '%gcc@14.3.0'
+      - '%gcc@12.5.0'
     netcdf:
       variants:
       - +dap
@@ -792,17 +792,17 @@ spack:
       - build_system=cmake
     nghttp2:
       prefer:
-      - '%gcc@14.3.0'
+      - '%gcc@12.5.0'
     ninja:
       prefer:
-      - '%gcc@14.3.0'
+      - '%gcc@12.5.0'
     nvhpc:
       require:
       - +blas
       - +lapack
       - ~mpi
       prefer:
-      - '%gcc@14.3.0'
+      - '%gcc@12.5.0'
     octave:
       variants:
       - +arpack
@@ -830,7 +830,7 @@ spack:
       - threads=openmp
     openjpeg:
       prefer:
-      - '%gcc@14.3.0'
+      - '%gcc@12.5.0'
     openmpi:
       require:
       - fabrics=cma,ofi
@@ -849,7 +849,7 @@ spack:
       buildable: false
     openssh:
       prefer:
-      - '%gcc@14.3.0'
+      - '%gcc@12.5.0'
     openssl:
       require:
       - certs=system
@@ -866,7 +866,7 @@ spack:
       variants:
       - +X
       prefer:
-      - '%gcc@14.3.0'
+      - '%gcc@12.5.0'
     parallel-netcdf:
       variants:
       - +examples
@@ -887,25 +887,25 @@ spack:
       - +pnetcdf
     pcre:
       prefer:
-      - '%gcc@14.3.0'
+      - '%gcc@12.5.0'
     pcre2:
       prefer:
-      - '%gcc@14.3.0'
+      - '%gcc@12.5.0'
     peak-memusage:
       prefer:
-      - '%gcc@14.3.0'
+      - '%gcc@12.5.0'
     perl:
       prefer:
-      - '%gcc@14.3.0'
+      - '%gcc@12.5.0'
     pkgconfig:
       prefer:
       - pkg-config
     podman:
       prefer:
-      - '%gcc@14.3.0'
+      - '%gcc@12.5.0'
     py-cython:
       prefer:
-      - '%gcc@14.3.0'
+      - '%gcc@12.5.0'
     py-netcdf4:
       variants:
       - ~mpi
@@ -915,11 +915,11 @@ spack:
     python:
       prefer:
       - spec: '@3.11'
-      - '%gcc@14.3.0'
+      - '%gcc@12.5.0'
       - +ssl
     qhull:
       prefer:
-      - '%gcc@14.3.0'
+      - '%gcc@12.5.0'
     qt:
       variants:
       - +dbus
@@ -931,47 +931,47 @@ spack:
       - +ssl
       - '@5.14.2'
       prefer:
-      - '%gcc@14.3.0'
+      - '%gcc@12.5.0'
     rapidjson:
       prefer:
-      - '%gcc@14.3.0'
+      - '%gcc@12.5.0'
     readline:
       prefer:
-      - '%gcc@14.3.0'
+      - '%gcc@12.5.0'
     ripgrep:
       prefer:
-      - '%gcc@14.3.0'
+      - '%gcc@12.5.0'
     ruby:
       prefer:
-      - '%gcc@14.3.0'
+      - '%gcc@12.5.0'
     rust:
       prefer:
-      - '%gcc@14.3.0'
+      - '%gcc@12.5.0'
     sed:
       prefer:
-      - '%gcc@14.3.0'
+      - '%gcc@12.5.0'
     singularityce:
       variants:
       - ~suid
     slirp4netns:
       prefer:
-      - '%gcc@14.3.0'
+      - '%gcc@12.5.0'
     snappy:
       require:
       # Required for arrow, which is needed for parquet support in GDAL
       - ~shared
     source-highlight:
       prefer:
-      - '%gcc@14.3.0'
+      - '%gcc@12.5.0'
     sqlite:
       prefer:
-      - '%gcc@14.3.0'
+      - '%gcc@12.5.0'
     squashfs:
       prefer:
-      - '%gcc@14.3.0'
+      - '%gcc@12.5.0'
     squashfuse:
       prefer:
-      - '%gcc@14.3.0'
+      - '%gcc@12.5.0'
     superlu-dist:
       variants:
       - +openmp
@@ -986,22 +986,22 @@ spack:
       - intel-oneapi-tbb
     tcl:
       prefer:
-      - '%gcc@14.3.0'
+      - '%gcc@12.5.0'
     texinfo:
       prefer:
-      - '%gcc@14.3.0'
+      - '%gcc@12.5.0'
     tk:
       prefer:
-      - '%gcc@14.3.0'
+      - '%gcc@12.5.0'
     tmux:
       prefer:
-      - '%gcc@14.3.0'
+      - '%gcc@12.5.0'
     tree:
       prefer:
-      - '%gcc@14.3.0'
+      - '%gcc@12.5.0'
     unzip:
       prefer:
-      - '%gcc@14.3.0'
+      - '%gcc@12.5.0'
     vim:
       variants:
       - +cscope
@@ -1012,7 +1012,7 @@ spack:
       - +x
       - features=huge
       prefer:
-      - '%gcc@14.3.0'
+      - '%gcc@12.5.0'
       require:
       - +gui
       - +gtk
@@ -1024,7 +1024,7 @@ spack:
       - +udf
       - ~netcdf3
       prefer:
-      - '%gcc@14.3.0'
+      - '%gcc@12.5.0'
     wxwidgets:
       variants:
       - +opengl
@@ -1033,23 +1033,23 @@ spack:
       # Wont build without this, actually!
       - +motif
       prefer:
-      - '%gcc@14.3.0'
+      - '%gcc@12.5.0'
     xsimd:
       prefer:
-      - '%gcc@14.3.0'
+      - '%gcc@12.5.0'
     xxdiff:
       prefer:
-      - '%gcc@14.3.0'
+      - '%gcc@12.5.0'
     xz:
       prefer:
-      - '%gcc@14.3.0'
+      - '%gcc@12.5.0'
     zfp:
       variants:
       - +tight-error
       - round=first
     zlib:
       prefer:
-      - '%gcc@14.3.0'
+      - '%gcc@12.5.0'
     zlib-api:
       prefer:
       - zlib-ng
@@ -1059,12 +1059,12 @@ spack:
       - +new_strategies
       - +shared
       prefer:
-      - '%gcc@14.3.0'
+      - '%gcc@12.5.0'
     zstd:
       variants:
       - +programs
       prefer:
-      - '%gcc@14.3.0'
+      - '%gcc@12.5.0'
       - compression=lz4,lzma,zlib
   view:
     baseenv:
@@ -1129,7 +1129,7 @@ spack:
             prepend_path:
               PATH: %BASEROOT%/wrappers/{name}/{version}/{hash:4}/bin
         core_compilers:
-        - gcc@14.3.0
+        - gcc@12.5.0
         core_specs:
         - cce
         - intel-oneapi-mkl
@@ -1251,7 +1251,7 @@ spack:
         hierarchy:
         - mpi
         include:
-        - cuda %gcc@14.3.0
+        - cuda %gcc@12.5.0
         intel-oneapi-advisor:
           filter:
             exclude_env_vars:
