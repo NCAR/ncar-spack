@@ -4,18 +4,18 @@ spack:
     install_tree:
       root: '%INSTALLROOT%'
       projections:
-        c: '{name}/{version}/{hash:4}'
-        netcdf-c^mpi: netcdf/{version}/packages/{name}/{version}/{^mpi.name}/{^mpi.version}/{compiler.name}/{compiler.version}/{hash:4}
-        netcdf-c: netcdf/{version}/packages/{name}/{version}/{compiler.name}/{compiler.version}/{hash:4}
-        netcdf-cxx4^mpi: netcdf/{^netcdf-c.version}/packages/{name}/{version}/{^mpi.name}/{^mpi.version}/{compiler.name}/{compiler.version}/{hash:4}
-        netcdf-cxx4: netcdf/{^netcdf-c.version}/packages/{name}/{version}/{compiler.name}/{compiler.version}/{hash:4}
-        netcdf-fortran^mpi: netcdf/{^netcdf-c.version}/packages/{name}/{version}/{^mpi.name}/{^mpi.version}/{compiler.name}/{compiler.version}/{hash:4}
-        netcdf-fortran: netcdf/{^netcdf-c.version}/packages/{name}/{version}/{compiler.name}/{compiler.version}/{hash:4}
-        ^mpi: '{name}/{version}/{^mpi.name}/{^mpi.version}/{compiler.name}/{compiler.version}/{hash:4}'
         ^c: '{name}/{version}/{compiler.name}/{compiler.version}/{hash:4}'
         ^cxx: '{name}/{version}/{compiler.name}/{compiler.version}/{hash:4}'
         ^fortran: '{name}/{version}/{compiler.name}/{compiler.version}/{hash:4}'
+        ^mpi: '{name}/{version}/{^mpi.name}/{^mpi.version}/{compiler.name}/{compiler.version}/{hash:4}'
         all: '{name}/{version}/{hash:4}'
+        c: '{name}/{version}/{hash:4}'
+        netcdf-c: netcdf/{version}/packages/{name}/{version}/{compiler.name}/{compiler.version}/{hash:4}
+        netcdf-c^mpi: netcdf/{version}/packages/{name}/{version}/{^mpi.name}/{^mpi.version}/{compiler.name}/{compiler.version}/{hash:4}
+        netcdf-cxx4: netcdf/{^netcdf-c.version}/packages/{name}/{version}/{compiler.name}/{compiler.version}/{hash:4}
+        netcdf-cxx4^mpi: netcdf/{^netcdf-c.version}/packages/{name}/{version}/{^mpi.name}/{^mpi.version}/{compiler.name}/{compiler.version}/{hash:4}
+        netcdf-fortran: netcdf/{^netcdf-c.version}/packages/{name}/{version}/{compiler.name}/{compiler.version}/{hash:4}
+        netcdf-fortran^mpi: netcdf/{^netcdf-c.version}/packages/{name}/{version}/{^mpi.name}/{^mpi.version}/{compiler.name}/{compiler.version}/{hash:4}
       padded_length: 128
     build_jobs: 4
     test_stage: '%TMPROOT%/$user/temp/spack/%DEPLOYMENT%/tests'
@@ -248,6 +248,9 @@ spack:
     eigen:
       prefer:
       - '%gcc@12.5.0'
+    elfutils:
+      prefer:
+      - '%gcc@12.5.0'
     emacs:
       variants:
       - +X
@@ -299,6 +302,9 @@ spack:
       prefer:
       - '%gcc@12.5.0'
     flex:
+      prefer:
+      - '%gcc@12.5.0'
+    fmt:
       prefer:
       - '%gcc@12.5.0'
     gawk:
@@ -480,6 +486,8 @@ spack:
       variants:
       - +cuda
       - +nvml
+      prefer:
+      - '%gcc@12.5.0'
     imagemagick:
       variants:
       - +ghostscript
@@ -1037,6 +1045,9 @@ spack:
     xsimd:
       prefer:
       - '%gcc@12.5.0'
+    xxd-standalone:
+      prefer:
+      - '%gcc@12.5.0'
     xxdiff:
       prefer:
       - '%gcc@12.5.0'
@@ -1132,40 +1143,41 @@ spack:
         - gcc@12.5.0
         core_specs:
         - cce
-        - intel-oneapi-mkl
-        - intel-oneapi-advisor
-        - intel-oneapi-vtune
         - heaptrack
-        - libfabric
         - cmor
         - nco
         - cdo
         - nccmp
         - ncview
-        - madis
-        - ncvis
         - lcov
         - neovim
+        - madis
         - eigen
         - grib-util
         - ecflow
+        - intel-oneapi-advisor
+        - intel-oneapi-vtune
         - darshan-util
         - linaro-forge
+        - ncvis
+        - ncl
         - cudnn
         - cuda
-        - charliecloud
         - peak-memusage
         - podman
         - pcre
         - apptainer
+        - miniconda3
         - go
         - meson
         - cmake
+        - gcc
+        - libfabric
+        - intel-oneapi-mkl
+        - charliecloud
         - intel-oneapi-compilers
         - nvhpc
-        - gcc
         - wgrib2
-        - miniconda3
         - rstudio
         - idl
         - matlab
@@ -1175,7 +1187,6 @@ spack:
         - libtorch
         - grads
         - julia
-        - ncl
         - r
         - miniconda
         cuda:
