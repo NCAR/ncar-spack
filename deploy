@@ -1,13 +1,14 @@
 #!/bin/bash
 #
 #   Author:         Brian Vanderwende
-#   Last Revised:   09:59, 20 Oct 2025
+#   Last Revised:   13:07, 20 Oct 2025
 #
 
 set -e
 export NCAR_SPACK_DEPLOY_TIME=$(date +%y%m%dT%H%M)
 export NCAR_SPACK_DEPLOY_DIR="$( cd "$(dirname "$0")" ; pwd )"
 export NCAR_SPACK_DEPLOY_TYPE=testing
+export SPACK_DISABLE_LOCAL_CONFIG=true
 
 # Source functions from init script, but skip environment activation
 NCAR_SPACK_SETUP_DEPLOY=1 . $NCAR_SPACK_DEPLOY_DIR/src/build/bin/tools/init.sh
@@ -117,7 +118,7 @@ while [[ $# -gt 0 ]]; do
         --share-packages)
             packages_path=$2
 
-            if [[ ! -d $packages_path ]]; then
+            if [[ ! -f $packages_path/repos/spack_repo/builtin/repo.yaml ]]; then
                 tsecho "Error: path given for existing builtin is not a repo directory"
                 exit 1
             fi
@@ -291,7 +292,7 @@ if [[ $NCAR_SPACK_ROOT != $spack_clone_path ]]; then
         fi
         
         cd - > /dev/null
-        spack repo add $NCAR_SPACK_ROOT_PACKAGES
+        spack repo add $NCAR_SPACK_ROOT_PACKAGES/repos/spack_repo/builtin
     fi
 
     # Create trusted GPG key in spack install
@@ -448,7 +449,11 @@ if [[ ! $skip_steps =~ " "(mirrors|all)" "  ]]; then
                 mirror=$(sed 's|s3://|https://stratus.ucar.edu/|' <<< $mirror)
             fi
 
-            spack mirror add ncar_mirror_${mtype,,} $mirror
+            if [[ $mirror == s3* ]] && [[ -n $NCAR_SPACK_MIRROR_PROFILE ]]; then
+                spack mirror add --s3-profile $NCAR_SPACK_MIRROR_PROFILE ncar_mirror_${mtype,,} $mirror
+            else
+                spack mirror add ncar_mirror_${mtype,,} $mirror
+            fi
 
             # Make sure signing keys are pushed (and index regenerated!)
             if [[ $mirror != https* ]]; then
