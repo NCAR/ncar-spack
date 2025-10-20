@@ -1,87 +1,88 @@
-# This is a Spack Environment file.
-#
-# It describes a set of packages to be installed, along with
-# configuration settings.
+# *** SUSE Common Software Stack ***
 spack:
   config:
     install_tree:
       root: '%INSTALLROOT%'
       projections:
+        ^c: '{name}/{version}/{compiler.name}/{compiler.version}/{hash:4}'
+        ^cxx: '{name}/{version}/{compiler.name}/{compiler.version}/{hash:4}'
+        ^fortran: '{name}/{version}/{compiler.name}/{compiler.version}/{hash:4}'
+        ^mpi: '{name}/{version}/{^mpi.name}/{^mpi.version}/{compiler.name}/{compiler.version}/{hash:4}'
         all: '{name}/{version}/{hash:4}'
+        c: '{name}/{version}/{hash:4}'
       padded_length: 128
     build_jobs: 4
-    test_stage: '%TMPROOT%/${user}/temp/spack/%DEPLOYMENT%/tests'
-    source_cache: '%TMPROOT%/${user}/temp/spack/cache'
-    misc_cache: '%TMPROOT%/${user}/temp/spack/%DEPLOYMENT%/misc'
+    test_stage: '%TMPROOT%/$user/temp/spack/%DEPLOYMENT%/tests'
+    source_cache: '%TMPROOT%/$user/temp/spack/cache'
+    misc_cache: '%TMPROOT%/$user/temp/spack/%DEPLOYMENT%/misc'
     build_stage:
-    - '%TMPROOT%/${user}/temp/spack/builds'
+    - '%TMPROOT%/$user/temp/spack/%DEPLOYMENT%/builds'
     shared_linking:
+    # Turning bind setting on would be beneficial but vendor compilers do not
+    # seem to work with it! Avoid!
       type: rpath
       bind: false
+  env_vars:
+    set:
+      NVCCFLAGS: -allow-unsupported-compiler
+      NVCC_PREPEND_FLAGS: -allow-unsupported-compiler
   packages:
     all:
-      compiler: [gcc@12.4.0, gcc@7.5.0]
-      target: [x86_64_v3]
-      providers:
-        tbb: [intel-oneapi-tbb]
-        pkgconfig: [pkg-config]
-        zlib-api: [zlib]
       permissions:
         read: world
         write: user
+      target:
+      # This target is lowest-common denominator between Intel and Milans
+      - x86_64_v3
       prefer:
-      - spec: ^zlib
-        when: ^zlib-api
-      - spec: ^pkg-config
-        when: ^pkgconfig
+      - +pic
     aocc:
       require:
       - +license-agreed
+    cmake:
+      variants:
+      - +ownlibs
     cuda:
-      require: +allow-unsupported-compilers
+      require:
+      - +allow-unsupported-compilers
       variants:
       - +dev
-    cudnn:
-      prefer:
-      - spec: ^cuda@12.3.2
-        when: '@8.9.7.29-12'
     gcc:
+      prefer:
+      - spec: '%gcc@7.5.0'
+        when: '@:12'
+      - spec: '%gcc@12.5.0'
+        when: '@13:'
       variants:
       - +piclibs
       - languages=c,c++,fortran,go
-      require:
-      - '%gcc@7.5.0'
-    glibc:
-      require:
-      - '%gcc'
     intel-oneapi-compilers:
       variants:
       - +nvidia
-    intel-oneapi-runtime:
-      prefer:
-      - spec: ^gcc-runtime@12.4.0
-    libxml2:
+    intel-oneapi-mkl:
       require:
-      - '%gcc'
+      - spec: +gfortran threads=openmp
+        when: '%gcc'
+    libllvm:
+      conflict:
+      - llvm-amdgpu
     linaro-forge:
-      require: +accept-eula
-    openssl:
       require:
-      - '%gcc'
-    patchelf:
+      - +accept-eula
+    nvhpc:
       require:
-      - '@:0.17'
-    pkg-config:
-      require:
-      - '%gcc'
-    zstd:
-      variants:
-      - +programs
-  compilers: []
-  view: false
+      - +blas
+      - +lapack
+      - ~mpi
+    pkgconfig:
+      prefer:
+      - pkg-config
+    tbb:
+      prefer:
+      - intel-oneapi-tbb
   concretizer:
     unify: false
-    reuse: false
+    reuse: true
     os_compatible:
       opensuse15:
       - sles15
