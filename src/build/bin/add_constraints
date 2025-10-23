@@ -6,7 +6,7 @@
 #   - to the YAML file.
 #
 #   Author:         Brian Vanderwende
-#   Last Revised:   13:59, 16 Oct 2025
+#   Last Revised:   15:38, 20 Oct 2025
 #
 
 function usage {
@@ -76,7 +76,7 @@ function manual_external {
     fi
 }
 
-function add_compilers {
+function modify_compilers {
     # Some compilers are provided in a subdirectory of the package root, and thus
     # won't be added if we add the root as an external. We can add these compilers
     # via a second step
@@ -84,7 +84,7 @@ function add_compilers {
         for spec in $@; do
             read pkg_name version <<< ${spec/@/ }
 
-            if [[ -f $SPACK_ENV/templates/compilers/define.${pkg_name} ]]; then
+            if [[ -f $SPACK_ENV/templates/compilers/modify.${pkg_name}.py ]]; then
                 if [[ -n $pkg_path ]]; then
                     root=$pkg_path
                 else
@@ -92,7 +92,7 @@ function add_compilers {
                 fi
 
                 tsecho " >> Adding compiler definitions (subdirectory requirement)"
-                . $SPACK_ENV/templates/compilers/define.${pkg_name}
+                spack python $SPACK_ENV/templates/compilers/modify.${pkg_name}.py $spec $root
             fi
         done
     fi
@@ -151,7 +151,7 @@ function process_entry {
                                     manual_external
                                 fi
 
-                                add_compilers $pkg_spec
+                                modify_compilers $pkg_spec
                                 known_externals="$known_externals ${pkg_path%%/}"
                             fi
                         elif [[ $pkg_path != *sbang ]] && [[ ! -e $pkg_path ]]; then
@@ -172,7 +172,7 @@ function process_entry {
                 if [[ $auto_result == *spack.yaml* ]]; then
                     found_list=$(grep "^[^=-]" <<< $auto_result | xargs)
                     tsecho "Adding externals  $GCOL${found_list}$DCOL"
-                    add_compilers $found_list
+                    modify_compilers $found_list
                 fi
 
                 # Externals should also "use" the core compiler unless marked "floating"

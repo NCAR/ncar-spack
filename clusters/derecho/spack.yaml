@@ -417,6 +417,9 @@ spack:
     go:
       prefer:
       - '%gcc@12.5.0'
+    go-or-gccgo-bootstrap:
+      prefer:
+      - go-bootstrap
     googletest:
       prefer:
       - '%gcc@12.5.0'
@@ -1142,7 +1145,22 @@ spack:
         core_compilers:
         - gcc@12.5.0
         core_specs:
+        - go
+        - meson
+        - cmake
         - cce
+        - intel-oneapi-compilers
+        - nvhpc
+        - gcc
+        - libfabric
+        - intel-oneapi-mkl
+        - ecflow
+        - intel-oneapi-advisor
+        - intel-oneapi-vtune
+        - linaro-forge
+        - ncvis
+        - cudnn
+        - cuda
         - heaptrack
         - cmor
         - nco
@@ -1154,29 +1172,14 @@ spack:
         - madis
         - eigen
         - grib-util
-        - ecflow
-        - intel-oneapi-advisor
-        - intel-oneapi-vtune
         - darshan-util
-        - linaro-forge
-        - ncvis
         - ncl
-        - cudnn
-        - cuda
         - peak-memusage
         - podman
         - pcre
         - apptainer
         - miniconda3
-        - go
-        - meson
-        - cmake
-        - gcc
-        - libfabric
-        - intel-oneapi-mkl
         - charliecloud
-        - intel-oneapi-compilers
-        - nvhpc
         - wgrib2
         - rstudio
         - idl
@@ -1506,3 +1509,5 @@ spack:
       - sles15
       sles15:
       - opensuse15
+  repos:
+    builtin: /glade/u/apps/derecho/25.10/packages/repos/spack_repo/builtin
