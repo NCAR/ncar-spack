@@ -38,4 +38,6 @@ else
 fi
 
 # Filter out any remaining references to the deployed build env
-sed -i "s|$SPACK_ENV|%BASEROOT%|" $SPACK_ENV/templates/yaml/spack.yaml
+for yaml_file in $(find $SPACK_ENV/templates/yaml -name "*.yaml"); do
+    sed -i "s|$SPACK_ENV|%BASEROOT%|" $yaml_file
+done

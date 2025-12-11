@@ -8,7 +8,7 @@
 #           and any other packages that need it
 #
 #   Author:         Brian Vanderwende
-#   Last Revised:   21:31, 03 Nov 2025
+#   Last Revised:   11:09, 10 Dec 2025
 #
 
 
@@ -33,6 +33,7 @@ Options
     -c, --prefer-cache      specify that only cached packages should be used
     -d, --dry-run           show what would be done; do not make any changes
     -f, --fail-fast         if any build task fails, terminate all immediately
+    -i, --ignore-preferred  version-agnostic specs need not used preferred
     -j, --jobs-per-task N   number of build jobs per spack install task
                             (will use value in spack.yaml if unspecified)
     -l, --host-list HOSTS   specify build hosts
@@ -83,6 +84,9 @@ while [[ $# -gt 0 ]]; do
             ;;
         -f|--fail-fast)
             fail_fast=true
+            ;;
+        -i|--ignore-preferred)
+            ignore_preferred=true
             ;;
         -j|--jobs-per-task)
             build_jobs=$2
@@ -158,26 +162,6 @@ function handle_interrupt {
             fi
             ;;
     esac
-}
-
-function add_spec_to_view {
-view_block=$(sed -n "/^  view:/,/^  [a-z]*:/=" $SPACK_ENV/spack.yaml | xargs | awk '{ print $1","$NF }')
-if [[ $view_block != ',' ]]; then
-select_start=$(sed -n "$view_block {/select:/=}" $SPACK_ENV/spack.yaml)
-if [[ -z $select_start ]]; then
-cat << EOF | sed -i "$(($(cut -d, -f2 <<< $view_block) - 1)) r /dev/stdin" $SPACK_ENV/spack.yaml
-      select:
-      - $1
-EOF
-elif [[ $(sed -n "$view_block s/[ ]*- ${1}$/true/p" $SPACK_ENV/spack.yaml) != true ]]; then
-cat << EOF | sed -i "$select_start r /dev/stdin" $SPACK_ENV/spack.yaml
-      - $1
-EOF
-fi
-else
-tsecho "Error: no view defined but $1 requests view access"
-exit 1
-fi
 }
 
 function add_spec_to_queue {
@@ -259,6 +243,10 @@ function prepare_spec {
             case $opt in
                 compiler)
                     comp=${config[$opt]}
+
+                    if [[ $comp == core ]]; then
+                        comp=$NCAR_SPACK_CORE_GCC
+                    fi
                     ;;
                 mpi)
                     mpi=${config[$opt]}
@@ -514,23 +502,25 @@ function modify_spec_access {
 
     # First, clean up any existing access to avoid conflicts
     spec_name=$(sed 's/[@%^+~ ].*//' <<< "$3")
+    spec_clean="${3%%%\[*}"
+
     sed -i "/^[ ]*core_specs:/,/^ *[a-z]/ {/- $spec_name/d}" $SPACK_ENV/spack.yaml
-    sed -i "/^[ ]*lmod:$/,$ {/^[ ]*exclude:$/,/^[ ]*[a-z]/ {/- $3/d}}" $SPACK_ENV/spack.yaml
-    sed -i "/^  view:$/,/^  [a-z]*:/ {/^[ ]*select:$/,/^[ ]*[a-z]/ {/- $3/d}}" $SPACK_ENV/spack.yaml
+    sed -i "/^[ ]*lmod:$/,$ {/^[ ]*exclude:$/,/^[ ]*[a-z]/ {/- $spec_clean/d}}" $SPACK_ENV/spack.yaml
+    sed -i "/^  view:$/,/^  [a-z]*:/ {/^[ ]*select:$/,/^[ ]*[a-z]/ {/- $spec_clean/d}}" $SPACK_ENV/spack.yaml
 
     case $1 in
         core)
-            tsecho " >> Setting package as core_spec: $3"
+            tsecho " >> Setting package as core_spec: $spec_name"
             spack config add "modules:default:lmod:core_specs:$spec_name"
             ;;
         view)
-            tsecho " >> Adding package to the view:   $3"
-            spack config add "modules:default:lmod:exclude:$3"
-            add_spec_to_view "$3"
+            tsecho " >> Adding package to the view:   $spec_clean"
+            spack config add "modules:default:lmod:exclude:$spec_clean"
+            spack config add "view:baseenv:select:$spec_clean"
             ;;
         none)
-            tsecho " >> Excluding package from tree:  $3"
-            spack config add "modules:default:lmod:exclude:$3"
+            tsecho " >> Excluding package from tree:  $spec_clean"
+            spack config add "modules:default:lmod:exclude:$spec_clean"
             ;;
     esac
 }
@@ -673,13 +663,35 @@ function check_spec {
                     exit 1
                 fi
 
-                if [[ $spec_hash != ${config[match]:-$spec_hash} ]]; then
-                    tsecho "Error: computed hash ($spec_hash) for package $spec does \n       not match expected hash (${config[match]})"
-                    echo "Spec mismatch for $spec" >> $log_errors
-                    echo "  Expected hash: ${config[match]}" >> $log_errors
-                    echo -e "  Computed hash:\n$spack_spec_out" >> $log_errors
-                    clear_added_specs 1
-                    exit 1
+                if [[ -n ${config[match]} ]]; then
+                    if [[ $spec_hash != ${config[match]} ]]; then
+                        tsecho "Error: computed hash ($spec_hash) for package $spec does \n       not match expected hash (${config[match]})"
+                        echo "Spec mismatch for $spec" >> $log_errors
+                        echo "  Expected hash: ${config[match]}" >> $log_errors
+                        echo -e "  Computed hash:\n$spack_spec_out" >> $log_errors
+                        clear_added_specs 1
+                        exit 1
+                    fi
+                elif [[ ${config[preferred]:-yes} == yes ]]; then
+                    given_version=$(sed 's/\([^^%]*\).*/\1/' <<< $spec | sed -n 's/.*@\([^~+ ]*\).*/\1/p')
+
+                    if [[ -z $given_version ]]; then
+                        spec_name=$(sed 's/[@%^+~ ].*//' <<< $spec)
+                        computed_version=$(head -1 <<< $spack_spec_out | sed -n 's/[^@]*@\([^~+ ]*\).*/\1/p')
+                        preferred_version=$(spack info $spec_name | grep -A1 "Preferred version" | tail -1 | awk '{print $1}')
+
+                        if [[ $computed_version != $preferred_version ]]; then
+                            if [[ ${ignore_preferred:-false} == true ]]; then
+                                version_message=" >> Version ($computed_version) is not preferred ($preferred_version), but ignoring"
+                            else
+                                tsecho "Error: Version ($computed_version) is not preferred ($preferred_version) for $spec"
+                                clear_added_specs 1
+                                exit 1
+                            fi
+                        else
+                            unset version_message
+                        fi
+                    fi
                 fi
 
                 if [[ " $start_hashes_all " == *" $spec_hash "* ]]; then
@@ -740,6 +752,10 @@ function check_spec {
             fi
         else
             print_spec_message "Installing spec"
+
+            if [[ -n $version_message ]]; then
+                tsecho "$version_message"
+            fi
 
             if [[ $package_limit -gt 0 ]] && [[ ${#queue_config[@]} -ge $package_limit ]]; then
                 start_installs=true

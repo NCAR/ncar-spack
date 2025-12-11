@@ -6,7 +6,7 @@
 #   - to the YAML file.
 #
 #   Author:         Brian Vanderwende
-#   Last Revised:   15:38, 20 Oct 2025
+#   Last Revised:   20:52, 10 Dec 2025
 #
 
 function usage {
@@ -50,13 +50,25 @@ log_dir=$SPACK_ENV/logs
 mkdir -p $log_dir
 log_file=$log_dir/constraints.$start_time.${SUDO_USER:-$USER}
 
+function track_external {
+    if [[ -n ${known_externals[$1]} ]]; then
+        known_externals[$1]="${known_externals[$1]} $2"
+    else
+        known_externals[$1]=$2
+    fi
+}
+
 function manual_require {
     if [[ -z $1 ]]; then
         tsecho "Error: Invalid requirement set ($1); perhaps no core compiler?"
         exit 1
     fi
 
-    mod_list=$(spack python $my_dir/tools/add_requirement.py $1 $2 $3)
+    if [[ $my_mode == externals ]]; then
+        mod_list=$(spack python $my_dir/tools/add_requirement.py $1 $2 ${meta_core_scope:-constraints} $3)
+    else
+        mod_list=$(spack python $my_dir/tools/add_requirement.py $1 $2 ${meta_scope:-constraints} $3)
+    fi
 
     for mod_pkg in $mod_list; do
         tsecho "Set requirement   $GCOL$mod_pkg$DCOL to use $PCOL${1}$DCOL"
@@ -64,10 +76,10 @@ function manual_require {
 }
 
 function manual_external {
-    if [[ " $my_meta " == *" fixed "* ]]; then
-        spack python $my_dir/tools/add_external.py $pkg_spec fixed $pkg_path || skipped=yes
+    if [[ ${meta_buildable:-yes} == no ]]; then
+        spack python $my_dir/tools/add_external.py $pkg_spec fixed $pkg_path ${meta_scope:-spack} || skipped=yes
     else
-        spack python $my_dir/tools/add_external.py $pkg_spec buildable $pkg_path || skipped=yes
+        spack python $my_dir/tools/add_external.py $pkg_spec buildable $pkg_path ${meta_scope:-spack} || skipped=yes
     fi
 
     if [[ -z $skipped ]]; then
@@ -76,11 +88,21 @@ function manual_external {
     fi
 }
 
+function modify_externals {
+    # Some externals will need attributes added to the spec (e.g., openssl needs certs=system)
+    if [[ -n $meta_attributes ]]; then
+        for spec in $@; do
+            tsecho "$FCOL >> Modifying external with requested attributes$DCOL"
+            spack python $my_dir/tools/modify_external.py $spec ${meta_scope:-spack} "$meta_attributes"
+        done
+    fi
+}
+
 function modify_compilers {
     # Some compilers are provided in a subdirectory of the package root, and thus
     # won't be added if we add the root as an external. We can add these compilers
     # via a second step
-    if [[ " $my_meta " == *" compiler "* ]]; then
+    if [[ ${meta_type:-basic} == compiler ]]; then
         for spec in $@; do
             read pkg_name version <<< ${spec/@/ }
 
@@ -91,8 +113,8 @@ function modify_compilers {
                     root=$(spack location -i $spec)
                 fi
 
-                tsecho " >> Adding compiler definitions (subdirectory requirement)"
-                spack python $SPACK_ENV/templates/compilers/modify.${pkg_name}.py $spec $root
+                tsecho "$FCOL >> Adding compiler definitions (subdirectory requirement)$DCOL"
+                spack python $SPACK_ENV/templates/compilers/modify.${pkg_name}.py $spec $root ${meta_scope:-spack}
             fi
         done
     fi
@@ -104,14 +126,14 @@ function process_entry {
         exit 1
     fi
 
-    tsecho " >> Processing: $stored_entry (type=${BCOL}$my_mode${DCOL})" 1
+    tsecho "$FCOL >> Processing: $stored_entry (type=${BCOL}$my_mode${DCOL})$DCOL" 1
 
     case ${my_mode// } in
         externals)
-            if [[ " $my_meta " == *" fixed "* ]]; then
-                ext_flags=--not-buildable
+            if [[ ${meta_buildable:-yes} == no ]]; then
+                ext_flags="$meta_flags --not-buildable"
             else
-                ext_flags=
+                ext_flags="$meta_flags"
             fi
 
             if [[ $stored_entry == /* ]]; then
@@ -138,8 +160,8 @@ function process_entry {
                         fi
 
                         if [[ -d $pkg_path ]] && [[ ! -L $pkg_path ]]; then
-                            if [[ " $known_externals " != *" ${pkg_path%%/} "* ]]; then
-                                if [[ " $my_meta " != *" manual "* ]]; then
+                            if [[ " ${known_externals[@]} " != *" ${pkg_path%%/} "* ]]; then
+                                if [[ ${meta_detection:-auto} == auto ]]; then
                                     auto_result=$(spack external find $ext_flags $pkg_path $pkg_name)
                                 else
                                     unset auto_result
@@ -152,19 +174,40 @@ function process_entry {
                                 fi
 
                                 modify_compilers $pkg_spec
-                                known_externals="$known_externals ${pkg_path%%/}"
+                                modify_externals $pkg_spec
+                                track_external $pkg_name ${pkg_path%%/}
                             fi
                         elif [[ $pkg_path != *sbang ]] && [[ ! -e $pkg_path ]]; then
                             tsecho "Skipping external $BCOL${pkg_spec} (not found!)$DCOL"
                         fi
                     done
 
-                    # Externals should also "use" the core compiler
-                    if [[ " $my_meta " != *" floating "* ]]; then
-                        manual_require "$core" $pkg_name
+                    # Should externals also "use" the core compiler?
+                    if [[ ${meta_use_core:-no} != no ]]; then
+                        manual_require %$NCAR_SPACK_CORE_GCC ${meta_use_core:-prefer} "$stored_entry"
                     fi
 
                     unset pkg_spec pkg_name pkg_version pkg_path
+                fi
+            elif [[ $meta_prefix == /* ]]; then
+                if [[ -z $meta_version ]]; then
+                    tsecho "Error: Must set version attribute if using prefix (prefix=$meta_prefix)"
+                    exit 1
+                fi
+
+                for pkg in $stored_entry; do
+                    if [[ " ${known_externals[$pkg]} " != *" $meta_prefix "* ]]; then
+                        pkg_spec=${pkg}@$meta_version pkg_path=$meta_prefix
+                        manual_external
+                        modify_compilers $pkg_spec
+                        modify_externals $pkg_spec
+                        track_external $pkg $meta_prefix
+                    fi
+                done
+
+                # Should externals also "use" the core compiler?
+                if [[ ${meta_use_core:-no} != no ]]; then
+                    manual_require %$NCAR_SPACK_CORE_GCC ${meta_use_core:-prefer} "$stored_entry"
                 fi
             else
                 auto_result=$(spack external find $ext_flags $stored_entry)
@@ -173,17 +216,17 @@ function process_entry {
                     found_list=$(grep "^[^=-]" <<< $auto_result | xargs)
                     tsecho "Adding externals  $GCOL${found_list}$DCOL"
                     modify_compilers $found_list
+                    modify_externals $found_list
                 fi
 
-                # Externals should also "use" the core compiler unless marked "floating"
-                if [[ " $my_meta " != *" floating "* ]]; then
-                    manual_require "$core" "$stored_entry"
+                # Should externals also "use" the core compiler?
+                if [[ ${meta_use_core:-no} != no ]]; then
+                    manual_require %$NCAR_SPACK_CORE_GCC ${meta_use_core:-prefer} "$stored_entry"
                 fi
             fi
             ;;
         require|prefer)
-            my_meta=$(sed "s/core/%$NCAR_SPACK_CORE_GCC/" <<< $my_meta)
-            manual_require "$my_meta" "${my_mode// }" "$stored_entry"
+            manual_require "$meta_requires" "${my_mode// }" "$stored_entry"
             ;;
         *)
             tsecho "Error: Unknown mode $my_mode"
@@ -195,7 +238,17 @@ function process_entry {
 }
 
 # First, let's get the known external prefixes
-known_externals=$(spack config get packages | grep prefix: | awk -F: '{print $2}' | sort | uniq | xargs)
+declare -A known_externals
+external_data=$(spack config get packages | grep -e "^  [^ ]" -e prefix: | grep --no-group-separator -B1 prefix:)
+
+while read data; do
+    if [[ $data != *prefix:* ]]; then
+        pkg_name=${data%:}
+    else
+        pkg_path=$(awk '{print $2}' <<< $data)
+        track_external $pkg_name $pkg_path
+    fi
+done <<< "$external_data"
 
 # Add package configuration settings
 if [[ -f $SPACK_ENV/constraints.cfg ]]; then
@@ -210,17 +263,37 @@ if [[ -f $SPACK_ENV/constraints.cfg ]]; then
             \#*)
                 continue
                 ;;
-            *=*)
-                read var_name var_value <<< ${entry/=/ }
-                declare $var_name=$var_value
-                ;;
             *'{'*)
+                if [[ -n $my_mode ]]; then
+                    tsecho "Error: $my_mode section is not finished ('}' missing?)"
+                    exit 1
+                fi
+
                 IFS=: read my_mode my_meta <<< ${entry%%\{*}
-                my_meta="${my_meta/,/ }"
+
+                tsecho "${BCOL}Activating mode = ${my_mode}$DCOL"
+
+                for meta_data in $my_meta; do
+                    if [[ $meta_data == *=* ]]; then
+                        tsecho "$FCOL >> Custom setting: ${meta_data%=*} = ${meta_data##*=}$DCOL"
+                        declare meta_${meta_data%=*}=${meta_data##*=}
+                    elif [[ $meta_data == core ]]; then
+                        meta_requires=%$NCAR_SPACK_CORE_GCC
+                    else
+                        meta_requires=$meta_data
+                    fi
+                done
+
+                if [[ ${meta_scope:-spack} != spack ]]; then
+                    meta_flags="--scope $meta_scope"
+                fi
                 ;;
             *'}'*)
                 process_entry
-                unset my_mode my_meta
+
+                for var_name in my_mode ${!meta_*}; do
+                    unset $var_name
+                done
                 ;;
             *)
                 if [[ $entry == /* ]] && [[ -n $stored_entry ]]; then
@@ -235,7 +308,8 @@ if [[ -f $SPACK_ENV/constraints.cfg ]]; then
 fi
 
 if [[ -n $stored_entry ]]; then
-    tsecho "Error: Unbounded section detected. Check for completed {} sets."
+    tsecho "Error: $my_mode section is not finished ('}' missing?)"
+    exit 1
 fi
 
 update_log_pointers constraints
