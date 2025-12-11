@@ -1,0 +1,92 @@
+  packages:
+    adios2:
+      variants:
+      - +rocm
+    all:
+      prefer:
+      - +rocm
+      - amdgpu_target=gfx942
+    hip:
+      require:
+      - +rocm
+      prefer:
+      - '%gcc@12.5.0'
+    hipblas:
+      require:
+      - '%gcc@12.5.0'
+    hipcc:
+      prefer:
+      - '%gcc@12.5.0'
+    hipcub:
+      require:
+      - '%gcc@12.5.0'
+    hipfort:
+      prefer:
+      - '%gcc@12.5.0'
+    hipify-clang:
+      prefer:
+      - '%gcc@12.5.0'
+    hiprand:
+      require:
+      - '%gcc@12.5.0'
+    hsa-rocr-dev:
+      prefer:
+      - '%gcc@12.5.0'
+    hwloc:
+      require:
+      - +rocm
+    intel-oneapi-compilers:
+      variants:
+      - +amd
+    kokkos:
+      require:
+      - spec: +rocm +wrapper ~alloc_async
+        when: '%gcc'
+      - spec: +rocm +apu +wrapper ~alloc_async
+        when: '%aocc'
+      - spec: ^cmake@3.27
+        when: '@:4.2.01 +rocm'
+    ncarcompilers:
+      variants:
+      - +hip
+    nvtop:
+      require:
+      - support:=amd
+    openmpi:
+      require:
+      - +rocm
+      - amdgpu_target=gfx942
+    osu-micro-benchmarks:
+      variants:
+      - +rocm
+    rocblas:
+      prefer:
+      - +tensile
+      - amdgpu_target=gfx942
+    rocfft:
+      prefer:
+      - amdgpu_target=gfx942
+      - amdgpu_target_sram_ecc=gfx942
+    rocprofiler-systems:
+      require:
+      - ~internal-dyninst
+      - +rocm
+      - +perfetto_tools
+      - +python
+    ucx:
+      require:
+      - +rocm
+  modules:
+    default:
+      lmod:
+        hip:
+          template: ncar_wrapper_hip.lua
+        hiprand:
+          environment:
+            set:
+              # Needed for FastEddy
+              NCAR_INC_HIPRAND2: '{prefix.include}/hiprand'
+        hsa-rocr-dev:
+          environment:
+            set:
+              HSA_XNACK: '1'

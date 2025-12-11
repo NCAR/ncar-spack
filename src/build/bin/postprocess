@@ -4,7 +4,7 @@
 #   subdirectory of the build environment.
 #
 #   Author:         Brian Vanderwende
-#   Last Revised:   21:54, 25 Aug 2025
+#   Last Revised:   19:44, 27 Oct 2025
 #
 
 function usage {
@@ -87,7 +87,7 @@ while [[ $# -gt 0 ]]; do
 done
 
 log_dir=$SPACK_ENV/logs
-mkdir -p $log_dir
+mkdir -p $log_dir $SPACK_ENV/util
 log_file=$log_dir/postprocess.$start_time
 
 if [[ ${skip_execution:-false} != true ]]; then

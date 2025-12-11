@@ -8,7 +8,7 @@
 #           and any other packages that need it
 #
 #   Author:         Brian Vanderwende
-#   Last Revised:   10:39, 15 Oct 2025
+#   Last Revised:   21:31, 03 Nov 2025
 #
 
 
@@ -581,11 +581,7 @@ function check_spec {
         toolchains[$comp_spec]=${config[toolchain]:-$comp_spec}
 
         if [[ ${config[register]:-yes} != no ]] && [[ ${config[matrix]:-yes} == yes ]]; then
-            if [[ $comp_spec == gcc* ]]; then
-                compilers="$comp_spec $compilers"
-            else
-                compilers="$compilers $comp_spec"
-            fi
+            compilers="$compilers $comp_spec"
         fi
     fi
 

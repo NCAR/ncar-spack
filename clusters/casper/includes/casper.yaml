@@ -1,0 +1,56 @@
+packages:
+  libglx:
+      prefer:
+      - opengl
+  mpi:
+    prefer:
+    - openmpi
+  opengl:
+    externals:
+    - spec: opengl@4.5
+      prefix: /usr
+    buildable: false
+    prefer:
+    - '%gcc@12.5.0'
+  openmpi:
+    require:
+    - fabrics=cma,ucx
+  ucx:
+    variants:
+    - +cm
+    - +cma
+    - +dc
+    - +dm
+    - +ib_hw_tm
+    - +mlx5_dv
+    - +rc
+    - +rdmacm
+    - +thread_multiple
+    - +ud
+    - +verbs
+    - +vfs
+    - ~knem
+    prefer:
+    - '%gcc@12.5.0'
+modules:
+  default:
+    lmod:
+      c:
+        environment:
+          set:
+            NCAR_BUILD_ENV: casper-{name}-{version}
+            NCAR_BUILD_ENV_COMPILER: casper-{name}-{version}
+      intel-oneapi-compilers:
+        environment:
+          set:
+            NCAR_BUILD_ENV: casper-intel-{version}
+            NCAR_BUILD_ENV_COMPILER: casper-intel-{version}
+      llvm+clang:
+        environment:
+          set:
+            NCAR_BUILD_ENV: casper-clang-{version}
+            NCAR_BUILD_ENV_COMPILER: casper-clang-{version}
+      mpi:
+        environment:
+          set:
+            NCAR_BUILD_ENV_MPI: casper-{compiler.name}-{compiler.version}-{name}-{version}

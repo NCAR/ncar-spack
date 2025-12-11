@@ -1,0 +1,90 @@
+env_vars:
+  set:
+    NVCCFLAGS: -allow-unsupported-compiler
+    NVCC_PREPEND_FLAGS: -allow-unsupported-compiler
+packages:
+  adios2:
+    prefer:
+    - +cuda
+  cuda:
+    require:
+    - +allow-unsupported-compilers
+    variants:
+    - +dev
+  hwloc:
+    variants:
+    - +cuda
+    - +nvml
+  intel-oneapi-compilers:
+    variants:
+    - +nvidia
+  kokkos:
+    require:
+    - spec: +cuda +wrapper ~alloc_async
+      when: '%gcc'
+    - spec: +cuda +wrapper ~alloc_async
+      when: '%nvhpc'
+    - spec: ^cmake@3.27
+      when: '@:4.2.01 +cuda'
+  libfabric:
+    variants:
+    - +cuda
+    - +gdrcopy
+  libllvm:
+    conflict:
+    - llvm-amdgpu
+  mpich:
+    variants:
+    - +cuda
+  mvapich:
+    require:
+    - spec: ~cuda
+      when: '%intel-oneapi-compilers'
+    - spec: +cuda
+      when: '%nvhpc'
+  nvtop:
+    variants:
+    - support=nvidia
+  openmpi:
+    require:
+    - +cuda
+  osu-micro-benchmarks:
+    variants:
+    - +cuda
+    prefer:
+    - spec: ~cuda
+      when: '%gcc@15'
+  ucx:
+    variants:
+    - +cuda
+    - +gdrcopy
+modules:
+  default:
+    lmod:
+      cuda:
+        template: ncar_cuda.lua
+        environment:
+          set:
+            CUDATOOLKIT_HOME: '{prefix}'
+            CUDA_VERSION: '{version}'
+            NVHPC_CUDA_HOME: '{prefix}'
+          prepend_path:
+            LD_LIBRARY_PATH: '{prefix}/lib64:{prefix}/nvvm/lib64:{prefix}/extras/CUPTI/lib64:{prefix}/extras/Debugger/lib64'
+      cudnn:
+        environment:
+          prepend_path:
+            LD_LIBRARY_PATH: '{prefix}/lib'
+      cutensor:
+        template: ncar_requires_cuda.lua
+        filter:
+          exclude_env_vars:
+          - NCAR_LDFLAGS_CUTENSOR
+        environment:
+          set:
+            NCAR_LDFLAGS_CUTENSOR_CUDA: '{prefix}/lib/" .. os.getenv("CUDA_MAJOR_VERSION") .."'
+      defaults:
+      - nvhpc@25.09
+      - cuda@12.9.0
+      - cudnn@9.8.0.87-12
+      include:
+      - cuda %gcc@12.5.0

@@ -1,0 +1,9 @@
+packages:
+  adios2:
+    require:
+    - spec: cuda_arch=60,70,80,89,90
+      when: +cuda
+  all:
+    require:
+    - spec: cuda_arch=60,70,80,89,90
+      when: ^cuda

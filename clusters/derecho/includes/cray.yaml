@@ -1,0 +1,164 @@
+packages:
+  all:
+    require:
+    - spec: cuda_arch=80
+      when: ^cuda
+  cray-libsci:
+    externals:
+    - spec: cray-libsci@25.03.0 %cce
+      prefix: /opt/cray/pe/libsci/25.03.0/CRAY/17.0/x86_64
+    - spec: cray-libsci@25.03.0 %gcc
+      prefix: /opt/cray/pe/libsci/25.03.0/GNU/12.3/x86_64
+    - spec: cray-libsci@25.03.0 %nvhpc
+      prefix: /opt/cray/pe/libsci/25.03.0/NVIDIA/23.3/x86_64
+    - spec: cray-libsci@25.03.0 %intel-oneapi-compilers
+      prefix: /opt/cray/pe/libsci/25.03.0/INTEL/2025.0/x86_64
+    buildable: false
+  cray-mpich:
+    externals:
+    - spec: cray-mpich@8.1.32 %gcc
+      prefix: /opt/cray/pe/mpich/8.1.32/ofi/gnu/12.3
+      extra_attributes:
+        environment:
+          append_path:
+            LD_LIBRARY_PATH: /opt/cray/libfabric/1.22.0/lib64
+    - spec: cray-mpich@8.1.32 %cce
+      prefix: /opt/cray/pe/mpich/8.1.32/ofi/cray/17.0
+      extra_attributes:
+        environment:
+          append_path:
+            LD_LIBRARY_PATH: /opt/cray/libfabric/1.22.0/lib64
+    - spec: cray-mpich@8.1.32 %nvhpc
+      prefix: /opt/cray/pe/mpich/8.1.32/ofi/nvidia/23.3
+      extra_attributes:
+        environment:
+          append_path:
+            LD_LIBRARY_PATH: /opt/cray/libfabric/1.22.0/lib64
+    - spec: cray-mpich@8.1.32 %intel-oneapi-compilers
+      prefix: /opt/cray/pe/mpich/8.1.32/ofi/intel/2022.1
+      extra_attributes:
+        environment:
+          append_path:
+            LD_LIBRARY_PATH: /opt/cray/libfabric/1.22.0/lib64
+    - spec: cray-mpich@9.0.0 %gcc
+      prefix: /opt/cray/pe/mpich/9.0.0/ofi/gnu/12.3
+      extra_attributes:
+        environment:
+          append_path:
+            LD_LIBRARY_PATH: /opt/cray/libfabric/1.22.0/lib64
+    - spec: cray-mpich@9.0.0 %cce
+      prefix: /opt/cray/pe/mpich/9.0.0/ofi/cray/17.0
+      extra_attributes:
+        environment:
+          append_path:
+            LD_LIBRARY_PATH: /opt/cray/libfabric/1.22.0/lib64
+    - spec: cray-mpich@9.0.0 %nvhpc
+      prefix: /opt/cray/pe/mpich/9.0.0/ofi/nvidia/23.3
+      extra_attributes:
+        environment:
+          append_path:
+            LD_LIBRARY_PATH: /opt/cray/libfabric/1.22.0/lib64
+    - spec: cray-mpich@9.0.0 %intel-oneapi-compilers
+      prefix: /opt/cray/pe/mpich/9.0.0/ofi/intel/2022.1
+      extra_attributes:
+        environment:
+          append_path:
+            LD_LIBRARY_PATH: /opt/cray/libfabric/1.22.0/lib64
+    prefer:
+    - +cuda
+    - cuda_arch=80
+    buildable: false
+  glx:
+    require:
+    - mesa
+  libcxi:
+    variants:
+    - +cuda
+  libfabric:
+    variants:
+    - fabrics=sockets,tcp,udp,cxi,rxm,rxd,mrail,shm,lnx
+  mpi:
+    prefer:
+    - cray-mpich
+  mpich:
+    require:
+    - netmod=ofi
+    - +xpmem
+  mvapich:
+    require:
+    - netmod=ofi
+  openmpi:
+    require:
+    - fabrics=cma,ofi
+    - spec: ^libfabric@2: fabrics=cxi,lnx,mrail,rxd,rxm,shm,sockets,tcp,udp
+modules:
+  default:
+    lmod:
+      defaults:
+      - libfabric@1.22.0
+      c:
+        environment:
+          set:
+            NCAR_BUILD_ENV: derecho-{name}-{version}
+            NCAR_BUILD_ENV_COMPILER: derecho-{name}-{version}
+      chapel:
+        template: chapel.lua
+        environment:
+          set:
+            CHPL_HOME: '{prefix}'
+            CHPL_LAUNCHER: pals
+            CHPL_MODULE_HOME: '{prefix}'
+          prepend_path:
+            PATH: '{prefix.bin}/hpe-cray-ex-x86_64'
+      cuda:
+        environment:
+          set:
+            CRAYPE_LINK_TYPE: dynamic
+            CRAY_ACCEL_TARGET: nvidia80
+            CRAY_ACCEL_VENDOR: nvidia
+            CRAY_CUDATOOLKIT_DIR: '{prefix}'
+            CRAY_CUDATOOLKIT_PREFIX: '{prefix}'
+            CRAY_CUDATOOLKIT_VERSION: '{version}'
+            CRAY_TCMALLOC_MEMFS_FORCE: '1'
+            NCAR_LIBS_CRAYGTL: -lcuda -lcudart -lstdc++
+          prepend_path:
+            CRAY_LD_LIBRARY_PATH: '{prefix}/lib64'
+      gcc:
+        environment:
+          set:
+            GNU_PATH: '{prefix}'
+            GNU_VERSION: '{version}'
+            PE_ENV: GNU
+      intel-oneapi-compilers:
+        environment:
+          set:
+            INTEL_COMPILER_TYPE: ONEAPI
+            INTEL_PATH: '{prefix}'
+            INTEL_VERSION: '{version}'
+            NCAR_BUILD_ENV: derecho-intel-{version}
+            NCAR_BUILD_ENV_COMPILER: derecho-intel-{version}
+            PE_ENV: INTEL
+      intel-oneapi-mpi:
+        environment:
+          set:
+            FI_CXI_DEFAULT_CQ_SIZE: '131072'
+            FI_CXI_OFLOW_BUF_SIZE: '12582912'
+            I_MPI_OFI_PROVIDER: cxi
+      mpi:
+        environment:
+          set:
+            NCAR_BUILD_ENV_MPI: derecho-{compiler.name}-{compiler.version}-{name}-{version}
+      nvhpc:
+        environment:
+          set:
+            CRAY_NVIDIA_VERSION: '{version}'
+            NVIDIA_PATH: '{prefix}'
+            NVIDIA_VERSION: '{version}'
+            PE_ENV: NVIDIA
+      openmpi:
+        environment:
+          set:
+            FI_CXI_DEFAULT_CQ_SIZE: '131072'
+            FI_CXI_OFLOW_BUF_SIZE: '12582912'
+            FI_LNX_PROV_LINKS: cxi+shm
+            FI_PROVIDER: cxi+shm:lnx

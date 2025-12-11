@@ -14,6 +14,12 @@ if [[ -e /etc/bash.bashrc.local ]]; then
 fi
 
 NCAR_SPACK_STARTUP=$NCAR_SPACK_ROOT/share/spack/setup-env.sh
+NCAR_SPACK_MAIN=
+
+# Pull in main cluster config if set
+if [[ -f $NCAR_SPACK_MAIN ]]; then
+    . $NCAR_SPACK_MAIN
+fi
 
 if [[ $0 == *tcsh ]]; then
     NCAR_SPACK_STARTUP=${NCAR_SPACK_STARTUP/%.sh/.csh}

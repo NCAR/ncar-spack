@@ -10,7 +10,7 @@
 #           shell script. So we must activate in the script!
 #
 #   Author:         Brian Vanderwende
-#   Last Revised:   10:07, 12 Sep 2025
+#   Last Revised:   21:58, 12 Nov 2025
 #
 
 
@@ -566,6 +566,10 @@ if [[ -f $NCAR_SPACK_ENV_BUILD/bin/postprocess ]]; then
     rsync -a --delete $NCAR_SPACK_ENV_BUILD/postprocess/ postprocess
     NCAR_SPACK_ENV_TYPE=public $NCAR_SPACK_ENV_BUILD/bin/postprocess
 fi
+
+tsecho "Make sure user tools can peer into source directories"
+stage_dir=$(spack location -S)
+chmod a+rX $stage_dir
 
 if [[ -n $access_level ]]; then
     tsecho "Changing environment access level to $GCOL$access_level$DCOL"

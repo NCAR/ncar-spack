@@ -6,7 +6,7 @@
 #       version ncarenv stacks.
 #
 #   Author:         Brian Vanderwende
-#   Last Revised:   11:09, 11 Aug 2025
+#   Last Revised:   21:45, 25 Nov 2025
 #
 
 #
@@ -26,7 +26,6 @@ cat >> $TMP_FILE << EOF
 local cc_root = "$cc_root"
 prepend_path("PATH",            pathJoin(cc_root, "bin"))
 prepend_path("LIBRARY_PATH",    pathJoin(cc_root, "lib64"))
-prepend_path("LD_LIBRARY_PATH", pathJoin(cc_root, "lib64"))
 EOF
 }
 

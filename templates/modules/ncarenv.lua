@@ -212,7 +212,12 @@ pushenv("VIM", "/glade/u/apps/config/vim")
 
 -- Set number of GPUs (analogous to NCPUS)
 if os.getenv("PBS_JOBID") then
-    local num_gpus = subprocess("nvidia-smi -L |& grep -c UUID"):gsub("\n$","")
+    if (os.getenv("PBS_QUEUE") == "amdgpu") then
+        num_gpus = subprocess("/opt/rocm/bin/amd-smi list |& grep -c ^GPU"):gsub("\n$","")
+    else
+        num_gpus = subprocess("nvidia-smi -L |& grep -c UUID"):gsub("\n$","")
+    end
+    
     setenv("NGPUS", num_gpus)
 
     if tonumber(num_gpus) > 0 then
