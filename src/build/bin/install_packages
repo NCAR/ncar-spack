@@ -8,7 +8,7 @@
 #           and any other packages that need it
 #
 #   Author:         Brian Vanderwende
-#   Last Revised:   21:30, 10 Dec 2025
+#   Last Revised:   08:34, 11 Dec 2025
 #
 
 
@@ -243,7 +243,7 @@ function prepare_spec {
         return 1
     fi
 
-    if [[ ${NCAR_SPACK_GPU_TYPE:-cuda} != ${config[gpu]:-cuda} ]]; then
+    if [[ ${NCAR_SPACK_GPU_TYPE:-cuda} != ${config[gpu]:-${NCAR_SPACK_GPU_TYPE:-cuda}} ]]; then
         tsecho " >> $spec skipped from check: GPU type (${NCAR_SPACK_GPU_TYPE:-cuda}) != ${config[gpu]}" 2
         return 1
     fi

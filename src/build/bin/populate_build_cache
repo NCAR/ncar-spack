@@ -142,9 +142,6 @@ while read hash triplet; do
 
         if [[ $use_cache != no ]]; then
             tsecho "Caching package:  ${GCOL}${pkg}${DCOL}"
-            log_cmd "$cache_cmd --only=package $mirror /$hash" >> $log_file
-            $cache_cmd --only=package $mirror /$hash &>> $log_file &
-            job_pids[$!]=running
 
             if [[ " ${NCAR_SPACK_LINKED_PACKAGES[@]} " == *" $name "* ]]; then
                 unset linked_pkg
@@ -159,7 +156,7 @@ while read hash triplet; do
                 linked_hash=$(spack dependents -i /$hash | grep " ${linked_pkg}@" | awk '{print $1}')
 
                 if [[ -n $linked_hash ]]; then
-                    if ! grep -q "^$linked_hash.* ${linked_pkg}@" <<< "$pkg_list"; then
+                    if ! grep -q "^$linked_hash.* ${linked_pkg}|" <<< "$pkg_list"; then
                         tsecho "Error: Linked package $linked_pkg must be installed before $name can be pushed!"
                         exit 1
                     fi
@@ -169,7 +166,7 @@ while read hash triplet; do
                 fi
             elif [[ " ${!NCAR_SPACK_LINKED_PACKAGES[@]} " == *" $name "* ]]; then
                 tsecho " >> Force pushing linked package ${PCOL}${NCAR_SPACK_LINKED_PACKAGES[$name]}$DCOL"
-                linked_hash=$(spack find -Ld /$hash | grep " ${NCAR_SPACK_LINKED_PACKAGES[$name]}@" | awk '{print $1}')
+                linked_hash=$(spack find -Ld --format "{name}" /$hash | awk -v pkg=${NCAR_SPACK_LINKED_PACKAGES[$name]} '$2 == pkg {print $1}')
 
                 if [[ -n $linked_hash ]]; then
                     log_cmd "$cache_cmd --only=package --force $mirror /$linked_hash" >> $log_file
@@ -180,6 +177,10 @@ while read hash triplet; do
                     exit 1
                 fi
             fi
+            
+            log_cmd "$cache_cmd --only=package $mirror /$hash" >> $log_file
+            $cache_cmd --only=package $mirror /$hash &>> $log_file &
+            job_pids[$!]=running
         fi
     else
         tsecho "Skipping cached package: ${PCOL}${pkg}$DCOL" 1

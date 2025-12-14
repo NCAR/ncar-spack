@@ -9,29 +9,6 @@ packages:
   hip:
     require:
     - +rocm
-    prefer:
-    - '%gcc@12.5.0'
-  hipblas:
-    require:
-    - '%gcc@12.5.0'
-  hipcc:
-    prefer:
-    - '%gcc@12.5.0'
-  hipcub:
-    require:
-    - '%gcc@12.5.0'
-  hipfort:
-    prefer:
-    - '%gcc@12.5.0'
-  hipify-clang:
-    prefer:
-    - '%gcc@12.5.0'
-  hiprand:
-    require:
-    - '%gcc@12.5.0'
-  hsa-rocr-dev:
-    prefer:
-    - '%gcc@12.5.0'
   hwloc:
     require:
     - +rocm
@@ -79,14 +56,15 @@ packages:
 modules:
   default:
     lmod:
-      hip:
+      projections:
+        rocm-core: rocm/{version}
+      rocm-core:
         template: ncar_wrapper_hip.lua
-      hiprand:
-        environment:
-          set:
-            # Needed for FastEddy
-            NCAR_INC_HIPRAND2: '{prefix.include}/hiprand'
-      hsa-rocr-dev:
         environment:
           set:
             HSA_XNACK: '1'
+            NCAR_INC_HIPRAND2: '{prefix.include}/hiprand'
+          append_path:
+            CMAKE_PREFIX_PATH: '{prefix}/llvm'
+            LD_LIBRARY_PATH: '{prefix}/llvm/lib'
+            PATH: '{prefix}/llvm/bin'

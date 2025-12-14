@@ -5,7 +5,7 @@
 #   incorporating those changes to this repo.
 #
 #   Author:         Brian Vanderwende
-#   Last Revised:   20:27, 10 Dec 2025
+#   Last Revised:   16:36, 13 Dec 2025
 #
 
 set -e
@@ -97,7 +97,7 @@ path_map[src/build/bin]=bin
 path_map[src/build/bin/tools]=bin/tools
 path_map[clusters/$cluster]=.
 path_map[clusters/$cluster/postprocess]=postprocess
-path_map[clusters/$cluster/includes]=includes
+path_map[clusters/$cluster/includes]=templates/yaml/includes
 
 cd $my_root
 

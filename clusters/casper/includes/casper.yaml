@@ -1,7 +1,7 @@
 packages:
   libglx:
-      prefer:
-      - opengl
+    prefer:
+    - opengl
   mpi:
     prefer:
     - openmpi
