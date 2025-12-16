@@ -10,7 +10,7 @@
 #           shell script. So we must activate in the script!
 #
 #   Author:         Brian Vanderwende
-#   Last Revised:   21:58, 12 Nov 2025
+#   Last Revised:   21:04, 15 Dec 2025
 #
 
 
@@ -189,6 +189,7 @@ EOF
 function env_diff {
     tsecho "Checking for pending changes to public"
     unit_list=$(ls --color=never -1 $NCAR_SPACK_ENV_BUILD/postprocess | xargs)
+    yaml_list=$(ls --color=never -1 $NCAR_SPACK_ENV_BUILD/includes | xargs)
 
     if ! cmp -s $NCAR_SPACK_ENV_PUBLIC/spack.yaml $NCAR_SPACK_ENV_BUILD/.prototype/spack.yaml; then
         tsecho " >> ${GCOL}spack.yaml${DCOL} is changed"
@@ -196,6 +197,13 @@ function env_diff {
     else
         changes_detected=0
     fi
+
+    for yaml in $yaml_list; do
+        if ! cmp -s $NCAR_SPACK_ENV_BUILD/.prototype/includes/$yaml $NCAR_SPACK_ENV_PUBLIC/includes/$yaml; then
+            tsecho " >> included YAML: ${GCOL}${yaml}$DCOL is changed"
+            ((changes_detected+=2))
+        fi
+    done
 
     for unit in $unit_list; do
         if [[ $unit != *.build ]]; then
@@ -354,9 +362,9 @@ build_hashes="$(awk '$1 ~ /\[[\^e+]\]/ {print $2}' <<< "$found_pkgs" | xargs)"
 pad_length=$(awk '/padded_length: / {print $2}' $SPACK_ENV/spack.yaml)
 
 tsecho "Converting build spack.yaml for use in public environment"
-cd $SPACK_ENV; mkdir -p .prototype; spack env deactivate
-
+cd $SPACK_ENV; mkdir -p .prototype/includes; spack env deactivate
 cp spack.yaml .prototype
+rsync -a --delete $NCAR_SPACK_ENV_BUILD/includes/ .prototype/includes
 
 if [[ -n $pad_length ]]; then
     sed -i -r "/${NCAR_SPACK_ENV_BUILD//\//\\/}\/opt/ s|^([^/]*).{$pad_length}|\1$SPACK_ROOT/opt/spack/|" .prototype/spack.yaml
@@ -373,6 +381,9 @@ fi
 
 spack config remove 'config:install_tree:root'
 spack env deactivate
+
+# We do this after activating the environment, since missing includes may lead to an error
+sed -i "s|\(.*\)${NCAR_SPACK_ENV_BUILD}/\(includes/.*\.yaml\)$|\1${NCAR_SPACK_ENV_PUBLIC}/\2|" .prototype/spack.yaml
 
 if [[ $dry_run == true ]]; then
     set +e
@@ -462,6 +473,7 @@ if [[ -f $NCAR_SPACK_ENV_PUBLIC/spack.yaml ]]; then
 fi
 
 mv $NCAR_SPACK_ENV_BUILD/.prototype/spack.yaml $NCAR_SPACK_ENV_PUBLIC/spack.yaml
+rsync -a --delete $NCAR_SPACK_ENV_BUILD/.prototype/includes/ includes
 
 # Switch to the production environment
 spack env activate $NCAR_SPACK_ENV_PUBLIC
