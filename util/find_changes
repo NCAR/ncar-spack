@@ -5,7 +5,7 @@
 #   incorporating those changes to this repo.
 #
 #   Author:         Brian Vanderwende
-#   Last Revised:   16:36, 13 Dec 2025
+#   Last Revised:   10:14, 15 Dec 2025
 #
 
 set -e
@@ -97,17 +97,22 @@ path_map[src/build/bin]=bin
 path_map[src/build/bin/tools]=bin/tools
 path_map[clusters/$cluster]=.
 path_map[clusters/$cluster/postprocess]=postprocess
+path_map[clusters/$cluster/spack.yaml]=templates/yaml/spack.yaml
 path_map[clusters/$cluster/includes]=templates/yaml/includes
 
 cd $my_root
 
 for src_path in ${!path_map[@]}; do
-    src_files="$(find -L $src_path -maxdepth 1 -type f,l)"
+    if [[ -d $src_path ]]; then
+        src_files="$(find -L $src_path -maxdepth 1 -type f,l)"
+    else
+        src_files=$src_path
+    fi
 
     for src_file in $src_files; do
         dep_file=$(sed "s|$src_path|${path_map[$src_path]}|" <<< $src_file)
-       
-        if [[ -f $env_path/$dep_file ]] && [[ $src_file != *spack.yaml ]]; then
+
+        if [[ -f $env_path/$dep_file ]] && [[ $dep_file != ./spack.yaml ]]; then
             if cmp -s $my_root/$src_file $env_path/$dep_file; then
                 if [[ $output_mode != brief ]]; then
                     echo -e " - $src_file"

@@ -6,7 +6,7 @@
 #   - to the YAML file.
 #
 #   Author:         Brian Vanderwende
-#   Last Revised:   08:34, 11 Dec 2025
+#   Last Revised:   14:48, 15 Dec 2025
 #
 
 function usage {
@@ -300,12 +300,12 @@ if [[ -f $SPACK_ENV/constraints.cfg ]]; then
                     process_entry
                 fi
 
-                if [[ $NCAR_SPACK_HOST != ${meta_host:-$NCAR_SPACK_HOST} ]]; then
+                if [[ " $(tr ',' ' ' <<< ${meta_host:-$NCAR_SPACK_HOST}) " != *" $NCAR_SPACK_HOST "* ]]; then
                     tsecho "Skipping: $stored_entry (wrong host type)" 2
                     continue
                 fi
 
-                if [[ ${NCAR_SPACK_GPU_TYPE:-cuda} != ${meta_gpu:-${NCAR_SPACK_GPU_TYPE:-cuda}} ]]; then
+                if [[ " $(tr ',' ' ' <<< ${meta_gpu:-${NCAR_SPACK_GPU_TYPE:-cuda}}) " != *" ${NCAR_SPACK_GPU_TYPE:-cuda} "* ]]; then
                     tsecho "Skipping: $stored_entry (wrong gpu type)" 2
                     continue
                 fi

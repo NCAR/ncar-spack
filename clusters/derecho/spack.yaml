@@ -29,17 +29,23 @@ spack:
       type: rpath
       bind: false
   include:
-  - path: includes/constraints.yaml
+  - name: constraints
+    path: %BASEROOT%/includes/constraints.yaml
     optional: true
-  - path: includes/cray.yaml
+  - name: cray
+    path: %BASEROOT%/includes/cray.yaml
     when: env.get("NCAR_SPACK_HOST") == "derecho" or env.get("NCAR_SPACK_HOST") == "gust"
-  - path: includes/casper.yaml
+  - name: casper
+    path: %BASEROOT%/includes/casper.yaml
     when: env.get("NCAR_SPACK_HOST") == "casper"
-  - path: includes/cuda.yaml
+  - name: cuda
+    path: %BASEROOT%/includes/cuda.yaml
     when: env.get("NCAR_SPACK_GPU_TYPE") == "cuda"
-  - path: includes/cuda_casper.yaml
+  - name: cuda_casper
+    path: %BASEROOT%/includes/cuda_casper.yaml
     when: env.get("NCAR_SPACK_HOST") == "casper" and env.get("NCAR_SPACK_GPU_TYPE") == "cuda"
-  - path: includes/rocm.yaml
+  - name: rocm
+    path: %BASEROOT%/includes/rocm.yaml
     when: env.get("NCAR_SPACK_GPU_TYPE") == "rocm"
   packages:
     adios2:
@@ -88,13 +94,6 @@ spack:
       - +gold
       - +ld
       - +libiberty
-    c:
-      prefer:
-      # Here we try to make sure llvm is least-preferred!
-      - gcc
-      - intel-oneapi-compilers
-      - nvhpc
-      - llvm
     cairo:
       variants:
       - +X
@@ -537,9 +536,6 @@ spack:
       - spec: openpbs@2021.1.3
         prefix: /opt/pbs
       buildable: false
-    openssl:
-      require:
-      - certs=system
     pandoc:
       require:
       - +texlive
@@ -699,8 +695,7 @@ spack:
   view:
     baseenv:
       root: '%BASEROOT%/view'
-      select:
-      - git
+      select: []
       link_type: symlink
       link: roots
   modules:
@@ -756,51 +751,7 @@ spack:
               PATH: %BASEROOT%/wrappers/{name}/{version}/{hash:4}/bin
         core_compilers:
         - gcc@12.5.0
-        core_specs:
-        - grads
-        - pixi
-        - uv
-        - miniconda3
-        - visit
-        - paraview
-        - nco
-        - gmt
-        - cdo
-        - nccmp
-        - ncview
-        - madis
-        - ferret
-        - wgrib2
-        - nvtop
-        - octave
-        - gsl
-        - eigen
-        - intel-oneapi-advisor
-        - intel-oneapi-vtune
-        - darshan-util
-        - ecflow
-        - neovim
-        - doxygen
-        - texlive
-        - linaro-forge
-        - grib-util
-        - ncvis
-        - ucx
-        - ncl
-        - cudnn
-        - cuda
-        - charliecloud
-        - peak-memusage
-        - podman
-        - pcre
-        - apptainer
-        - go
-        - meson
-        - cmake
-        - intel-oneapi-compilers
-        - nvhpc
-        - gcc
-        - miniconda
+        core_specs: []
         darshan-runtime:
           autoload: none
           environment:
@@ -821,8 +772,7 @@ spack:
         esmf~mpi:
           conflict:
           - esmf-mpi
-        exclude:
-        - lmod
+        exclude: []
         exclude_implicits: true
         fftw+mpi:
           conflict:
@@ -864,6 +814,9 @@ spack:
               I_MPI_F77: ifx
               I_MPI_F90: ifx
               I_MPI_FC: ifx
+              MPICH_CC: icx
+              MPICH_CXX: icpx
+              MPICH_FC: ifx
               NCAR_ID_COMPILER: intel-{version}
               NCAR_ROOT_INTEL: '{prefix}'
               NCAR_SPACK_HASH_INTEL: '{hash}'
@@ -1117,3 +1070,6 @@ spack:
         fortran: 2
         fortran-rt: 2
         libifcore: 2
+  mirrors: {}
+  toolchains: {}
+  specs: {}

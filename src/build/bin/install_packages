@@ -8,7 +8,7 @@
 #           and any other packages that need it
 #
 #   Author:         Brian Vanderwende
-#   Last Revised:   08:34, 11 Dec 2025
+#   Last Revised:   18:07, 15 Dec 2025
 #
 
 
@@ -238,12 +238,12 @@ function prepare_spec {
     tsecho " >> Spec config = $(declare -p config | cut -d= -f2-)" 3
 
     # Skip this spec if conditional and conditions not met by deployment
-    if [[ $NCAR_SPACK_HOST != ${config[host]:-$NCAR_SPACK_HOST} ]]; then
+    if [[ " $(tr ',' ' ' <<< ${meta_host:-$NCAR_SPACK_HOST}) " != *" $NCAR_SPACK_HOST "* ]]; then
         tsecho " >> $spec skipped from check: host ($NCAR_SPACK_HOST) != ${config[host]}" 2
         return 1
     fi
 
-    if [[ ${NCAR_SPACK_GPU_TYPE:-cuda} != ${config[gpu]:-${NCAR_SPACK_GPU_TYPE:-cuda}} ]]; then
+    if [[ " $(tr ',' ' ' <<< ${meta_gpu:-${NCAR_SPACK_GPU_TYPE:-cuda}}) " != *" ${NCAR_SPACK_GPU_TYPE:-cuda} "* ]]; then
         tsecho " >> $spec skipped from check: GPU type (${NCAR_SPACK_GPU_TYPE:-cuda}) != ${config[gpu]}" 2
         return 1
     fi

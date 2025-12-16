@@ -31,6 +31,8 @@ excluded_pkgs = ["openpbs", "cray-libsci", "cray-mpich", "miniconda3", "opengl"]
 # Infer some settings from the environment
 env_dir = os.environ["SPACK_ENV"]
 yaml_files = ["spack.yaml"]
+tmproot = os.environ["NCAR_SPACK_TMPROOT"]
+deployment = "{}/{}".format(os.environ["NCAR_SPACK_HOST"], os.environ["NCAR_SPACK_HOST_VERSION"])
 
 try:
     for inc_file in os.listdir(f"{env_dir}/includes"):
@@ -44,15 +46,12 @@ for yaml_file in yaml_files:
     temp_path = f"{env_dir}/templates/yaml/{yaml_file}"
     os.makedirs(f"{env_dir}/templates/yaml/includes", exist_ok = True)
 
-    tmproot = os.environ["NCAR_SPACK_TMPROOT"]
-    deployment = "{}/{}".format(os.environ["NCAR_SPACK_HOST"], os.environ["NCAR_SPACK_HOST_VERSION"])
-
-    with open(yaml_path, 'r') as yaml_file:
-        full_data = yaml.load_config(yaml_file)
+    with open(yaml_path, 'r') as yf:
+        full_data = yaml.load_config(yf)
 
     # We need to operate on a deep copy since we will modify the dictionary
     if yaml_file == "spack.yaml":
-        orig_data = full_data
+        orig_data = full_data["spack"]
     else:
         orig_data = full_data
 
@@ -74,6 +73,12 @@ for yaml_file in yaml_files:
                     data[key][subkey] = data[key][subkey].replace(tmproot, "%TMPROOT%").replace(deployment, "%DEPLOYMENT%")
                 elif subkey == "build_stage":
                     data[key][subkey] = [item.replace(tmproot, "%TMPROOT%").replace(deployment, "%DEPLOYMENT%") for item in data[key][subkey]]
+        elif key == "include":
+            for item in orig_data[key]:
+                if isinstance(data[key][item], dict):
+                    data[key][item]["path"] = data[key][item]["path"].replace(env_dir, "%BASEROOT%")
+                else:
+                    data[key][item] = data[key][item].replace(env_dir, "%BASEROOT%")
         elif key == "packages":
             for subkey in orig_data[key]:
                 keep_pkg = False
