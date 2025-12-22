@@ -1,7 +1,7 @@
 #!/bin/bash
 #
 #   Author:         Brian Vanderwende
-#   Last Revised:   21:32, 07 Dec 2025
+#   Last Revised:   14:53, 22 Dec 2025
 #
 
 set -e
@@ -442,6 +442,7 @@ if [[ ! $skip_steps =~ " "(mirrors|all)" "  ]]; then
     for mtype in LOCAL GLOBAL; do
         mirror_variable=NCAR_SPACK_MIRROR_${mtype}
         mirror=${!mirror_variable}
+        mirror_type=posix
 
         if [[ -n $mirror ]]; then
             tsecho "Adding mirror ${GCOL}${mirror}$DCOL"
@@ -451,12 +452,16 @@ if [[ ! $skip_steps =~ " "(mirrors|all)" "  ]]; then
                 fi
             fi
 
+            if [[ $mirror == s3* ]]; then
+                mirror_type=s3
+            fi
+
             # Only use S3 as writable cache in production
             if [[ $NCAR_SPACK_DEPLOY_TYPE != production ]]; then
                 mirror=$(sed 's|s3://|https://stratus.ucar.edu/|' <<< $mirror)
             fi
 
-            if [[ $mirror == s3* ]] && [[ -n $NCAR_SPACK_MIRROR_PROFILE ]]; then
+            if [[ $mirror_type == s3 ]] && [[ -n $NCAR_SPACK_MIRROR_PROFILE ]]; then
                 spack mirror add --s3-profile $NCAR_SPACK_MIRROR_PROFILE ncar_mirror_${mtype,,} $mirror
             else
                 spack mirror add ncar_mirror_${mtype,,} $mirror
