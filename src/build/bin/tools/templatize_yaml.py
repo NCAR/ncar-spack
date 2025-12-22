@@ -75,10 +75,10 @@ for yaml_file in yaml_files:
                     data[key][subkey] = [item.replace(tmproot, "%TMPROOT%").replace(deployment, "%DEPLOYMENT%") for item in data[key][subkey]]
         elif key == "include":
             for item in orig_data[key]:
-                if isinstance(data[key][item], dict):
-                    data[key][item]["path"] = data[key][item]["path"].replace(env_dir, "%BASEROOT%")
+                if isinstance(item, dict):
+                    item["path"] = item["path"].replace(env_dir, "%BASEROOT%")
                 else:
-                    data[key][item] = data[key][item].replace(env_dir, "%BASEROOT%")
+                    item = item.replace(env_dir, "%BASEROOT%")
         elif key == "packages":
             for subkey in orig_data[key]:
                 keep_pkg = False
@@ -128,9 +128,9 @@ for yaml_file in yaml_files:
                                                 data[key][mset][subkey][modkey][var][envkey] = sorted(data[key][mset][subkey][modkey][var][envkey])
 
                         data[key][mset][subkey] = dict(sorted(data[key][mset][subkey].items(), key=lambda item: item[0]))
-        elif key in ["mirrors", "specs", "upstreams", "toolchains"]:
+        elif key in ["mirrors", "upstreams", "toolchains"]:
             data[key] = CommentedMap()
-        elif key in ["bootstrap"]:
+        elif key in ["bootstrap", "specs"]:
             del(data[key])
 
     if yaml_file == "spack.yaml":
