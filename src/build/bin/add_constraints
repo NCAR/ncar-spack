@@ -6,7 +6,7 @@
 #   - to the YAML file.
 #
 #   Author:         Brian Vanderwende
-#   Last Revised:   14:48, 15 Dec 2025
+#   Last Revised:   21:39, 22 Dec 2025
 #
 
 function usage {
@@ -122,8 +122,8 @@ function modify_compilers {
 
 function process_entry {
     if [[ -z $stored_entry ]]; then
-        tsecho "Error: No stored entry to process. Likely indicates a syntax error."
-        exit 1
+        tsecho "$FCOL >> No entries to process in this section$DCOL" 1
+        return
     fi
 
     tsecho "$FCOL >> Processing: $stored_entry (type=${BCOL}$my_mode${DCOL})$DCOL" 1
