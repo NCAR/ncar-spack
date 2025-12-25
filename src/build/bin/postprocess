@@ -4,7 +4,7 @@
 #   subdirectory of the build environment.
 #
 #   Author:         Brian Vanderwende
-#   Last Revised:   19:44, 27 Oct 2025
+#   Last Revised:   09:17, 25 Dec 2025
 #
 
 function usage {
@@ -50,7 +50,7 @@ export my_dir="$( cd "$(dirname "$0")" ; pwd )"
 # Create a temporary file for use in all units
 export TMP_FILE=$SPACK_ENV/.tmp.$$
 
-if [[ $NCAR_SPACK_ENV_TYPE == public ]]; then
+if [[ ${NCAR_SPACK_ENV_TYPE:=build} == public ]]; then
     export MOD_ROOT=$NCAR_SPACK_ROOT_MODULES
     export BASE_ROOT=$NCAR_SPACK_ROOT_BASE
 else
@@ -116,7 +116,7 @@ else
 fi
 
 if [[ -z $unit_list ]]; then
-    if [[ ${NCAR_SPACK_ENV_TYPE:-build} == build ]]; then
+    if [[ $NCAR_SPACK_ENV_TYPE == build ]]; then
         env_filter=public
     else
         env_filter=build

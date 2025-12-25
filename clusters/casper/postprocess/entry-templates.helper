@@ -1,0 +1,46 @@
+#!/bin/bash
+#
+#   Unit: entry-templates.helper
+#   Description:
+#       Entry scripts allow us to branch to different init scripts depending
+#       on some cluster-specific conditional.
+#
+#   Author:         Brian Vanderwende
+#   Last Revised:   14:11, 24 Dec 2025
+#
+
+# This version of entry-templates should be run by the Casper cluster type, and so
+# we need to derive a corresponding casper-rocm cluser path to use
+rocm_path=${util_path/$NCAR_SPACK_HOST_VERSION/${NCAR_SPACK_HOST_VERSION}-rocm}
+
+# If there is no corresponding version, use the latest version
+if [[ ! -d $rocm_path ]]; then
+    rocm_path=$(ls -1d --color=never ${util_path/$NCAR_SPACK_HOST_VERSION/*-rocm} | tail -n1)
+fi
+
+if [[ ! -d $rocm_path ]]; then
+    tsecho "Error: Cannot generate entry templates as no valid casper-rocm cluster can be found"
+    exit 1
+fi
+
+function generate_bourne_entry {
+cat > $1 << EOF
+if /sbin/lspci -k |& grep -q "Kernel driver in use: amdgpu"; then
+    . $rocm_path/localinit.sh
+else
+    . $util_path/localinit.sh
+fi
+EOF
+}
+
+function generate_csh_entry {
+cat > $1 << EOF
+/sbin/lspci -k |& grep "Kernel driver in use: amdgpu" >& /dev/null
+
+if ( \$status == 0 ) then
+    source $rocm_path/localinit.csh
+else
+    source $util_path/localinit.csh
+endif
+EOF
+}

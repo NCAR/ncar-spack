@@ -94,6 +94,14 @@ spack:
       - +gold
       - +ld
       - +libiberty
+    c:
+      buildable: true
+    cxx:
+      buildable: true
+    fortran:
+      buildable: true
+    golang:
+      buildable: true
     cairo:
       variants:
       - +X
@@ -293,6 +301,7 @@ spack:
       prefer:
       - +qt
     go-or-gccgo-bootstrap:
+      buildable: true
       prefer:
       - go-bootstrap
     googletest:
