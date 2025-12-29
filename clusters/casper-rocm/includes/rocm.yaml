@@ -10,8 +10,12 @@ packages:
     require:
     - +rocm
   hwloc:
-    require:
+    prefer:
     - +rocm
+    require:
+    # This is a GLIBCXX symbol versioning requirement for ROCm 6.4.3
+    - spec: '%gcc@14:'
+      when: +rocm %gcc
   intel-oneapi-compilers:
     variants:
     - +amd
@@ -23,6 +27,11 @@ packages:
       when: '%aocc'
     - spec: ^cmake@3.27
       when: '@:4.2.01 +rocm'
+  llvm:
+    require:
+    # This is necessary because otherwise ROCm bits get included into the
+    # llvm header and lib paths and may break the installation
+    - ^hwloc~rocm
   ncarcompilers:
     variants:
     - +hip
@@ -33,6 +42,8 @@ packages:
     require:
     - +rocm
     - amdgpu_target=gfx942
+    - spec: '%gcc@14:'
+      when: +rocm %gcc
   osu-micro-benchmarks:
     variants:
     - +rocm
@@ -53,6 +64,8 @@ packages:
   ucx:
     require:
     - +rocm
+    - spec: '%gcc@14:'
+      when: +rocm %gcc
 modules:
   default:
     lmod:

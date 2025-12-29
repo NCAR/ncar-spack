@@ -8,7 +8,7 @@
 #           and any other packages that need it
 #
 #   Author:         Brian Vanderwende
-#   Last Revised:   18:07, 15 Dec 2025
+#   Last Revised:   21:09, 28 Dec 2025
 #
 
 
@@ -235,15 +235,21 @@ function prepare_spec {
 
     unset ${!pkg_*}
 
+    # The build environment is considered the reference, so this wouldn't make sense
+    if [[ -n ${config[match]} ]] && [[ $SPACK_ENV == *build ]]; then
+        tsecho "Error: Cannot use spec matching in the build environment"
+        exit 1
+    fi
+
     tsecho " >> Spec config = $(declare -p config | cut -d= -f2-)" 3
 
     # Skip this spec if conditional and conditions not met by deployment
-    if [[ " $(tr ',' ' ' <<< ${meta_host:-$NCAR_SPACK_HOST}) " != *" $NCAR_SPACK_HOST "* ]]; then
+    if [[ " $(tr ',' ' ' <<< ${config[host]:-$NCAR_SPACK_HOST}) " != *" $NCAR_SPACK_HOST "* ]]; then
         tsecho " >> $spec skipped from check: host ($NCAR_SPACK_HOST) != ${config[host]}" 2
         return 1
     fi
 
-    if [[ " $(tr ',' ' ' <<< ${meta_gpu:-${NCAR_SPACK_GPU_TYPE:-cuda}}) " != *" ${NCAR_SPACK_GPU_TYPE:-cuda} "* ]]; then
+    if [[ " $(tr ',' ' ' <<< ${config[gpu]:-${NCAR_SPACK_GPU_TYPE:-cuda}}) " != *" ${NCAR_SPACK_GPU_TYPE:-cuda} "* ]]; then
         tsecho " >> $spec skipped from check: GPU type (${NCAR_SPACK_GPU_TYPE:-cuda}) != ${config[gpu]}" 2
         return 1
     fi
@@ -257,6 +263,13 @@ function prepare_spec {
 
                     if [[ $comp == core ]]; then
                         comp=$NCAR_SPACK_CORE_GCC
+                    elif [[ $comp == compat ]]; then
+                        if [[ -z $NCAR_SPACK_COMPAT_GCC ]]; then
+                            tsecho "Error: Compatibility GCC version requested, but NCAR_SPACK_COMPAT_GCC not set"
+                            exit 1
+                        fi
+
+                        comp=$NCAR_SPACK_COMPAT_GCC
                     fi
                     ;;
                 mpi)
@@ -676,10 +689,15 @@ function check_spec {
 
                 if [[ -n ${config[match]} ]]; then
                     if [[ $spec_hash != ${config[match]} ]]; then
-                        tsecho "Error: computed hash ($spec_hash) for package $spec does \n       not match expected hash (${config[match]})"
+                        computed_spec=$(cut -c6- <<< $spack_spec_out)
+                        expected_spec=$(spack env deactivate; spack env activate $NCAR_SPACK_ENV_BUILD; $spec_cmd /${config[match]} | cut -c6-)
+                        set +e; spec_diff=$(diff -u <(echo "$computed_spec") <(echo "$expected_spec")); set -e
+
+                        tsecho "Error: computed hash ($spec_hash) for package $spec does not match expected hash (${config[match]})\n >> See error log for details: $log_errors"
                         echo "Spec mismatch for $spec" >> $log_errors
-                        echo "  Expected hash: ${config[match]}" >> $log_errors
-                        echo -e "  Computed hash:\n$spack_spec_out" >> $log_errors
+                        echo -e " >> Computed spec:\n$computed_spec" >> $log_errors
+                        echo -e "\n >> Expected spec:\n$expected_spec" >> $log_errors
+                        echo -e "\n >> Difference:\n$spec_diff" >> $log_errors
                         clear_added_specs 1
                         exit 1
                     fi
@@ -800,7 +818,7 @@ function clear_added_specs {
     exit_mode=$1
 
     if [[ $exit_mode == 1 ]]; then
-        echo -e "$RCOL >>> Removing any queued specs from spack.yaml ...$DCOL\n"
+        echo -e "$RCOL >> Removing any queued specs from spack.yaml ...$DCOL\n"
     fi
 
     if [[ -n $install_queue ]]; then
@@ -1197,7 +1215,7 @@ Build jobs per task = $build_jobs
 Build host(s)       = ${build_hosts[@]}
 
 System GCC          = gcc@$sys_gcc
-Stack Core GCC      = ${NCAR_SPACK_CORE_GCC:-gcc@$sys_gcc}
+Stack Core GCC      = ${NCAR_SPACK_CORE_GCC:=gcc@$sys_gcc}
 Concurrent specs    = ${package_limit/-1/unlimited}
 Log verbosity       = ${log_verbosity:-0}
 

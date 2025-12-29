@@ -3,10 +3,22 @@
 env_args=( SPACK_DISABLE_LOCAL_CONFIG=true )
 my_dir="$( cd "$(dirname "$0")" ; pwd )"
 NCAR_SPACK_ROOT=$(readlink -f $my_dir/..)
+my_owner=$(stat -c '%U' $NCAR_SPACK_ROOT)
+current_user=$(whoami)
 
 if [[ ! -f $NCAR_SPACK_ROOT/bin/spack ]]; then
     >&2 echo "Error: script is not installed into a Spack clone"
     exit 1
+fi
+
+if [[ $my_owner != $current_user ]]; then
+    >&2 echo "Warning: Current user ($current_user) is not the owner ($my_owner) of this deployment!"
+    read -e -p "Proceed (y/N)? " ignore_owner
+    ignore_owner=${ignore_owner:=no}
+
+    if [[ YES != ${ignore_owner^^}* ]]; then
+        exit 1
+    fi
 fi
 
 if [[ -e /etc/bash.bashrc.local ]]; then

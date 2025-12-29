@@ -26,7 +26,8 @@ def clean_view(data):
         data["select"] = []
 
 # Packages to exclude when pruning externals
-excluded_pkgs = ["openpbs", "cray-libsci", "cray-mpich", "miniconda3", "opengl"]
+compilers = ["c", "cxx", "fortran", "golang", "go-or-gccgo-bootstrap"]
+excluded_pkgs = ["openpbs", "cray-libsci", "cray-mpich", "miniconda3", "opengl", "uv", "pixi"] + compilers
 
 # Infer some settings from the environment
 env_dir = os.environ["SPACK_ENV"]
@@ -56,6 +57,13 @@ for yaml_file in yaml_files:
         orig_data = full_data
 
     data = copy.deepcopy(orig_data)
+
+    # Spack always wants to screw these up...
+    for compiler in compilers:
+        if compiler in data["packages"]:
+            data["packages"][compiler]["buildable"] = True
+        else:
+            data["packages"][compiler] = CommentedMap({ "buildable" : True })
 
     # Make modifications to fields to generalize yaml file
     for key in orig_data:

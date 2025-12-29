@@ -10,7 +10,7 @@
 #           shell script. So we must activate in the script!
 #
 #   Author:         Brian Vanderwende
-#   Last Revised:   21:04, 15 Dec 2025
+#   Last Revised:   10:04, 27 Dec 2025
 #
 
 
@@ -265,8 +265,21 @@ while [[ $# -gt 0 ]]; do
             force_commit=true
             ;;
         -r|--resume)
+            force_resume=tbd
             echo "Danger: You are asking to resume a failed publish."
-            read -e -p "        Are you sure (y/N)? " force_resume
+
+            while [[ YES != ${force_resume^^}* ]] && [[ NO != ${force_resume^^}* ]]; do
+                if [[ $force_resume != tbd ]]; then
+                    echo   "         ${FCOL}>> Invalid input ($force_resume); try again!${DCOL}"
+                fi
+
+                read -e -p "        Are you sure (y/N)? " force_resume
+                force_resume=${force_resume:=blank}
+            done
+
+            if [[ NO == ${force_resume^^}* ]]; then
+                exit
+            fi
             ;;
         --set-default)
             set_as_default=true

@@ -96,12 +96,6 @@ spack:
       - +libiberty
     c:
       buildable: true
-    cxx:
-      buildable: true
-    fortran:
-      buildable: true
-    golang:
-      buildable: true
     cairo:
       variants:
       - +X
@@ -140,6 +134,8 @@ spack:
       - +nghttp2
       prefer:
       - tls=openssl
+    cxx:
+      buildable: true
     darshan-runtime:
       variants:
       - +parallel-netcdf
@@ -211,6 +207,8 @@ spack:
     fftw:
       variants:
       - ~mpi
+    fortran:
+      buildable: true
     gcc:
       prefer:
       - spec: '%gcc@7.5.0'
@@ -301,9 +299,11 @@ spack:
       prefer:
       - +qt
     go-or-gccgo-bootstrap:
-      buildable: true
       prefer:
       - go-bootstrap
+      buildable: true
+    golang:
+      buildable: true
     googletest:
       variants:
       - cxxstd=17
@@ -592,6 +592,11 @@ spack:
     pbs:
       require:
       - openpbs
+    pixi:
+      externals:
+      - spec: pixi@1.0.0
+        prefix: /glade/u/apps/opt/pixi
+      buildable: false
     pkgconfig:
       prefer:
       - pkg-config
@@ -607,6 +612,9 @@ spack:
     py-numpy:
       prefer:
       - '%blas,lapack=openblas'
+    py-pandas:
+      prefer:
+      - +performance
     python:
       prefer:
       - spec: '@3.11'
@@ -643,6 +651,11 @@ spack:
     tbb:
       prefer:
       - intel-oneapi-tbb
+    uv:
+      externals:
+      - spec: uv@1.0.0
+        prefix: /glade/u/apps/opt/uv
+      buildable: false
     vim:
       variants:
       - +cscope
@@ -1020,6 +1033,10 @@ spack:
           conflict:
           - conda
           - uv
+          environment:
+            set:
+              PIXI_CACHE_DIR: /glade/derecho/scratch/" .. os.getenv("USER") .. "/.cache/pixi
+              RATTLER_CACHE_DIR: /glade/derecho/scratch/" .. os.getenv("USER") .. "/.cache/pixi/rattler
         podman:
           environment:
             set:
@@ -1063,6 +1080,9 @@ spack:
           conflict:
           - conda
           - pixi
+          environment:
+            set:
+              UV_CACHE_DIR: /glade/derecho/scratch/" .. os.getenv("USER") .. "/.cache/uv
         visit:
           autoload: none
   concretizer:

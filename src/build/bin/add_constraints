@@ -6,7 +6,7 @@
 #   - to the YAML file.
 #
 #   Author:         Brian Vanderwende
-#   Last Revised:   21:39, 22 Dec 2025
+#   Last Revised:   15:08, 26 Dec 2025
 #
 
 function usage {
@@ -279,6 +279,13 @@ if [[ -f $SPACK_ENV/constraints.cfg ]]; then
                         declare meta_${meta_data%=*}=${meta_data##*=}
                     elif [[ $meta_data == core ]]; then
                         meta_requires=%$NCAR_SPACK_CORE_GCC
+                    elif [[ $meta_data == compat ]]; then
+                        if [[ -z $NCAR_SPACK_COMPAT_GCC ]]; then
+                            tsecho "Error: Compatibility GCC version requested, but NCAR_SPACK_COMPAT_GCC not set"
+                            exit 1
+                        fi
+
+                        meta_requires=%$NCAR_SPACK_COMPAT_GCC
                     else
                         meta_requires=$meta_data
                     fi

@@ -24,14 +24,13 @@ packages:
     - +ib_hw_tm
     - +mlx5_dv
     - +rc
-    - +rdmacm
     - +thread_multiple
     - +ud
-    - +verbs
     - +vfs
     - ~knem
-    prefer:
-    - '%gcc@12.5.0'
+    require:
+    - +rdmacm
+    - +verbs
 modules:
   default:
     lmod:
