@@ -59,11 +59,12 @@ for yaml_file in yaml_files:
     data = copy.deepcopy(orig_data)
 
     # Spack always wants to screw these up...
-    for compiler in compilers:
-        if compiler in data["packages"]:
-            data["packages"][compiler]["buildable"] = True
-        else:
-            data["packages"][compiler] = CommentedMap({ "buildable" : True })
+    if yaml_file == "spack.yaml":
+        for compiler in compilers:
+            if compiler in data["packages"]:
+                data["packages"][compiler]["buildable"] = True
+            else:
+                data["packages"][compiler] = CommentedMap({ "buildable" : True })
 
     # Make modifications to fields to generalize yaml file
     for key in orig_data:

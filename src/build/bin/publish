@@ -10,7 +10,7 @@
 #           shell script. So we must activate in the script!
 #
 #   Author:         Brian Vanderwende
-#   Last Revised:   10:04, 27 Dec 2025
+#   Last Revised:   14:11, 29 Dec 2025
 #
 
 
@@ -639,7 +639,7 @@ echo
 # that can become corrupted and are worth backing up!
 rsync -a --delete --exclude=failures $SPACK_ROOT/opt/spack/.spack-db/ .spack-db
 
-git add spack.yaml spack.lock config registry .spack-db postprocess
+git add spack.yaml spack.lock config registry .spack-db postprocess includes
 
 if [[ -d util ]]; then
     git add util

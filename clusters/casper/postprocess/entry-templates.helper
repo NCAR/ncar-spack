@@ -6,7 +6,7 @@
 #       on some cluster-specific conditional.
 #
 #   Author:         Brian Vanderwende
-#   Last Revised:   14:11, 24 Dec 2025
+#   Last Revised:   10:05, 30 Dec 2025
 #
 
 # This version of entry-templates should be run by the Casper cluster type, and so
@@ -26,8 +26,10 @@ fi
 function generate_bourne_entry {
 cat > $1 << EOF
 if /sbin/lspci -k |& grep -q "Kernel driver in use: amdgpu"; then
+    export GPU_ARCH_TYPE=rocm
     . $rocm_path/localinit.sh
 else
+    export GPU_ARCH_TYPE=cuda
     . $util_path/localinit.sh
 fi
 EOF
@@ -38,8 +40,10 @@ cat > $1 << EOF
 /sbin/lspci -k |& grep "Kernel driver in use: amdgpu" >& /dev/null
 
 if ( \$status == 0 ) then
+    setenv GPU_ARCH_TYPE rocm
     source $rocm_path/localinit.csh
 else
+    setenv GPU_ARCH_TYPE cuda
     source $util_path/localinit.csh
 endif
 EOF
