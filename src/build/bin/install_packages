@@ -8,7 +8,7 @@
 #           and any other packages that need it
 #
 #   Author:         Brian Vanderwende
-#   Last Revised:   21:09, 28 Dec 2025
+#   Last Revised:   10:06, 02 Feb 2026
 #
 
 
@@ -36,13 +36,14 @@ Options
     -i, --ignore-preferred  version-agnostic specs need not used preferred
     -j, --jobs-per-task N   number of build jobs per spack install task
                             (will use value in spack.yaml if unspecified)
+    -k, --keep-source OPT   instructs Spack to keep source for all installs
+                            (options decide location: stage, install)
     -l, --host-list HOSTS   specify build hosts
                             (comma-separated list, "cluster", or "pbs")
     -n, --num-tasks N       # of concurrent calls to spack install (default 1)
                             if negative, will scale down if npkgs < ntasks
     -p, --package-limit N   max number of packages to be installed at once
                             (1 for sequential)
-    -r, --refresh-registry  force refresh of package recipes in the registry
     -s, --skip-checks       don't perform certain environment sanity checks
     -v, --verbose           provide details on actions *not* taken
 
@@ -92,6 +93,9 @@ while [[ $# -gt 0 ]]; do
             build_jobs=$2
             shift
             ;;
+        -k|--keep-source)
+            default_source=$2
+            ;;
         -l|--host-list|--hostlist)
             build_hosts=$2
             shift
@@ -109,9 +113,6 @@ while [[ $# -gt 0 ]]; do
         -p|--package-limit)
             user_package_limit=$2
             shift
-            ;;
-        -r|--refresh-registry)
-            refresh_registry=true
             ;;
         -v|--verbose)
             export log_verbosity=$((log_verbosity + 1))
@@ -165,27 +166,16 @@ function handle_interrupt {
 }
 
 function add_spec_to_queue {
-    for width in ${field_widths[@]}; do
-        queue_config[$1]="${queue_config[$1]:+${queue_config[$1]}|}${!field_vars[$width]}"
+    for var in ${field_list[@]}; do
+        queue_config[$1]="${queue_config[$1]:+${queue_config[$1]}|}${!var}"
     done
 
-    queue_config[$1]="${queue_config[$1]}|$raw_spec|$spec"
     install_queue="${install_queue:+${install_queue}|}$1"
 }
 
 function remove_spec_from_queue {
     unset queue_config[$1]
     install_queue=$(sed "s/${1}|*//; s/|$//" <<< $install_queue)
-}
-
-function add_spec_to_registry {
-    IFS='|' read -a registry <<< ${queue_config[$1]}
-
-    for n in ${!field_widths[@]}; do
-        printf "%-${field_widths[$n]}s | " ${registry[$n]} >> $SPACK_ENV/registry
-    done
-
-    printf "%s | %s\n" "${registry[-2]}" "${registry[-1]}" >> $SPACK_ENV/registry
 }
 
 function refresh_config {
@@ -483,31 +473,20 @@ function compiler_checks {
 function check_registry {
     # Check whether certain settings on package have changed
     for n in ${!registry[@]}; do
-        # The last two entries are always the spec, which has variable length and is not checked
-        if [[ $n -lt $((${#registry[@]} - 2 )) ]]; then
-            width=$(($(wc -c <<< "${registry[$n]}") - 1))
-
-            if [[ -n ${field_vars[$width]} ]]; then
-                if [[ ${field_vars[$width]} == config\[*\] ]]; then
-                    if [[ ${!field_vars[$width]// } != ${registry[$n]// } ]]; then
-                        modify_registry=true
-                    fi
-                else
-                    stripped_value=${registry[$n]// }
-                    declare ${field_vars[$width]}=${stripped_value:-N/A}
-                fi
-            else
-                tsecho "Error: invalid registry entry with field width $width!"
-                exit 1
+        if [[ ${field_list[$n]} == config\[*\] ]]; then
+            if [[ ${!field_list[$n]// } != ${registry[$n]} ]]; then
+                modify_registry=true
             fi
+        elif [[ ! ${field_list[$n]} =~ ^(spec_hash|raw_spec|spec)$ ]]; then
+            declare ${field_list[$n]}=${registry:-N/A}
         fi
     done
 
-    if [[ ${modify_registry:-false} == true ]] || [[ ${refresh_registry:-false} == true ]]; then
+    if [[ ${modify_registry:-false} == true ]]; then
         tsecho " >> modifying outdated or broken registry entry" 2
         sed -i "/^${spec_hash} .*/d" $SPACK_ENV/registry
         add_spec_to_queue $spec_hash
-        add_spec_to_registry $spec_hash
+        add_spec_to_registry "${queue_config[$spec_hash]}" $SPACK_ENV/registry
         remove_spec_from_queue $spec_hash
         unset modify_registry
     fi
@@ -644,7 +623,7 @@ function check_spec {
         skip_spec=false spec_hash= raw_spec="$spec" parsed_spec=
 
         # Check for raw spec first, to avoid recreating canonical spec
-        registry_data=$(sed -n '3,$ s/ | /|/gp' $SPACK_ENV/registry | awk -F\| -v spec="$spec"      \
+        registry_data=$(sed -n '3,$ s/ *| */|/gp' $SPACK_ENV/registry | awk -F\| -v spec="$spec"      \
                 '$(NF-1) == spec {print $0}')
 
         # Use Spack commands to reformat into canonical Spec ordering
@@ -653,12 +632,12 @@ function check_spec {
         if [[ -z $registry_data ]]; then
             parsed_spec="$(spack python -c "from spack.spec import Spec; print($parse_cmd)")"
             spec="$parsed_spec"
-            registry_data=$(sed -n '3,$ s/ | /|/gp' $SPACK_ENV/registry | awk -F\| -v spec="$spec"      \
+            registry_data=$(sed -n '3,$ s/ *| */|/gp' $SPACK_ENV/registry | awk -F\| -v spec="$spec"      \
                     '$NF == spec {print $0}')
         fi
 
         if [[ -n $registry_data ]]; then
-            IFS='|' read -a registry <<< $registry_data
+            IFS='|' read -a registry <<< $(sed 's/ *| */|/g' <<< $registry_data)
             spec_hash=${registry[0]}
             check_registry
             skip_spec=true
@@ -725,7 +704,7 @@ function check_spec {
 
                 if [[ " $start_hashes_all " == *" $spec_hash "* ]]; then
                     install_date=N/A add_spec_to_queue $spec_hash
-                    add_spec_to_registry $spec_hash
+                    add_spec_to_registry "${queue_config[$spec_hash]}" $SPACK_ENV/registry
                     remove_spec_from_queue $spec_hash
                     skip_spec=true
 
@@ -841,7 +820,7 @@ function clear_added_specs {
                 tsecho "Keeping successfully installed spec $queued_spec (hash /$queued_hash)." 2
             fi
 
-            add_date=$(date +%FT%T) add_spec_to_registry $queued_hash
+            add_date=$(date +%FT%T) add_spec_to_registry "${queue_config[$queued_hash]}" $SPACK_ENV/registry
             remove_spec_from_queue $queued_hash
             modify_spec_access ${active_config[access]:-module} $queued_hash "$queued_spec"
         done < <(tr '|' '\n' <<< "$install_queue")
@@ -877,6 +856,15 @@ function install_specs {
 
     if [[ ${active_config[trust]:-no} == yes ]]; then
         spec_build_cmd="$spec_build_cmd --no-checksum --deprecated"
+    fi
+
+    if [[ ${active_config[source]} == source ]]; then
+        spec_build_cmd="$spec_build_cmd --keep-stage"
+    elif [[ ${active_config[source]} == install ]]; then
+        spec_build_cmd="$spec_build_cmd --source"
+    elif [[ ${active_config[source]:-no} != no ]]; then
+        tsecho "Error: Unknown source option (${active_config[source]}). Valid = source, install, no"
+        exit 1
     fi
 
     spec_build_cmd="$spec_build_cmd -j ${active_config[maxjobs]:-${build_jobs:-1}}"
@@ -1036,14 +1024,15 @@ function install_specs {
 }
 
 function initialize_registry {
-    for width in ${field_widths[@]}; do
-        printf "%-${width}s | " "${field_labels[${field_vars[$width]}]}" >> $SPACK_ENV/.registry.tmp
-    done
-
-    printf "%s\n" "Raw Spec | Spec" >> $SPACK_ENV/.registry.tmp
-    printf "%170s\n" | tr " " "-" >> $SPACK_ENV/.registry.tmp
-
     if [[ -f $SPACK_ENV/registry ]]; then
+        match_spec_column_width $SPACK_ENV/registry
+        write_registry_header
+
+        if ! cmp -s <(head -n 2 $SPACK_ENV/registry) <(head -n 2 $SPACK_ENV/.registry.tmp); then
+            tsecho "Error: Registry format has changed. Run bin/update_registry first!"
+            exit 1
+        fi
+
         while read entry; do
             spec_hash=$(awk '{print $1}' <<< "$entry")
 
@@ -1059,6 +1048,8 @@ function initialize_registry {
             fi
         done < <(tail -n +3 $SPACK_ENV/registry)
         [[ $buffer_me ]] && echo
+    else
+        write_registry_header
     fi
 
     mv $SPACK_ENV/.registry.tmp $SPACK_ENV/registry

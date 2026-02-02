@@ -10,7 +10,7 @@
 #           shell script. So we must activate in the script!
 #
 #   Author:         Brian Vanderwende
-#   Last Revised:   14:11, 29 Dec 2025
+#   Last Revised:   10:26, 02 Feb 2026
 #
 
 
@@ -105,8 +105,8 @@ function create_manifest {
 
     # Derive registry columns
     for opt in ${install_params//|/ } publish; do
-        for n in ${!field_widths[@]}; do
-            if [[ ${field_vars[${field_widths[$n]}]} == "config[$opt]" ]]; then
+        for n in ${!field_list[@]}; do
+            if [[ ${field_list[$n]} == "config[$opt]" ]]; then
                 columns[$opt]=$n
             fi
         done

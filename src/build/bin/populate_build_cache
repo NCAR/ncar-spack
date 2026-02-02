@@ -5,6 +5,7 @@ cat << EOF
 Usage: $0 [-j JOBS] [-m MIRROR]
 
 Options
+    -c, --clobber LIST  spec hashes to overwrite in the cache (or "all")
     -j, --jobs          number of concurrent pkgs to cache (default 1)
     -m, --mirror        specify name or path to custom mirror
     -s, --skip-errors   don't halt if one push fails
@@ -27,6 +28,15 @@ max_jobs=4
 
 while [[ $# -gt 0 ]]; do
     case $1 in
+        -c|--clobber)
+            if [[ $1 == *=* ]]; then
+                clobber_list=${1#*=}
+            else
+                clobber_list=$2; shift
+            fi
+
+            clobber_list="${clobber_list//,/ }"
+            ;;
         -j|--jobs)
             if [[ $1 == *=* ]]; then
                 max_jobs=${1#*=}
@@ -102,6 +112,11 @@ function wait_for_jobs {
 tsecho "Using up to $max_jobs threads to populate cache"
 tsecho "Pushing to cache: ${PCOL}${mirror}${DCOL}"
 
+if [[ $clobber_list == all ]]; then
+    cache_cmd+=" --force"
+    tsecho " >> Force pushing all packages (cache refresh)"
+fi
+
 raw_list=$(spack find --format "{prefix} {hash} {name}|{version}|{hash}")
 pkg_list=$(awk -v envpath=${SPACK_ENV}/opt '$1~envpath { print $2" "$3 }' <<< "$raw_list")
 
@@ -135,13 +150,18 @@ while read hash triplet; do
     pkg=${triplet//|/-}
     name=${triplet%%|*}
 
-    if [[ $cache_list != *$pkg* ]]; then
+    if [[ $cache_list != *$pkg* ]] || [[ $clobber_list == all ]] || [[ " $clobber_list " == *" $hash "* ]]; then
         if [[ -f $NCAR_SPACK_ENV_BUILD/.installs ]]; then
             use_cache=$(awk -F: -v spec_hash="$hash" '$2 == spec_hash {print $3}' $NCAR_SPACK_ENV_BUILD/.installs)
         fi
 
         if [[ $use_cache != no ]]; then
-            tsecho "Caching package:  ${GCOL}${pkg}${DCOL}"
+            if [[ " $clobber_list " == *" $hash "* ]]; then
+                clobber_opt=" --force"
+                clobber_info="(${PCOL}force push${DCOL})"
+            fi
+
+            tsecho "Caching package:  ${GCOL}${pkg}${DCOL} $clobber_info"
 
             if [[ " ${NCAR_SPACK_LINKED_PACKAGES[@]} " == *" $name "* ]]; then
                 unset linked_pkg
@@ -178,9 +198,10 @@ while read hash triplet; do
                 fi
             fi
             
-            log_cmd "$cache_cmd --only=package $mirror /$hash" >> $log_file
-            $cache_cmd --only=package $mirror /$hash &>> $log_file &
+            log_cmd "$cache_cmd$clobber_opt --only=package $mirror /$hash" >> $log_file
+            $cache_cmd$clobber_opt --only=package $mirror /$hash &>> $log_file &
             job_pids[$!]=running
+            unset clobber_opt clobber_info
         fi
     else
         tsecho "Skipping cached package: ${PCOL}${pkg}$DCOL" 1

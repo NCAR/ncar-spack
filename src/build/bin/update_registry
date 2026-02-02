@@ -1,0 +1,89 @@
+#!/bin/bash
+
+function usage {
+cat << EOF
+Usage: $0
+
+This script is used to regenerate the registry. It must be used to update the
+format of the registry when the field list has been altered before scripts
+like install_packages can be used.
+
+A backup of the existing registry will be left in the directory for comparison.
+
+Options
+    -h, --help              show this help message
+
+EOF
+exit
+}
+
+if [[ " $@ " == *" -h "* ]] || [[ " $@ " == *" --help "* ]]; then
+    usage
+fi
+
+# Perform common script setup including environment checks
+export my_dir="$( cd "$(dirname "$0")" ; pwd )"
+. $my_dir/tools/init.sh
+
+if [[ ! -f $SPACK_ENV/registry ]]; then
+    tsecho "Error: No current registry exists on which to source package data!"
+    exit 1
+fi
+
+# Inherit defaults in a format we can use
+declare -A config
+
+for dvar in ${!default_*}; do
+    key=${dvar#default_}
+    config[$key]=${!dvar}
+done
+
+# Need to derive list of variables from old registry header
+tsecho "Identifying labels from existing registry"
+IFS='|' read -a old_labels <<< $(head -n 1 $SPACK_ENV/registry | sed 's/ *| */|/g')
+declare -A order_map
+
+for n in "${!old_labels[@]}"; do
+    old_var=$(find_var_from_label "${old_labels[$n]}")
+    order_map[$old_var]=$n
+done
+
+# Let's create a backup of the current registry first
+mv $SPACK_ENV/registry $SPACK_ENV/registry.backup
+
+# We loop through an initial time to get the max width of the raw_spec column
+tsecho "Finalizing column widths"
+
+while read entry; do
+    IFS='|' read -a old_values <<< $(sed 's/ *| */|/g' <<< $entry)
+
+    spec_width=$(($(wc -c <<< ${old_values[${order_map[raw_spec]}]}) - 1))
+
+    if [[ $spec_width -gt $spec_column_width ]]; then
+        spec_column_width=$spec_width
+    fi
+done < <(tail -n +3 $SPACK_ENV/registry.backup)
+
+# This loop maps old values to new placement and constructs the full registry config
+tsecho "Generating new registry"
+write_registry_header
+mv $SPACK_ENV/.registry.tmp $SPACK_ENV/registry
+
+while read entry; do
+    new_config=""
+    IFS='|' read -a old_values <<< $(sed 's/ *| */|/g' <<< $entry)
+
+    for field in ${field_list[@]}; do
+        if [[ -n ${order_map[$field]} ]]; then
+            new_config="${new_config:+${new_config}|}${old_values[${order_map[$field]}]}"
+        elif [[ -n ${!field} ]]; then
+            new_config="${new_config:+${new_config}|}${!field}"
+        else
+            new_config="${new_config:+${new_config}|}"
+        fi
+    done
+
+    add_spec_to_registry "$new_config" $SPACK_ENV/registry
+done < <(tail -n +3 $SPACK_ENV/registry.backup)
+
+tsecho "Old registry backed up to registry.backup"
