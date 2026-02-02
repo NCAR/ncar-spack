@@ -8,7 +8,7 @@
 #           and any other packages that need it
 #
 #   Author:         Brian Vanderwende
-#   Last Revised:   10:06, 02 Feb 2026
+#   Last Revised:   14:43, 02 Feb 2026
 #
 
 
@@ -661,63 +661,74 @@ function check_spec {
                     else
                         spec_hash=$(grep -A2 ^Concretized <<< "$spack_spec_out" | tail -n1 | awk '{print $2}')
                     fi
+
+                    # Now that we have the hash, do one final check for it in the registry (to avoid dups)
+                    registry_data=$(sed -n '3,$ s/ *| */|/gp' $SPACK_ENV/registry | grep ^$spec_hash)
+
+                    if [[ -n $registry_data ]]; then
+                        IFS='|' read -a registry <<< $(sed 's/ *| */|/g' <<< $registry_data)
+                        modify_registry=true check_registry
+                        skip_spec=true
+                    fi
                 else
                     clear_added_specs 1
                     exit 1
                 fi
 
-                if [[ -n ${config[match]} ]]; then
-                    if [[ $spec_hash != ${config[match]} ]]; then
-                        computed_spec=$(cut -c6- <<< $spack_spec_out)
-                        expected_spec=$(spack env deactivate; spack env activate $NCAR_SPACK_ENV_BUILD; $spec_cmd /${config[match]} | cut -c6-)
-                        set +e; spec_diff=$(diff -u <(echo "$computed_spec") <(echo "$expected_spec")); set -e
+                if [[ $skip_spec == false ]]; then
+                    if [[ -n ${config[match]} ]]; then
+                        if [[ $spec_hash != ${config[match]} ]]; then
+                            computed_spec=$(cut -c6- <<< $spack_spec_out)
+                            expected_spec=$(spack env deactivate; spack env activate $NCAR_SPACK_ENV_BUILD; $spec_cmd /${config[match]} | cut -c6-)
+                            set +e; spec_diff=$(diff -u <(echo "$computed_spec") <(echo "$expected_spec")); set -e
 
-                        tsecho "Error: computed hash ($spec_hash) for package $spec does not match expected hash (${config[match]})\n >> See error log for details: $log_errors"
-                        echo "Spec mismatch for $spec" >> $log_errors
-                        echo -e " >> Computed spec:\n$computed_spec" >> $log_errors
-                        echo -e "\n >> Expected spec:\n$expected_spec" >> $log_errors
-                        echo -e "\n >> Difference:\n$spec_diff" >> $log_errors
-                        clear_added_specs 1
-                        exit 1
-                    fi
-                elif [[ ${config[preferred]:-yes} == yes ]]; then
-                    given_version=$(sed 's/\([^^%]*\).*/\1/' <<< $spec | sed -n 's/.*@\([^~+ ]*\).*/\1/p')
+                            tsecho "Error: computed hash ($spec_hash) for package $spec does not match expected hash (${config[match]})\n >> See error log for details: $log_errors"
+                            echo "Spec mismatch for $spec" >> $log_errors
+                            echo -e " >> Computed spec:\n$computed_spec" >> $log_errors
+                            echo -e "\n >> Expected spec:\n$expected_spec" >> $log_errors
+                            echo -e "\n >> Difference:\n$spec_diff" >> $log_errors
+                            clear_added_specs 1
+                            exit 1
+                        fi
+                    elif [[ ${config[preferred]:-yes} == yes ]]; then
+                        given_version=$(sed 's/\([^^%]*\).*/\1/' <<< $spec | sed -n 's/.*@\([^~+ ]*\).*/\1/p')
 
-                    if [[ -z $given_version ]]; then
-                        spec_name=$(sed 's/[@%^+~ ].*//' <<< $spec)
-                        computed_version=$(head -1 <<< $spack_spec_out | sed -n 's/[^@]*@\([^~+ ]*\).*/\1/p')
-                        preferred_version=$(spack info $spec_name | grep -A1 "Preferred version" | tail -1 | awk '{print $1}')
+                        if [[ -z $given_version ]]; then
+                            spec_name=$(sed 's/[@%^+~ ].*//' <<< $spec)
+                            computed_version=$(head -1 <<< $spack_spec_out | sed -n 's/[^@]*@\([^~+ ]*\).*/\1/p')
+                            preferred_version=$(spack info $spec_name | grep -A1 "Preferred version" | tail -1 | awk '{print $1}')
 
-                        if [[ $computed_version != $preferred_version ]]; then
-                            if [[ ${ignore_preferred:-false} == true ]]; then
-                                version_message=" >> Version ($computed_version) is not preferred ($preferred_version), but ignoring"
+                            if [[ $computed_version != $preferred_version ]]; then
+                                if [[ ${ignore_preferred:-false} == true ]]; then
+                                    version_message=" >> Version ($computed_version) is not preferred ($preferred_version), but ignoring"
+                                else
+                                    tsecho "Error: Version ($computed_version) is not preferred ($preferred_version) for $spec"
+                                    clear_added_specs 1
+                                    exit 1
+                                fi
                             else
-                                tsecho "Error: Version ($computed_version) is not preferred ($preferred_version) for $spec"
-                                clear_added_specs 1
-                                exit 1
+                                unset version_message
                             fi
-                        else
-                            unset version_message
                         fi
                     fi
-                fi
 
-                if [[ " $start_hashes_all " == *" $spec_hash "* ]]; then
-                    install_date=N/A add_spec_to_queue $spec_hash
-                    add_spec_to_registry "${queue_config[$spec_hash]}" $SPACK_ENV/registry
-                    remove_spec_from_queue $spec_hash
-                    skip_spec=true
+                    if [[ " $start_hashes_all " == *" $spec_hash "* ]]; then
+                        install_date=N/A add_spec_to_queue $spec_hash
+                        add_spec_to_registry "${queue_config[$spec_hash]}" $SPACK_ENV/registry
+                        remove_spec_from_queue $spec_hash
+                        skip_spec=true
 
-                    # Make sure spec is in spack.yaml
-                    if [[ " $start_hashes " != *" $spec_hash "* ]]; then
-                        print_spec_message "Adding to specs"
-                        eval spack add \"$spec\" > /dev/null
+                        # Make sure spec is in spack.yaml
+                        if [[ " $start_hashes " != *" $spec_hash "* ]]; then
+                            print_spec_message "Adding to specs"
+                            eval spack add \"$spec\" > /dev/null
 
-                        # Adding the spec won't make it explicit, so let's make sure...
-                        spack mark -e /$spec_hash
+                            # Adding the spec won't make it explicit, so let's make sure...
+                            spack mark -e /$spec_hash
+                        fi
+                    else
+                        install_date=$(date +%FT%T) add_spec_to_queue $spec_hash
                     fi
-                else
-                    install_date=$(date +%FT%T) add_spec_to_queue $spec_hash
                 fi
             else
                 spec_hash=$((++fake_hash))
