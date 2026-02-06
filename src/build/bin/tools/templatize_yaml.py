@@ -110,7 +110,7 @@ for yaml_file in yaml_files:
                     del data[key][subkey]
 
             data[key] = dict(sorted(data[key].items(), key=lambda item: item[0]))
-        elif key == "view":
+        elif key == "view" and isinstance(orig_data[key], dict):
             if "select" in orig_data[key]:
                 clean_view(data[key])
             else:
