@@ -4,8 +4,8 @@ whatis("cesmdev v1.0")
 -- The message printed by the module help command
 help([[
 This module will add a custom MODULEROOT to the user's visible
-module tree - providing access to beta and debug versions of libraries
-commonly used by CESM cases.
+module tree - providing access to development and debug versions
+of libraries commonly used by CIME configurations.
 
 Created on:     %DATE%
 ]])
@@ -21,14 +21,22 @@ for i = 1,#activeA do
   unload(activeA[i].userName)
 end
 
--- Enable custom modules from CSEG downstream
-append_path("NCAR_VARS_MODULEROOT", "NCAR_MODULEROOT_CSEG")
-setenv("NCAR_MODULEROOT_CSEG", pathJoin("/glade/u/apps/cseg/%HOST%/modules"))
+local stack_major = %STACKMAJOR%
+
+if stack_major > 24 then
+    -- Enable custom modules from CSG-maintained cesmdev
+    append_path("NCAR_VARS_MODULEROOT", "NCAR_MODULEROOT_CESMDEV")
+    setenv("NCAR_MODULEROOT_CESMDEV", "%MODULEPATH%")
+else
+    -- Enable custom modules from CSEG downstream
+    append_path("NCAR_VARS_MODULEROOT", "NCAR_MODULEROOT_CSEG")
+    setenv("NCAR_MODULEROOT_CSEG", "/glade/u/apps/cseg/derecho/modules")
+end
 
 for i = 1,#activeA do
   universal_mgrload(required, activeA[i])
 end
 
 -- Add Python packages to environment
-prepend_path("PATH",        "/glade/u/apps/cseg/%HOST%/python/lib64/python3.10/site-packages/bin")
-prepend_path("PYTHONPATH",  "/glade/u/apps/cseg/%HOST%/python/lib64/python3.10/site-packages")
+prepend_path("PATH",        "/glade/u/apps/cseg/derecho/python/lib64/python3.10/site-packages/bin")
+prepend_path("PYTHONPATH",  "/glade/u/apps/cseg/derecho/python/lib64/python3.10/site-packages")

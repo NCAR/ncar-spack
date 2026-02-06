@@ -12,55 +12,87 @@ fi
 export my_dir="$( cd "$(dirname "${BASH_SOURCE[0]}")" ; pwd )"
 . $my_dir/../main.cfg
 
-# Check that system matches what we are loading if possible
-if [[ -n $NCAR_HOST ]]; then
-    if [[ $NCAR_HOST != $NCAR_SPACK_HOST ]]; then
-        2>&1 echo "Error: Module stack ($NCAR_SPACK_HOST) does not match identified host ($NCAR_HOST)."
+# If NCAR_SPACK_DEFMODS_NCAR is set, we assume this is a stand-alone stack
+# Otherwise, we assume this is an add-on set of modules we can simply add to the module path
+if [[ -n $NCAR_SPACK_DEFMODS_NCAR ]]; then
+    # Check that system matches what we are loading if possible
+    if [[ -n $NCAR_HOST ]]; then
+        if [[ $NCAR_HOST != $NCAR_SPACK_HOST ]]; then
+            2>&1 echo "Error: Module stack ($NCAR_SPACK_HOST) does not match identified host ($NCAR_HOST)."
+            2>&1 echo -e "       No changes will be made.\n"
+            return 1
+        fi
+    else
+        2>&1 echo "Warning: System is not known (NCAR_HOST not set). Cannot verify stack compatibility."
+    fi
+
+    # Store old module tree for reversal
+    NCAR_SPACK_RESET_SCRIPT=$(sed 's|\(.*envs/\).*|\1build/bin/use_modules|' <<< $LMOD_CONFIG_DIR)
+    NCAR_SPACK_RESET_TYPE=$(sed 's|.*/\([^/]*\)/util|\1|' <<< $LMOD_CONFIG_DIR)
+
+    if [[ ${1:-build} == p* ]]; then
+        echo "Switching to public module tree:"
+        mod_init=$NCAR_SPACK_ENV_PUBLIC/util/localinit.sh
+    else
+        echo "Switching to build module tree:"
+        mod_init=$NCAR_SPACK_ENV_BUILD/util/localinit.sh
+    fi
+
+    if [[ -f $mod_init ]]; then
+        # First we clean
+        if [[ $(type -t module) == function ]]; then
+            module --force purge
+            unset MODULEPATH MODULEPATH_ROOT
+            unset ${!__LMOD*} ${!LMOD*} ${!_ModuleTable*}
+        fi
+
+        # Now we use new modules
+        . $mod_init
+        echo -e " -> $MODULEPATH_ROOT\n"
+    else
+        2>&1 echo -e "Error: localinit.sh does not exist. No changes will be made.\n"
+        return 1
+    fi
+
+    # Define shell function to return to default
+    if [[ $(type -t reset_modules) != function ]]; then
+        if [[ -f $NCAR_SPACK_RESET_SCRIPT ]]; then
+            function reset_modules {
+                . $NCAR_SPACK_RESET_SCRIPT $NCAR_SPACK_RESET_TYPE
+                unset ${!NCAR_SPACK_RESET_*} reset_modules
+            }
+
+            echo -e "Type \"reset_modules\" to return to system module stack\n"
+        else
+            unset ${!NCAR_SPACK_RESET_*}
+        fi
+    fi
+else
+    # Lmod must exist within the current environment
+    if [[ -z $LMOD_ROOT ]]; then
+        2>&1 echo "Error: Module stack ($NCAR_SPACK_HOST) requires existing Lmod. None found in environment."
         2>&1 echo -e "       No changes will be made.\n"
         return 1
     fi
-else
-    2>&1 echo "Warning: System is not known (NCAR_HOST not set). Cannot verify stack compatibility."
-fi
 
-# Store old module tree for reversal
-NCAR_SPACK_RESET_SCRIPT=$(sed 's|\(.*envs/\).*|\1build/bin/use_modules|' <<< $LMOD_CONFIG_DIR)
-NCAR_SPACK_RESET_TYPE=$(sed 's|.*/\([^/]*\)/util|\1|' <<< $LMOD_CONFIG_DIR)
-
-if [[ ${1:-build} == p* ]]; then
-    echo "Switching to public module tree:"
-    mod_init=$NCAR_SPACK_ENV_PUBLIC/util/localinit.sh
-else
-    echo "Switching to build module tree:"
-    mod_init=$NCAR_SPACK_ENV_BUILD/util/localinit.sh
-fi
-
-if [[ -f $mod_init ]]; then
-    # First we clean
-    if [[ $(type -t module) == function ]]; then
-        module --force purge
-        unset MODULEPATH MODULEPATH_ROOT
-        unset ${!__LMOD*} ${!LMOD*} ${!_ModuleTable*}
+    if [[ ${1:-build} == p* ]]; then
+        echo "Adding modules from public module tree:"
+        NCAR_SPACK_RESET_MODULES=$NCAR_SPACK_ENV_PUBLIC/modules/environment
+    else
+        echo "Adding modules from build module tree:"
+        NCAR_SPACK_RESET_MODULES=$NCAR_SPACK_ENV_BUILD/modules/environment
     fi
+    
+    module use -a $NCAR_SPACK_RESET_MODULES
+    echo -e " -> $NCAR_SPACK_RESET_MODULES\n"
 
-    # Now we use new modules
-    . $mod_init
-    echo -e " -> $MODULEPATH_ROOT\n"
-else
-    2>&1 echo -e "Error: localinit.sh does not exist. No changes will be made.\n"
-    return 1
-fi
-
-# Define shell function to return to default
-if [[ $(type -t reset_modules) != function ]]; then
-    if [[ -f $NCAR_SPACK_RESET_SCRIPT ]]; then
+    # Define shell function to return to default
+    if [[ $(type -t reset_modules) != function ]]; then
         function reset_modules {
-            . $NCAR_SPACK_RESET_SCRIPT $NCAR_SPACK_RESET_TYPE
+            module unuse $NCAR_SPACK_RESET_MODULES
             unset ${!NCAR_SPACK_RESET_*} reset_modules
         }
 
-        echo -e "Type \"reset_modules\" to return to system module stack\n"
-    else
-        unset ${!NCAR_SPACK_RESET_*}
+        echo -e "Type \"reset_modules\" to remove added modules\n"
     fi
 fi

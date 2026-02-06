@@ -4,7 +4,7 @@
 #   subdirectory of the build environment.
 #
 #   Author:         Brian Vanderwende
-#   Last Revised:   09:17, 25 Dec 2025
+#   Last Revised:   09:54, 04 Feb 2026
 #
 
 function usage {
@@ -99,7 +99,7 @@ if [[ ${skip_execution:-false} != true ]]; then
     if [[ -n $NCAR_SPACK_ROOT_MODULES ]]; then
         # First, let's make sure module tree exists
         if [[ ! -d $MOD_DEPLOYMENT ]]; then
-            spack module lmod refresh --upstream-modules -y
+            spack module lmod refresh $NCAR_SPACK_MODULE_FLAGS -y
         fi
     fi
 fi

@@ -1,0 +1,35 @@
+# *** NSF NCAR HPC Software Stack Environment ***
+spack:
+  config:
+    install_tree:
+      root: '%INSTALLROOT%'
+      padded_length: 128
+    build_jobs: 4
+    test_stage: '%TMPROOT%/$user/temp/spack/%DEPLOYMENT%/tests'
+    source_cache: '%TMPROOT%/$user/temp/spack/cache'
+    misc_cache: '%TMPROOT%/$user/temp/spack/%DEPLOYMENT%/misc'
+    build_stage:
+    - '%TMPROOT%/$user/temp/spack/%DEPLOYMENT%/builds'
+  include:
+  - name: includes
+    path: /glade/u/apps/derecho/%VERSION%/config/include.yaml
+    optional: true
+  - name: toolchains
+    path: /glade/u/apps/derecho/%VERSION%/config/toolchains.yaml
+    optional: true
+  - name: config
+    path: /glade/u/apps/derecho/%VERSION%/config/config.yaml
+  - name: packages
+    path: /glade/u/apps/derecho/%VERSION%/config/packages.yaml
+  - name: modules
+    path: /glade/u/apps/derecho/%VERSION%/config/modules.yaml
+  - name: concretizer
+    path: /glade/u/apps/derecho/%VERSION%/config/concretizer.yaml
+  - name: repos
+    path: /glade/u/apps/derecho/%VERSION%/config/repos.yaml
+  view: False
+  modules:
+    default:
+      roots:
+        lmod: '%MODULESROOT%'
+  mirrors: {}

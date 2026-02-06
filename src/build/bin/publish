@@ -10,7 +10,7 @@
 #           shell script. So we must activate in the script!
 #
 #   Author:         Brian Vanderwende
-#   Last Revised:   10:26, 02 Feb 2026
+#   Last Revised:   08:37, 06 Feb 2026
 #
 
 
@@ -230,6 +230,7 @@ fi
 # Perform common script setup including environment checks
 export my_dir="$( cd "$(dirname "$0")" ; pwd )"
 . $my_dir/tools/init.sh
+my_user=$(whoami)
 
 # Check for "freeze" file - if exists, we cannot publish changes
 if [[ -f $NCAR_SPACK_ENV_BUILD/freeze ]]; then
@@ -332,7 +333,17 @@ fi
 
 tsecho "Checking Spack package repo for uncommitted changes"
 package_root=$(spack repo list | grep builtin | awk '{print $NF}')
-spack_test=$(cd $package_root; git status --porcelain | grep repos/spack_repo/builtin || true)
+
+if [[ $(stat -c '%U' $package_root) != $my_user ]]; then
+    if [[ $my_user != csgteam ]]; then
+        tsecho " >> Package repo not owned by $my_user, but you are not csgteam so will proceed"
+    else
+        tsecho "Error: Package repo is not owned by csgteam; cannot inspect!"
+        exit 1
+    fi
+else
+    spack_test=$(cd $package_root; git status --porcelain | grep repos/spack_repo/builtin || true)
+fi
 
 if [[ -n $spack_test ]]; then
 if [[ $NCAR_SPACK_DEPLOY_TYPE == production ]]; then
@@ -377,7 +388,10 @@ pad_length=$(awk '/padded_length: / {print $2}' $SPACK_ENV/spack.yaml)
 tsecho "Converting build spack.yaml for use in public environment"
 cd $SPACK_ENV; mkdir -p .prototype/includes; spack env deactivate
 cp spack.yaml .prototype
-rsync -a --delete $NCAR_SPACK_ENV_BUILD/includes/ .prototype/includes
+
+if [[ -d $NCAR_SPACK_ENV_BUILD/includes ]]; then
+    rsync -a --delete $NCAR_SPACK_ENV_BUILD/includes/ .prototype/includes
+fi
 
 if [[ -n $pad_length ]]; then
     sed -i -r "/${NCAR_SPACK_ENV_BUILD//\//\\/}\/opt/ s|^([^/]*).{$pad_length}|\1$SPACK_ROOT/opt/spack/|" .prototype/spack.yaml
@@ -566,7 +580,7 @@ fi
 tsecho "Creating split configuration files for community use"
 mkdir -p $SPACK_ENV/config
 
-for cfg_file in config packages compilers modules mirrors repos concretizer upstreams; do
+for cfg_file in config packages compilers modules mirrors repos concretizer upstreams include toolchains; do
     if grep -q "^  ${cfg_file}:" spack.yaml 2> /dev/null; then
         sed -n "/^  [']*${cfg_file}:[':]*/,/^  [a-z]*:/p" spack.yaml | sed '$d; s/^  //' > $SPACK_ENV/config/${cfg_file}.yaml
 
@@ -583,14 +597,15 @@ done
 
 if [[ -n $NCAR_SPACK_ROOT_MODULES ]]; then
     tsecho "Generating modules in public environment"
-    spack module lmod refresh --upstream-modules -y
+    spack module lmod refresh $NCAR_SPACK_MODULE_FLAGS -y
 fi
 
-if [[ -f $NCAR_SPACK_ENV_BUILD/bin/postprocess ]]; then
-    tsecho "Running postprocessing script on environment"
+if [[ -d $NCAR_SPACK_ENV_BUILD/postprocess ]]; then
     rsync -a --delete $NCAR_SPACK_ENV_BUILD/postprocess/ postprocess
-    NCAR_SPACK_ENV_TYPE=public $NCAR_SPACK_ENV_BUILD/bin/postprocess
 fi
+
+tsecho "Running postprocessing script on environment"
+NCAR_SPACK_ENV_TYPE=public $NCAR_SPACK_ENV_BUILD/bin/postprocess
 
 tsecho "Make sure user tools can peer into source directories"
 stage_dir=$(spack location -S)

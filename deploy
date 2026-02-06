@@ -1,7 +1,7 @@
 #!/bin/bash
 #
 #   Author:         Brian Vanderwende
-#   Last Revised:   14:53, 22 Dec 2025
+#   Last Revised:   18:22, 02 Feb 2026
 #
 
 set -e
@@ -493,11 +493,9 @@ fi
 spack config add "config:template_dirs:$SPACK_ENV/templates/modules"
 
 # Add any requested upstreams
-if [[ -f clusters/$NCAR_SYS/upstreams.cfg ]]; then
-    while read -r upstream_name upstream_path; do
-        spack config add "upstreams:${upstream_name}:install_tree:$upstream_path"
-    done < clusters/$NCAR_SYS/upstreams.cfg
-fi
+for upstream_name in ${!NCAR_SPACK_UPSTREAMS[@]}; do
+    spack config add "upstreams:${upstream_name}:install_tree:${NCAR_SPACK_UPSTREAMS[$upstream_name]}"
+done
 
 #
 ## ---- BUILD PACKAGES IN ENVIRONMENTS ----

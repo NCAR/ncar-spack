@@ -8,7 +8,7 @@
 #           and any other packages that need it
 #
 #   Author:         Brian Vanderwende
-#   Last Revised:   14:43, 02 Feb 2026
+#   Last Revised:   21:31, 05 Feb 2026
 #
 
 
@@ -573,7 +573,7 @@ function check_spec {
 
         toolchains[$comp_spec]=${config[toolchain]:-$comp_spec}
 
-        if [[ ${config[register]:-yes} != no ]] && [[ ${config[matrix]:-yes} == yes ]]; then
+        if [[ ${config[matrix]:-yes} == yes ]]; then
             compilers="$compilers $comp_spec"
         fi
     fi
@@ -663,7 +663,7 @@ function check_spec {
                     fi
 
                     # Now that we have the hash, do one final check for it in the registry (to avoid dups)
-                    registry_data=$(sed -n '3,$ s/ *| */|/gp' $SPACK_ENV/registry | grep ^$spec_hash)
+                    registry_data=$(sed -n '3,$ s/ *| */|/gp' $SPACK_ENV/registry | grep ^$spec_hash || true)
 
                     if [[ -n $registry_data ]]; then
                         IFS='|' read -a registry <<< $(sed 's/ *| */|/g' <<< $registry_data)

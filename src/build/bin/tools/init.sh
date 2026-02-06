@@ -45,6 +45,10 @@ fi
 my_name=$(basename "$0")
 . $my_dir/../main.cfg
 
+if [[ ${NCAR_SPACK_UPSTREAM_MODULES:-true} == true ]]; then
+    NCAR_SPACK_MODULE_FLAGS=--upstream-modules
+fi
+
 # Make sure all config variables are exported
 for cfg_var in ${!NCAR_SPACK_*}; do
     export $cfg_var
