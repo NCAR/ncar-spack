@@ -8,7 +8,7 @@
 #       /etc/profile.d scripts.
 #
 #   Author:         Brian Vanderwende
-#   Last Revised:   09:31, 25 Dec 2025
+#   Last Revised:   17:21, 11 Mar 2026
 #
 
 #
@@ -30,12 +30,12 @@ fi
 if [[ $NCAR_SPACK_ENV_TYPE == build ]]; then
     pkg_root=$SPACK_ENV/opt
     module_root=$SPACK_ENV/modules
+    entry_path=$SPACK_ENV/entry
 else
     pkg_root=$NCAR_SPACK_ROOT_PUBLIC/$NCAR_SPACK_HOST_VERSION/spack/opt/spack
     module_root=$NCAR_SPACK_ROOT_PUBLIC/modules
+    entry_path=$NCAR_SPACK_ROOT_DEPLOYMENT/util
 fi
-
-util_path=$SPACK_ENV/util
 
 if [[ ${NCAR_SPACK_LMOD_VERSION:-latest} != latest ]]; then
     lmod_location=$(spack location -i lmod@$NCAR_SPACK_LMOD_VERSION 2> /dev/null || true)
@@ -61,29 +61,25 @@ else
     generate_csh_init $tm_file
     mv $tm_file $util_path/localinit.csh
     tsecho " >> csh init created: ${GCOL} $util_path/localinit.csh$DCOL" 1
-    
-    if [[ $NCAR_SPACK_ENV_TYPE == public ]]; then
-        entry_path=$NCAR_SPACK_ROOT_DEPLOYMENT/util
 
-        if [[ ${create_entries:-true} == true ]]; then
-            tsecho "Generating shell entry scripts"
+    if [[ ${create_entries:-true} == true ]]; then
+        tsecho "Generating shell entry scripts"
 
-            if [[ -L $entry_path ]]; then
-                rm $entry_path
-            fi
-            
-            mkdir -p $entry_path
-            
-            generate_bourne_entry $tm_file
-            mv $tm_file $entry_path/localinit.sh
-            tsecho " >> bourne entry created: ${GCOL}$entry_path/localinit.sh$DCOL" 1
-
-            generate_csh_entry $tm_file
-            mv $tm_file $entry_path/localinit.csh
-            tsecho " >> csh entry created: ${GCOL} $entry_path/localinit.csh$DCOL" 1
-        elif [[ ! -e $entry_path ]]; then
-            tsecho "Symlinking init scripts into entry path"
-            ln -s $util_path $entry_path
+        if [[ -L $entry_path ]]; then
+            rm $entry_path
         fi
+
+        mkdir -p $entry_path
+
+        generate_bourne_entry $tm_file
+        mv $tm_file $entry_path/localinit.sh
+        tsecho " >> bourne entry created: ${GCOL}$entry_path/localinit.sh$DCOL" 1
+
+        generate_csh_entry $tm_file
+        mv $tm_file $entry_path/localinit.csh
+        tsecho " >> csh entry created: ${GCOL} $entry_path/localinit.csh$DCOL" 1
+    elif [[ ! -e $entry_path ]]; then
+        tsecho "Symlinking init scripts into entry path"
+        ln -s $util_path $entry_path
     fi
 fi

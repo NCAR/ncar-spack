@@ -10,7 +10,7 @@
 #           shell script. So we must activate in the script!
 #
 #   Author:         Brian Vanderwende
-#   Last Revised:   08:37, 06 Feb 2026
+#   Last Revised:   14:46, 11 Mar 2026
 #
 
 
@@ -188,8 +188,8 @@ EOF
 
 function env_diff {
     tsecho "Checking for pending changes to public"
-    unit_list=$(ls --color=never -1 $NCAR_SPACK_ENV_BUILD/postprocess | xargs)
-    yaml_list=$(ls --color=never -1 $NCAR_SPACK_ENV_BUILD/includes | xargs)
+    unit_list=$(ls --color=never -1 $NCAR_SPACK_ENV_BUILD/postprocess 2> /dev/null | xargs)
+    yaml_list=$(ls --color=never -1 $NCAR_SPACK_ENV_BUILD/includes 2> /dev/null | xargs)
 
     if ! cmp -s $NCAR_SPACK_ENV_PUBLIC/spack.yaml $NCAR_SPACK_ENV_BUILD/.prototype/spack.yaml; then
         tsecho " >> ${GCOL}spack.yaml${DCOL} is changed"
@@ -283,7 +283,7 @@ while [[ $# -gt 0 ]]; do
             fi
             ;;
         --set-default)
-            set_as_default=true
+            export set_as_default=true
             ;;
         -v|--verbose)
             export log_verbosity=$((log_verbosity + 1))

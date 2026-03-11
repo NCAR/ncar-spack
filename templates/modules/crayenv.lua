@@ -34,5 +34,12 @@ end
 -- Loading this module unlocks the CPE module tree
 append_path("MODULEPATH", "%MODPATH%")
 
+-- Add Spack-installed compilers for use with PrgEnvs
+local spack_modules = "%SPACKMODS%"
+
+if spack_modules then
+    append_path("MODULEPATH", spack_modules)
+end
+
 -- Add Lmod settings
 pushenv("LMOD_SYSTEM_DEFAULT_MODULES", "%DEFMODS%")

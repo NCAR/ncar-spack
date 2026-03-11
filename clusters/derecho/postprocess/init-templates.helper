@@ -6,8 +6,10 @@
 #       and important system settings.
 #
 #   Author:         Brian Vanderwende
-#   Last Revised:   16:23, 29 Oct 2025
+#   Last Revised:   15:45, 03 Mar 2026
 #
+
+util_path=$SPACK_ENV/util
 
 function generate_bourne_init {
 cat > $1 << EOF

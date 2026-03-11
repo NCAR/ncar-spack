@@ -5,10 +5,9 @@
 #   incorporating those changes to this repo.
 #
 #   Author:         Brian Vanderwende
-#   Last Revised:   10:14, 15 Dec 2025
+#   Last Revised:   14:10, 11 Mar 2026
 #
 
-set -e
 my_root="$( cd "$(dirname "$0")"/.. ; pwd )"
 
 function usage {
@@ -34,7 +33,7 @@ export PCOL="\033[1;35m" RCOL="\033[1;31m" DCOL="\033[0m"
 
 # Handle arguments
 user_args=( "$@" )
-output_mode=brief
+output_mode=default
 
 while [[ $# -gt 0 ]]; do
     key="$1"
@@ -119,8 +118,16 @@ for src_path in ${!path_map[@]}; do
                 fi
             else
                 echo -e "${RCOL} - $src_file (changed)$DCOL\n"
-                echo -e "   Source file:   $my_root/$src_file"
-                echo -e "   Deployed file: $env_path/$dep_file\n"
+                echo -e "   Source file:   $my_root/$src_file (modified $PCOL$(date -r $my_root/$src_file)$DCOL)"
+                echo -e "   Deployed file: $env_path/$dep_file (modified $PCOL$(date -r $env_path/$dep_file)$DCOL)"
+
+                if [[ $output_mode == verbose ]]; then
+                    read -n 1 -s -r -p "   Press any key to display differences..."
+                    diff --color=always -u $my_root/$src_file $env_path/$dep_file | less
+                    echo
+                fi
+
+                echo
             fi
         fi
     done

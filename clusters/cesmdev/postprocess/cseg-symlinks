@@ -1,0 +1,32 @@
+#!/bin/bash
+#
+#   Unit: cseg-symlinks
+#   Description:
+#       This unit creates symbolic links in the CSG-maintained cesmdev module
+#       tree to ensure that older CSEG-maintained trees can be accessed by a
+#       cesmdev module that does not need to load ncarenv first.
+#
+#   Author:         Brian Vanderwende
+#   Last Revised:   23:29, 23 Feb 2026
+#
+
+#
+##  USER INPUT
+#
+
+cseg_host=/glade/u/apps/cseg/derecho
+
+#
+##  BEGIN SYMLINK CREATION
+#
+
+tsecho "Checking for CSEG cesmdev stacks to link into module tree"
+
+for cseg_stack in $(ls -d --color=never $cseg_host/modules/*); do
+    stack_version=$(basename $cseg_stack)
+
+    if [[ ! -e $MOD_ROOT/$stack_version ]]; then
+        tsecho " >> Creating symlink for CSEG stack $GCOL$stack_version$DCOL"
+        ln -s $cseg_stack $MOD_ROOT/$stack_version
+    fi
+done

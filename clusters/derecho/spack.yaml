@@ -10,12 +10,6 @@ spack:
         ^mpi: '{name}/{version}/{^mpi.name}/{^mpi.version}/{compiler.name}/{compiler.version}/{hash:4}'
         all: '{name}/{version}/{hash:4}'
         c: '{name}/{version}/{hash:4}'
-        netcdf-c: netcdf/{version}/packages/{name}/{version}/{compiler.name}/{compiler.version}/{hash:4}
-        netcdf-c^mpi: netcdf/{version}/packages/{name}/{version}/{^mpi.name}/{^mpi.version}/{compiler.name}/{compiler.version}/{hash:4}
-        netcdf-cxx4: netcdf/{^netcdf-c.version}/packages/{name}/{version}/{compiler.name}/{compiler.version}/{hash:4}
-        netcdf-cxx4^mpi: netcdf/{^netcdf-c.version}/packages/{name}/{version}/{^mpi.name}/{^mpi.version}/{compiler.name}/{compiler.version}/{hash:4}
-        netcdf-fortran: netcdf/{^netcdf-c.version}/packages/{name}/{version}/{compiler.name}/{compiler.version}/{hash:4}
-        netcdf-fortran^mpi: netcdf/{^netcdf-c.version}/packages/{name}/{version}/{^mpi.name}/{^mpi.version}/{compiler.name}/{compiler.version}/{hash:4}
       padded_length: 128
     build_jobs: 4
     test_stage: '%TMPROOT%/$user/temp/spack/%DEPLOYMENT%/tests'
@@ -112,7 +106,7 @@ spack:
       prefer:
       - ^udunits %gcc@12.5.0
     charliecloud:
-      variants:
+      prefer:
       - +squashfuse
     cmake:
       variants:
@@ -444,6 +438,11 @@ spack:
       - spec: miniconda3@25.5.1
         prefix: /glade/u/apps/opt/conda
       buildable: false
+    miniforge3:
+      externals:
+      - spec: miniforge3@25.11
+        prefix: /glade/u/apps/opt/miniforge/default
+      buildable: false
     mpich:
       require:
       - device=ch4
@@ -494,11 +493,12 @@ spack:
       - +dap
       - ~mpi
       prefer:
-      # Would do require, but ncvis barfs
       - ~hdf4
-      - build_system=cmake
+      - build_system=autotools
       require:
       - +nczarr_zip
+      - spec: build_type=Debug
+        when: +logging
     nvhpc:
       require:
       - +blas
@@ -566,6 +566,8 @@ spack:
       - +fortran
       - spec: ~pnetcdf
         when: ~mpi
+      - spec: build_type=Debug
+        when: +logging
     parallelio1:
       variants:
       - +pnetcdf
@@ -592,6 +594,10 @@ spack:
     pbs:
       require:
       - openpbs
+    pfunit:
+      variants:
+      - ~mpi
+      - ~openmp
     pixi:
       externals:
       - spec: pixi@1.0.0
@@ -751,6 +757,7 @@ spack:
           environment:
             set:
               NCAR_ROOT_{name}: '{prefix}'
+              NCAR_VERSION_{name}: '{version}'
               NCAR_SPACK_HASH_{name}: '{hash}'
           template: ncar_default.lua
         apptainer:
@@ -782,10 +789,9 @@ spack:
               DARSHAN_MOD_DISABLE: LUSTRE
               DARSHAN_SHARED_LIB: '{prefix}/lib/libdarshan.so'
         defaults:
-        - netcdf@4.9.3
-        - parallelio+mpi+shared@2.6.6
-        - esmf+mpi
-        - intel-oneapi-compilers@2024.2.1
+        - netcdf~debug
+        - parallelio+mpi+shared
+        - esmf+mpi~debug
         esmf:
           autoload: none
         esmf+mpi:
@@ -802,6 +808,10 @@ spack:
         fftw~mpi:
           conflict:
           - fftw-mpi
+        gcc:
+          environment:
+            set:
+              NCAR_MFLAGS_PROFILE: -g1 -O3 -fno-inline -fno-optimize-sibling-calls
         hash_length: 0
         hdf5+mpi:
           conflict:
@@ -842,6 +852,7 @@ spack:
               NCAR_ID_COMPILER: intel-{version}
               NCAR_ROOT_INTEL: '{prefix}'
               NCAR_SPACK_HASH_INTEL: '{hash}'
+              NCAR_MFLAGS_PROFILE: -debug minimal -O3 -fno-inline -no-ip -no-ipo -fno-omit-frame-pointer -fno-optimize-sibling-calls
               OMPI_CC: icx
               OMPI_CXX: icpx
               OMPI_F77: ifx
@@ -949,6 +960,33 @@ spack:
           conflict:
           - uv
           - pixi
+        miniforge3:
+          filter:
+            exclude_env_vars:
+            - ACLOCAL_PATH
+            - CMAKE_PREFIX_PATH
+            - CONDA_EXE
+            - CONDA_PYTHON_EXE
+            - CONDA_SHLVL
+            - LD_LIBRARY_PATH
+            - MANPATH
+            - NCAR_INC_MINIFORGE3
+            - NCAR_LDFLAGS_MINIFORGE3
+            - NCAR_ROOT_MINIFORGE3
+            - PATH
+            - PKG_CONFIG_PATH
+            - _CE_CONDA
+            - _CE_M
+            - _CONDA_EXE
+            - _CONDA_ROOT
+            - MAMBA_ROOT_PREFIX
+          environment:
+            set:
+              NCAR_ROOT_CONDA: '{prefix}'
+          template: conda.lua
+          conflict:
+          - uv
+          - pixi
         mpi:
           template: ncar_wrapper_mpi.lua
           environment:
@@ -962,6 +1000,13 @@ spack:
           template: ncar_wrapper.lua
         nccmp:
           autoload: none
+          environment:
+            set:
+              HDF5_PLUGIN_PATH: '{^netcdf-c.prefix}/plugins'
+        ncl:
+          environment:
+            set:
+              NCARG_LIBS_ROOT: /glade/u/apps/opt/ncl/ncarglibs/{version}
         nco:
           autoload: none
         ncview:
@@ -981,6 +1026,7 @@ spack:
             set:
               NVIDIA_PATH: '{prefix}'
               NVIDIA_VERSION: '{version}'
+              NCAR_MFLAGS_PROFILE: -g -O3 -Meh_frame -Mnoautoinline
             prepend_path:
               LD_LIBRARY_PATH: '{prefix}/Linux_x86_64/{version}/compilers/lib'
         octave:
@@ -994,6 +1040,9 @@ spack:
               OMPI_MCA_rmaps_default_mapping_policy: :hwtcpus
               OMPI_MCA_shmem_mmap_enable_nfs_warning: '0'
               PRTE_MCA_prte_tmpdir_base: /tmp
+              # Open MPI puts Fortran modules in an atypical place
+              # https://github.com/open-mpi/ompi/issues/12600
+              NCAR_INC_OPENMPIMOD: '{prefix}/lib'
             prepend_path:
               LD_LIBRARY_PATH: '{prefix}/lib'
         parallel-netcdf:
@@ -1024,11 +1073,6 @@ spack:
         parallelio~mpi:
           conflict:
           - parallelio
-        paraview:
-          autoload: none
-          environment:
-            prepend_path:
-              PATH: %BASEROOT%/wrappers/{name}/{version}/{hash:4}/bin
         pixi:
           conflict:
           - conda
@@ -1044,10 +1088,15 @@ spack:
         projections:
           all: '{name}/{version}'
           fftw+mpi: fftw-mpi/{version}
+          netcdf+mpi+debug: netcdf-mpi/{version}-debug
           netcdf+mpi: netcdf-mpi/{version}
+          hdf5+mpi build_type=Debug: hdf5-mpi/{version}-debug
           hdf5+mpi: hdf5-mpi/{version}
+          netcdf+debug: netcdf/{version}-debug
           netcdf: netcdf/{version}
+          esmf+mpi+debug: esmf-mpi/{version}-debug
           esmf+mpi: esmf-mpi/{version}
+          parallelio~mpi build_type=Debug: parallelio-serial/{version}-debug
           parallelio~mpi: parallelio-serial/{version}
           intel-oneapi-advisor: intel-advisor/{version}
           intel-oneapi-compilers@2024: intel-oneapi/{version}
@@ -1057,11 +1106,15 @@ spack:
           intel-oneapi-mkl: mkl/{version}
           intel-oneapi-vtune: intel-vtune/{version}
           miniconda3: conda/latest
+          miniforge3: conda/latest
           pixi: pixi/latest
           uv: uv/latest
           parallelio1: parallelio/{version}
           parallelio~shared: parallelio/{version}-static
           py-torch: libtorch/{version}
+          cppflags=-g: '{name}/{version}-debug'
+          build_type=Debug: '{name}/{version}-debug'
+          +debug: '{name}/{version}-debug'
         rstudio:
           filter:
             exclude_env_vars:
@@ -1083,8 +1136,22 @@ spack:
           environment:
             set:
               UV_CACHE_DIR: /glade/derecho/scratch/" .. os.getenv("USER") .. "/.cache/uv
-        visit:
-          autoload: none
+        +debug:
+          environment:
+            append_path:
+              NCAR_SOURCE_DIRS: '{prefix}/share/{name}/src'
+        netcdf+debug:
+          environment:
+            append_path:
+              NCAR_SOURCE_DIRS: '{^netcdf-c.prefix}/share/netcdf-c/src:{^netcdf-fortran.prefix}/share/netcdf-fortran/src:{^netcdf-cxx4.prefix}/share/netcdf-cxx4/src'
+        cppflags=-g:
+          environment:
+            append_path:
+              NCAR_SOURCE_DIRS: '{prefix}/share/{name}/src'
+        build_type=Debug:
+          environment:
+            append_path:
+              NCAR_SOURCE_DIRS: '{prefix}/share/{name}/src'
   concretizer:
     unify: false
     reuse: true

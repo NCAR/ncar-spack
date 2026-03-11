@@ -53,3 +53,10 @@ modules:
         environment:
           set:
             NCAR_BUILD_ENV_MPI: casper-{compiler.name}-{compiler.version}-{name}-{version}
+      paraview:
+        autoload: none
+        environment:
+          prepend_path:
+            PATH: %BASEROOT%/wrappers/{name}/{version}/{hash:4}/bin
+      visit:
+        autoload: none
