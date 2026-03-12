@@ -8,7 +8,7 @@
 #           and any other packages that need it
 #
 #   Author:         Brian Vanderwende
-#   Last Revised:   21:31, 05 Feb 2026
+#   Last Revised:   13:43, 12 Mar 2026
 #
 
 
@@ -28,7 +28,8 @@ install" certainly works but this script adds:
     5. Git tracking of the .spack-db, which can become corrupted
 
 Options
-    -h                      show this help message
+    -h, --help [TOPIC]      show this help message, or give info on a TOPIC:
+                            TOPIC=config - show possible package config options
     -a, --overwrite-access  replace pkg access settings with those in manifest
     -c, --prefer-cache      specify that only cached packages should be used
     -d, --dry-run           show what would be done; do not make any changes
@@ -51,8 +52,153 @@ EOF
 exit
 }
 
+function help_config {
+cat << EOF
+Package configuration is accomplished via command-line arguments to this script
+as well as config attributes given in section headers or embedded within a
+package listing in the packages.cfg file. For example, if we want to set the
+number of jobs a build can use, it can be specified in one of three ways:
+
+In order of ascending precedence:
+
+1. bin/install_packages -j 10
+2. singleton: maxjobs=10
+3. qt <maxjobs: 10>
+
+When used in a section of packages like example 2 above, the setting will
+apply to all packages within that section unless it is superceded by a package-
+specific setting like in example 3.
+
+The following options are supported by default, section, and package config:
+
+    maxjobs     - The maximum number of build jobs Spack can use to build the
+                  indicated package(s).
+    preferred   - If set to yes, enables a check to see whether Spack
+                  concretizer is using the specified "preferred" version of the
+                  package. Defaults to yes.
+    source      - If set to "stage", the staging source code is kept after
+                  success. If set to "install", the source code is installed into
+                  the package prefix. Defaults to not keeping source.
+
+The following options are supported by section and package config:
+
+    access      - How to we want users to access the package? (default = module)
+                  
+                  Options:
+                  module - create a module and don't dictate placement
+                  core - create a module and force it to be in Core
+                  view - no module; but add to the default view
+                  none - no explicit user access; probably a dependency
+
+                  Ex) automake <access:view>
+
+    build       - Do we want to "install" the package into the environment? For
+                  some vendor software (e.g., cce), we do not. [true, false]
+
+    cache       - Do we want to use the build cache to install this package?
+                  (default yes) [no, dep, yes]
+
+                  If no, the package will always be installed; if dep, only
+                  dependencies can use the cache; if yes, the dependencies and
+                  the package can use the cache.
+
+                  If --prefer-cache is given, the cache *must* be used. If it
+                  cannot, you will get an error (unless <cache:no> is specified)
+
+    compiler    - Use the specified compiler when building indicated package(s).
+                  Instead of giving a compiler spec, you may also specify "core"
+                  or "compat", which will be replaced by the value of
+                  NCAR_SPACK_CORE_GCC and NCAR_SPACK_COMPAT_GCC respectively.
+                  (these values should be defined in main.cfg)
+
+                  Ex) vim <compiler:gcc@12.2.0>
+
+    compilers   - Provide comma-separated list of compilers to use
+                  (can only be used in cdep, mdep sections)
+
+                  Ex) hdf5 <compilers:gcc,intel-oneapi-compilers>
+
+    exclude     - Provide comma-separated list of compilers and/or mpis to aovid
+                  (can only be used in cdep, mdep sections)
+
+                  Ex) gdal <exclude:nvhpc,cce>
+
+    host        - Only build the indicated package(s) if NCAR_SPACK_HOST matches
+                  the given value.
+              
+                  Ex) paraview <host:casper>
+
+    gpu         - Only build the indicated package(s) if NCAR_SPACK_GPU_TYPE
+                  matches the given value.
+
+                  Ex) llvm-amdgpu <gpu:rocm>
+
+    matrix      - This allows you to indicate whether a compiler or mpi should
+                  be used in cdep and mdep matrices (default = yes) [yes, no]
+
+    mpi         - Use the specified MPI when building indicated package(s)
+
+                  Ex) esmf+mpi <mpi:openmpi@5.0.9 %gcc@14.3.0>
+
+    mpis        - Provide comma-separated list of mpis to use
+                  (can only be used in mdep section)
+
+                  Ex) esmf+mpi <mpis:openmpi,cray-mpich@8.1.32>
+
+    register    - If the package type is a compiler, this option can be used to
+                  indicate whether we want to register the package as a compiler.
+                  If "replace", an existing compiler definition is clobbered.
+                  [yes, no, replace]
+                  
+                  Ex) nvhpc <type:compiler> <register:no>
+
+    trust       - If set to "no", tell Spack to skip checksum testing
+                  (default = yes)
+
+    type        - Specifies a special package type [compiler, mpi]
+
+The following options are only supported on individual packages:
+    
+    hash_ref    - Create a label to reference the computed hash of this spec in
+                  other, subsequent specs.
+
+                  Ex) hdf5 <hash_ref:HDF5>
+                      netcdf-c ^/%HDF%
+
+    match       - Specify a spec hash for which the package must match. This is
+                  used internally for the publish step and probably isn't
+                  something you want to impose manually.
+
+                  Ex) vim <match:vr3jck2ycgrur37q7xs2ca4eraua3ish>
+    
+    spec_ref    - Create a label to reference this spec in other, subsequent
+                  specs.
+
+                  Ex) hdf5 <spec_ref:HDF5>
+                      netcdf-c ^%HDF%
+    
+    toolchain   - Compilers need toolchains defined so that they can be used
+                  consistently across all languages. When specified, this option
+                  creates a toolchain for this compiler with the given name.
+
+                  The compiler will be used for blas and lapack too, unless one
+                  or more of those options are specified. The toolchain can then
+                  be referenced in future specs using the %TC% label.
+
+                  Ex) aocc@5.1.0 <toolchain:aocc-510> <blas:amdblis@5.1> <lapack:amdlibflame@5.1>
+                      gcc@12.5.0 <toolchain:gcc-125> <blas:openblas@0.3.30>
+                      nvhpc@26.1 <toolchain:nvhpc-261>
+
+EOF
+exit
+}
+
 if [[ " $@ " == *" -h "* ]] || [[ " $@ " == *" --help "* ]]; then
-    usage
+    if [[ $@ =~ (-h|--help)\ config ]]; then
+        help_config
+    else
+        usage
+    fi
 fi
 
 # Perform common script setup including environment checks
