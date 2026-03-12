@@ -122,11 +122,15 @@ for yaml_file in yaml_files:
             for mset in orig_data[key]:
                 for subkey in orig_data[key][mset]:
                     if subkey == "roots":
-                        data[key][mset][subkey]["lmod"] = "%MODULESROOT%"
+                        if mset == "default":
+                            data[key][mset][subkey]["lmod"] = "%MODULESROOT%"
+                        elif mset == "crayenv":
+                            data[key][mset][subkey]["lmod"] = "%BASEROOT%/modules/crayenv"
                     elif subkey == "lmod":
                         for modkey in orig_data[key][mset][subkey]:
                             if modkey in ["exclude", "core_specs"]:
-                                data[key][mset][subkey][modkey] = []
+                                if mset == "default":
+                                    data[key][mset][subkey][modkey] = []
                             elif isinstance(data[key][mset][subkey][modkey], dict):
                                 for var in ["environment", "filter"]:
                                     if var in data[key][mset][subkey][modkey]:

@@ -6,7 +6,7 @@
 #   - to the YAML file.
 #
 #   Author:         Brian Vanderwende
-#   Last Revised:   15:08, 26 Dec 2025
+#   Last Revised:   10:06, 12 Mar 2026
 #
 
 function usage {
@@ -239,7 +239,7 @@ function process_entry {
 
 # First, let's get the known external prefixes
 declare -A known_externals
-external_data=$(spack config get packages | grep -e "^  [^ ]" -e prefix: | grep --no-group-separator -B1 prefix:)
+external_data=$(spack config get packages | grep -e "^  [^ ]" -e prefix: | grep --no-group-separator -B1 prefix: || true)
 
 while read data; do
     if [[ $data != *prefix:* ]]; then
@@ -257,6 +257,8 @@ if [[ -f $SPACK_ENV/constraints.cfg ]]; then
     while read entry; do
         if [[ -z $entry ]]; then
             continue
+        elif [[ $entry == *\$* ]]; then
+            entry=$(envsubst <<< $entry)
         fi
 
         case $entry in
@@ -281,8 +283,9 @@ if [[ -f $SPACK_ENV/constraints.cfg ]]; then
                         meta_requires=%$NCAR_SPACK_CORE_GCC
                     elif [[ $meta_data == compat ]]; then
                         if [[ -z $NCAR_SPACK_COMPAT_GCC ]]; then
-                            tsecho "Error: Compatibility GCC version requested, but NCAR_SPACK_COMPAT_GCC not set"
-                            exit 1
+                            tsecho "${PCOL}Note: Compatibility GCC version requested, but NCAR_SPACK_COMPAT_GCC not set$DCOL"
+                            tsecho "${PCOL}      Using NCAR_SPACK_CORE_GCC as compatibility GCC.$DCOL"
+                            NCAR_SPACK_COMPAT_GCC=$NCAR_SPACK_CORE_GCC
                         fi
 
                         meta_requires=%$NCAR_SPACK_COMPAT_GCC
@@ -301,6 +304,9 @@ if [[ -f $SPACK_ENV/constraints.cfg ]]; then
                 for var_name in my_mode ${!meta_*}; do
                     unset $var_name
                 done
+                ;;
+            *=*)
+                export $entry
                 ;;
             *)
                 if [[ $entry == /* ]] && [[ -n $stored_entry ]]; then

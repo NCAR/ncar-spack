@@ -22,10 +22,6 @@ spack:
     # seem to work with it! Avoid!
       type: rpath
       bind: false
-  env_vars:
-    set:
-      NVCCFLAGS: -allow-unsupported-compiler
-      NVCC_PREPEND_FLAGS: -allow-unsupported-compiler
   packages:
     all:
       permissions:
@@ -39,6 +35,16 @@ spack:
     aocc:
       require:
       - +license-agreed
+    c:
+      buildable: true
+    cxx:
+      buildable: true
+    fortran:
+      buildable: true
+    golang:
+      buildable: true
+    go-or-gccgo-bootstrap:
+      buildable: true
     cmake:
       variants:
       - +ownlibs
@@ -80,6 +86,7 @@ spack:
     tbb:
       prefer:
       - intel-oneapi-tbb
+  view: false
   concretizer:
     unify: false
     reuse: true
