@@ -1,0 +1,11 @@
+site_name: ncar-spack
+theme: readthedocs
+nav:
+  - Home: index.md
+  - Deployments: deploy.md
+  - Appendix:
+    - Design Choices: appendix/design.md
+    - Traps and Pitfalls: appendix/traps.md
+
+markdown_extensions:
+  - admonition
