@@ -5,7 +5,7 @@
 #   incorporating those changes to this repo.
 #
 #   Author:         Brian Vanderwende
-#   Last Revised:   14:10, 11 Mar 2026
+#   Last Revised:   17:19, 12 Mar 2026
 #
 
 my_root="$( cd "$(dirname "$0")"/.. ; pwd )"
@@ -18,7 +18,7 @@ Options
     -h, --help                  show this help message
     -b, --brief                 only show files that have changed
     -c, --cluster               use different cluster name than auto-detected
-    -v, --verbose               provide detail on the differences in each file
+    -d, --diff                  provide detail on the differences in each file
 
 EOF
 exit ${1:-0}
@@ -49,8 +49,8 @@ while [[ $# -gt 0 ]]; do
             cluster=$2
             shift
             ;;
-        -v|--verbose)
-            output_mode=verbose
+        -d|--diff)
+            diff_mode=true
             ;;
         *)
             env_path=$1
@@ -82,6 +82,7 @@ Host:   $cluster
 Type:   $NCAR_SPACK_DEPLOY_TYPE
 
 Output mode:    $output_mode
+Display diffs:  ${diff_mode:=false}
 
 ============================================================
 
@@ -121,9 +122,9 @@ for src_path in ${!path_map[@]}; do
                 echo -e "   Source file:   $my_root/$src_file (modified $PCOL$(date -r $my_root/$src_file)$DCOL)"
                 echo -e "   Deployed file: $env_path/$dep_file (modified $PCOL$(date -r $env_path/$dep_file)$DCOL)"
 
-                if [[ $output_mode == verbose ]]; then
+                if [[ $diff_mode == true ]]; then
                     read -n 1 -s -r -p "   Press any key to display differences..."
-                    diff --color=always -u $my_root/$src_file $env_path/$dep_file | less
+                    diff --minimal --color=always -u $my_root/$src_file $env_path/$dep_file | less -r
                     echo
                 fi
 

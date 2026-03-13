@@ -120,6 +120,11 @@ fi
 raw_list=$(spack find --format "{prefix} {hash} {name}|{version}|{hash}")
 pkg_list=$(awk -v envpath=${SPACK_ENV}/opt '$1~envpath { print $2" "$3 }' <<< "$raw_list")
 
+if [[ -z $pkg_list ]]; then
+    tsecho "No packages found in environment. Exiting"
+    exit
+fi
+
 while [[ ${cache_list+set} != set ]]; do
     case $mirror in
         file://*|/*)
