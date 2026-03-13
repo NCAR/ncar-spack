@@ -30,8 +30,41 @@ $ spack install --add cuda@12.9.1
      1. Cannot build cuda, since it is configured `buildable:false` and no externals satisfy the request
 ```
 
-**This means you should either manually add the `cuda` external or fix the
-version number after automatic detection!**
+As a result, you can use the `detection=manual` attribute in `constraints.cfg`
+to tell the script to manually add the external. The version will be
+auto-detected from the prefix, rather than via querying a binary or whatever
+logic is used by the package.
+
+## External Variants and Require
+
+Similarly, you can run into trouble with externals if you require a package to
+use a specific variant, but then provide that package via an external. The
+external needs to specify that variant in its spec, otherwise the concretizer
+will give the following error:
+
+```bash
+==> [2026-03-13-13:58:06.754749, 809817] Error: failed to concretize `cuda@12.9.1` for the following reasons:
+     1. Cannot build cuda, since it is configured `buildable:false` and no externals satisfy the request
+```
+
+So again, the `cuda` package provides an illustrative example. Here, we are
+constraining cuda via the following YAML:
+
+```yaml
+  packages:
+    cuda:
+      require:
+      - +allow-unsupported-compilers
+```
+
+We can fix this by specifying the variant in our spec name in the external. This
+can again be done using an attribute in `constraints.cfg`:
+
+```
+externals: gpu=cuda buildable=no detection=manual variants=+allow-unsupported-compilers {
+    $COMMON_ROOT/spack/opt/spack/[cuda/*]/*
+}
+```
 
 ## Missing SHA Concretization Failures
 
@@ -77,3 +110,82 @@ Once you have installed anything into the deployment, it is best to consider
 this configuration immutable. If you change the prefix projection, Spack will no
 longer be able to find packages at the path it thinks it should from its
 database, and you will likely have a broken deployment!
+
+## Random Package Failures
+
+A couple of packages have builds which just sometimes fail. The is observed most
+often with the `qt` package, which is unfortunate as it takes a **long** time to
+build.
+
+For such packages, you may see better results if you limit the build to a low
+number of build jobs - say 4-8 instead of 8+. Of course, the build time will
+increase. Otherwise, your best bet is to just try repetition. If I encounter a
+`qt` build failure, I will often run `install_packages` the next time as
+follows:
+
+```bash
+$ bin/install_packages || bin/install_packages || bin/install_packages
+```
+
+That way, it will try three times and I don't have to keep a close eye on
+things.
+
+## Clobbering Prefer and Require Sections
+
+Unfortunately, as of Spack v1.1, there is no way to inherit settings from the
+`require:` and `prefer:` sections of the `all:` package while also customizing a
+particular package. Any general customizations from `all:` will be clobbered in
+the equivalent section.
+
+An example can help illustrate:
+
+```yaml
+packages:
+  all:
+    require:
+    - spec: cuda_arch=80
+      when: ^cuda
+  openmpi:
+    require:
+    - +cuda
+    - fabrics=cma,ofi
+```
+
+Ideally, this would force openmpi to use the requested fabrics, enable cuda, and
+use cc80 for the CUDA architecture. But the `require:` section for openmpi
+clobbers the section from `all:`, and so you would need to repeat the
+`cuda_arch` setting for openmpi.
+
+One potential workaround is to intermix `require` and `prefer`. For example:
+
+```yaml
+packages:
+  all:
+    require:
+    - spec: cuda_arch=80
+      when: ^cuda
+  openmpi:
+    prefer:
+    - +cuda
+    - fabrics=cma,ofi
+```
+
+You could also use `variants:`, but this is merely a suggestion to the
+concretizer and probably shouldn't be trusted for anything important!
+
+## Pulling Package Updates
+
+If you need to get new versions of package recipes from the upstream
+[spack-packages]() GitHub repo, it is highly recommended to **only** pull what
+you need, and not to update the entire clone. For example, if a new version of
+NetCDF came out, this would be advised:
+
+```bash
+$ cd /glade/u/apps/derecho/default/packages/repos/spack_repo/builtin/packages
+$ git fetch upstream develop
+$ git checkout upstream/develop -- netcdf-c
+```
+
+If you pull all changes, it is much more likely that a package you didn't intend
+to modify has had its variants changed, or worse, uses a new package API feature
+that Spack doesn't support and causes Spack to error when running commands.
