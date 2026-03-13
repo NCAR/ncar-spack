@@ -1,0 +1,2 @@
+# Required packages for documentation building
+mkdocs

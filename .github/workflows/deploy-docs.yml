@@ -1,0 +1,30 @@
+name: deploy-docs
+on:
+  push:
+    branches:
+      - main
+permissions:
+  contents: write
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        shell: bash -el {0}
+
+    steps:
+      - name: Check out code
+        uses: actions/checkout@v4
+
+      - name: Configure Git Credentials
+        run: |
+          git config user.name github-actions[bot]
+          git config user.email 41898282+github-actions[bot]@users.noreply.github.com
+
+      - name: Set up Python for mkdocs build
+        uses: actions/setup-python@v56
+        with:
+          python-version: 3.x
+          pip-install: -r requirements.txt
+
+      - run: mkdocs gh-deploy --force
