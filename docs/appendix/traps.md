@@ -176,9 +176,9 @@ concretizer and probably shouldn't be trusted for anything important!
 ## Pulling Package Updates
 
 If you need to get new versions of package recipes from the upstream
-[spack-packages]() GitHub repo, it is highly recommended to **only** pull what
-you need, and not to update the entire clone. For example, if a new version of
-NetCDF came out, this would be advised:
+[spack-packages](https://github.com/spack/spack-packages) GitHub repo, it is
+highly recommended to **only** pull what you need, and not to update the entire
+clone. For example, if a new version of NetCDF came out, this would be advised:
 
 ```bash
 $ cd /glade/u/apps/derecho/default/packages/repos/spack_repo/builtin/packages
