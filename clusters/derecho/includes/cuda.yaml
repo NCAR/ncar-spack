@@ -83,8 +83,7 @@ modules:
           set:
             NCAR_LDFLAGS_CUTENSOR_CUDA: '{prefix}/lib/" .. os.getenv("CUDA_MAJOR_VERSION") .."'
       defaults:
-      - nvhpc@25.09
-      - cuda@12.9.0
-      - cudnn@9.8.0.87-12
+      - cuda@12.9.1
+      - cudnn@9.17.0.29-12
       include:
       - cuda %gcc@12.5.0
