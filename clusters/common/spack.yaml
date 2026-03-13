@@ -4,12 +4,12 @@ spack:
     install_tree:
       root: '%INSTALLROOT%'
       projections:
+        c: '{name}/{version}/{hash:4}'
         ^c: '{name}/{version}/{compiler.name}/{compiler.version}/{hash:4}'
         ^cxx: '{name}/{version}/{compiler.name}/{compiler.version}/{hash:4}'
         ^fortran: '{name}/{version}/{compiler.name}/{compiler.version}/{hash:4}'
         ^mpi: '{name}/{version}/{^mpi.name}/{^mpi.version}/{compiler.name}/{compiler.version}/{hash:4}'
         all: '{name}/{version}/{hash:4}'
-        c: '{name}/{version}/{hash:4}'
       padded_length: 128
     build_jobs: 4
     test_stage: '%TMPROOT%/$user/temp/spack/%DEPLOYMENT%/tests'
