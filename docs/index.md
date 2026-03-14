@@ -52,3 +52,27 @@ default.
 If you need to create a new GPG key, it will be pushed to the build caches
 associated with the deployment (the mirrors in `spack.yaml`) assuming you are
 the owner of those mirrors.
+
+## Useful Resources
+
+The following resources are essential for understanding how to use Spack well:
+
+1. [Spack Documentation](https://spack.readthedocs.io/en/latest/)
+2. [Spack Package Search](https://packages.spack.io/)
+3. [Spack Slack](https://slack.spack.io/)
+
+Remember that Spack is now split into two repositories:
+
+1. [Spack the program](https://github.com/spack/spack)
+2. [Spack's *builtin* package
+   repository](https://github.com/spack/spack-packages)
+
+Changes to Spack's functionlity come from the main Spack repo, whereas package
+recipe changes and additions come from the `builtin` package repo.
+
+Finally, remember that these cluster definitions contained in this repo use CSG
+forks of both Spack itself and the builtin packages repository. These can be
+found here:
+
+1. [CSG Spack fork](https://github.com/NCAR/csg-spack-fork)
+2. [CSG Spack builtin packages fork](https://github.com/NCAR/csg-spack-packages)
