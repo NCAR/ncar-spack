@@ -1,0 +1,238 @@
+<!DOCTYPE html>
+<html class="writer-html5" lang="en" >
+<head>
+    <meta charset="utf-8" />
+    <meta http-equiv="X-UA-Compatible" content="IE=edge" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+      <link rel="shortcut icon" href="../img/favicon.ico" />
+    <title>Deploying a cluster from scratch - ncar-spack</title>
+    <link rel="stylesheet" href="../css/theme.css" />
+    <link rel="stylesheet" href="../css/theme_extra.css" />
+        <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.8.0/styles/github.min.css" />
+    
+      <script>
+        // Current page data
+        var mkdocs_page_name = "Deploying a cluster from scratch";
+        var mkdocs_page_input_path = "deploy.md";
+        var mkdocs_page_url = null;
+      </script>
+    
+    <!--[if lt IE 9]>
+      <script src="../js/html5shiv.min.js"></script>
+    <![endif]-->
+      <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.8.0/highlight.min.js"></script>
+      <script>hljs.highlightAll();</script> 
+</head>
+
+<body class="wy-body-for-nav" role="document">
+
+  <div class="wy-grid-for-nav">
+    <nav data-toggle="wy-nav-shift" class="wy-nav-side stickynav">
+    <div class="wy-side-scroll">
+      <div class="wy-side-nav-search">
+          <a href=".." class="icon icon-home"> ncar-spack
+        </a><div role="search">
+  <form id ="rtd-search-form" class="wy-form" action="../search.html" method="get">
+      <input type="text" name="q" placeholder="Search docs" aria-label="Search docs" title="Type search term here" />
+  </form>
+</div>
+      </div>
+
+      <div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="Navigation menu">
+              <ul>
+                <li class="toctree-l1"><a class="reference internal" href="..">Home</a>
+                </li>
+              </ul>
+              <p class="caption"><span class="caption-text">Main Workflows</span></p>
+              <ul>
+                  <li class="toctree-l1"><a class="" href="../workflows/deploy.md">Create a New Deployment</a>
+                  </li>
+                  <li class="toctree-l1"><a class="" href="../workflows/packages.md">Install a Package</a>
+                  </li>
+                  <li class="toctree-l1"><a class="" href="../workflows/postprocess.md">Postprocessing</a>
+                  </li>
+                  <li class="toctree-l1"><a class="" href="../workflows/publish.md">Publish Changes</a>
+                  </li>
+                  <li class="toctree-l1"><a class="" href="../workflows/removing.md">Removing Things</a>
+                  </li>
+              </ul>
+              <p class="caption"><span class="caption-text">How To</span></p>
+              <ul>
+                  <li class="toctree-l1"><a class="" href="../how/cpe.md">Add New CPE</a>
+                  </li>
+                  <li class="toctree-l1"><a class="" href="../how/tools.md">Add User Tools</a>
+                  </li>
+                  <li class="toctree-l1"><a class="" href="../how/hide.md">Hide Modules</a>
+                  </li>
+                  <li class="toctree-l1"><a class="" href="../how/update.md">Update Cluster Recipes</a>
+                  </li>
+              </ul>
+              <p class="caption"><span class="caption-text">Manual Installs</span></p>
+              <ul>
+                  <li class="toctree-l1"><a class="" href="../manual/idl.md">IDL</a>
+                  </li>
+                  <li class="toctree-l1"><a class="" href="../manual/matlab.md">Matlab</a>
+                  </li>
+                  <li class="toctree-l1"><a class="" href="../manual/ncl.md">NCL</a>
+                  </li>
+                  <li class="toctree-l1"><a class="" href="../manual/rocm.md">ROCm</a>
+                  </li>
+                  <li class="toctree-l1"><a class="" href="../manual/vapor.md">VAPOR</a>
+                  </li>
+              </ul>
+              <p class="caption"><span class="caption-text">Appendix</span></p>
+              <ul>
+                  <li class="toctree-l1"><a class="reference internal" href="../appendix/design/">Design Choices</a>
+                  </li>
+                  <li class="toctree-l1"><a class="reference internal" href="../appendix/traps/">Traps and Pitfalls</a>
+                  </li>
+              </ul>
+      </div>
+    </div>
+    </nav>
+
+    <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap">
+      <nav class="wy-nav-top" role="navigation" aria-label="Mobile navigation menu">
+          <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
+          <a href="..">ncar-spack</a>
+        
+      </nav>
+      <div class="wy-nav-content">
+        <div class="rst-content"><div role="navigation" aria-label="breadcrumbs navigation">
+  <ul class="wy-breadcrumbs">
+    <li><a href=".." class="icon icon-home" aria-label="Docs"></a></li>
+      <li class="breadcrumb-item active">Deploying a cluster from scratch</li>
+    <li class="wy-breadcrumbs-aside">
+    </li>
+  </ul>
+  <hr/>
+</div>
+          <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
+            <div class="section" itemprop="articleBody">
+              
+                <h1 id="deploying-a-cluster-from-scratch">Deploying a cluster from scratch</h1>
+<p>Cluster definitions are contained in the <code>clusters</code> subdirectory and typically contain the following components:</p>
+<pre><code>clusters/
+├── casper
+│   ├── constraints.cfg - external packages, and packages required to use the system GCC
+│   ├── main.cfg        - top-level path, name, and version settings for the cluster deployment
+│   ├── packages.cfg    - an inventory of packages to be built upon deployment (and beyond)
+│   ├── postprocess     - a bash script that runs last and does cluster prep that Spack cannot
+│   ├── repos.cfg       - any custom package repositories to include (i.e. ncar.hpcd recipes)
+│   └── spack.yaml      - the Spack environment template that will become the cluster stack
+...
+</code></pre>
+<p>Remember, these are simply templates! To generate a cluster deployment from one of these recipes, simply run the <code>deploy</code> script in the top-level directory. For example:</p>
+<pre><code>./deploy [--production] [--no-pkgs] casper
+</code></pre>
+<p>This command will clone csg-spack-fork and check out the branch specified in the cluster's <strong>main.cfg</strong> (or use the <code>ncar-mods</code> branch if left blank), copy the cluster recipe template and replace placeholders with proper paths and settings, set up a build cache mirror if one does not already exist, and (<em>if <code>--no-pkgs</code> is not set</em>) will build the packages specified in <strong>packages.cfg</strong>.</p>
+<p>The <code>--production</code> flag can only be specified when running as <em>csgteam</em>. Without this flag, a <em>test</em> deployment will be created at the location configured in the cluster definition (probably your scratch directory). Doing a test deployment can be a good way to learn how this all works without breaking things, and is recommended! :thumbsup:</p>
+<blockquote>
+<p><em>Keep in mind that changes made after you deploy a cluster will cause divergence from the recipe contained in this repo. This is expected, but if you wish to propagate those changes to a new version of the deployment, you should merge them into the recipe and push the changes to ncar-spack (see below)!</em></p>
+</blockquote>
+<h2 id="installing-a-new-package">Installing a new package</h2>
+<p>As new versions of popular libraries (e.g., <em>netcdf</em>) are released, and users request new packages, consultants will need to augment cluster deployments. All of the tools to do this robustly are provided in a cluster deployment. Here, we will run through an example for a production install, and so these steps assume working as <em>csgteam</em>.</p>
+<p>First, a word about how the deployment is structured. There should exist one Spack clone, and two Spack environments: a <em>build</em> environment and a <em>public</em> environment. The build environment is what you will interact with. Packages are build from source in the <em>build</em> environment, and any changes should not be visible to users. Only when you are happy with your changes in the <em>build</em> environment should you <code>publish</code> them into the <em>public</em> environment.</p>
+<h3 id="environment-prep-clean_bash-and-spacktivate">Environment prep: <code>clean_bash</code> and <code>spacktivate</code></h3>
+<p>Before doing anything with a cluster deployment, you should first launch a clean bash shell that has been scrubbed of personal settings and modules. Since this step is fundamental to using <em>ncar-spack</em>, a script called <code>clean_bash</code> is provided in the csg-spack-fork to do this for you. The script will also initialize Spack to run in your environment, and change your directory to the <em>build</em> environment.</p>
+<p>The script can be found in the <code>bin</code> directory of the clone Spack, and it is also typically configured to run as a shell function when you are <em>csgteam</em> (via <strong>.bashrc</strong> settings).</p>
+<p>Once you are in a sanitized bash shell, you can "activate" the <em>build</em> environment. This step is important, because otherwise Spack will make decisions based on the configuration in the Spack clone settings directory, rather than our environment settings contained in <strong>spack.yaml</strong>.</p>
+<p><strong>For example:</strong></p>
+<pre><code>clean_bash
+spacktivate -p .
+</code></pre>
+<p>Since <code>clean_bash</code> places you in the <em>build</em> directory, you can use <code>.</code> to indicate the environment path. The <code>-p</code> option provides a nice prompt decorator indicating the build environment is active.</p>
+<h3 id="updating-the-builtin-repo-to-get-new-package-versions">Updating the <em>builtin</em> repo to get new package versions</h3>
+<p>Unfortunately, some terminology is overloaded here. In addition to Spack itself being a Git repository, Spack stores its package recipes in a package repository. The default repo is called <em>builtin</em>, and is contained with Spack itself in the Spack Git repo. The problem is that checking out a newer version of Spack or its <em>builtin</em> repo will update many things - including the package API and package recipes. This can cause packages to concretize differently and reduce reproducibility, and in some cases can even break the whole deployment.</p>
+<p>:rotating_light: <strong>Updating the entire Spack clone should be avoided - consider this a scenario for creating a new deployment!</strong> :rotating_light:</p>
+<p>So let's say a user wants the latest and greatest version of a package, and the version you see provided by our Spack clone is older (use <code>spack info &lt;package&gt;</code> to check versions). In this scenario, aim for the least invasive changes possible. Typically, this means checking out only the desired package from the main Spack upstream. The <code>deploy</code> script will configure the cloned Spack to have an upstream remote to the main Spack repo.</p>
+<h4 id="example-installing-the-latest-esmf">Example: Installing the latest ESMF</h4>
+<p>A user wants ESMF 8.6.0, but the deployed Spack clone only provides up to 8.5.2. Here is how you would obtain a newer version:</p>
+<pre><code>cd $SPACK_ROOT/var/spack/repos/builtin/packages
+git fetch upstream develop
+git checkout upstream/develop -- esmf
+cd $SPACK_ENV
+</code></pre>
+<p>These commands will only check out the updated ESMF package recipe (including the <strong>package.py</strong> and any new/modified patches). Note that sometimes you will need to update dependencies too if your package has changes that are incompatible with the current dependency recipe. But aim for the least number of changes possible to get a successful build. And if the version the user wants is provided already (or they don't care which version), then great, skip this section!</p>
+<h3 id="configuring-an-optimal-package-build">Configuring an optimal package build</h3>
+<p>Before installing any package, you should always run these two commands:
+1. <code>spack info &lt;spec&gt;</code> - tells you which versions are availabe and which variants can be used to modify how the package will be built
+2. <code>spack spec -I -l &lt;spec&gt;</code> - shows you exactly how the package will be built as currently configured, including the dependencies Spack will use; the <code>-I</code> flag will decorate the output with an indicator telling you whether the package is currently installed <code>[+]</code>, an external <code>[e]</code>, or needs to be installed <code>[-]</code>.</p>
+<p>First, think about which variants you will need to configure to meet the user's request. Also, consider whether the package should use the system compiler or be built with our <em>module-loadable</em> compilers. It typically makes sense to use the system compiler for lower level packages that get used as dependencies often like <em>python</em> and <em>qt</em>. On the other hand, if a package depends on MPI you will almost certainly want to built it using the module compilers.</p>
+<p>The package build can be configured either in the <em>spec</em> or specifying preferences and requirements in the <strong>spack.yaml</strong>. I prefer the latter, when possible, as these settings will often influence how the package gets used as dependencies, and will also help narrow the behavior if a user wants to use our deployment as a Spack <em>upstream</em>.</p>
+<p>If you wish to constrain any uninstalled dependencies of your package to use the system compiler, add them to the <strong>constraints.cfg</strong> file in the <em>build</em> environment and then run <code>bin/add_constraints</code>.</p>
+<h3 id="building-the-package">Building the package</h3>
+<p>Once you are happy with the build configuration and have implemented any desired constraints/preferences/requirements, you can install the package into the build environment. You <em>could</em> do this with the following Spack command:</p>
+<pre><code>spack install --add &lt;spec&gt;
+</code></pre>
+<p>However, this method will not span multiple compilers/MPIs and also does not log who performed the install. Instead, a helper script is provided to make complex installs easier (and put logs in an easy to find location).</p>
+<p>To install the package, add the <code>&lt;spec&gt;</code> into the <strong>packages.cfg</strong> file in an appropriate subsection - packages can be one of the following:
+* <strong>singleton</strong> - only a single configuration of this package is installed
+* <strong>cdep</strong> - the package will be installed for every non-system compiler defined in <strong>packages.cfg</strong>
+* <strong>mdep</strong> - the package will be installed for the matrix of compilers and MPIs defined in this file</p>
+<p>Eventual user access to the package can be configured via the <code>access</code> tag. By default, a new package will produce an environment module that can be loaded. However, you can configure the package to appear in the <em>view</em> instead using <code>access=view</code>. Any package in the <em>view</em> will be in the user environment by default when the <strong>ncarenv</strong> module is loaded, as if it were a system package installed using zypper/yum/apt-get.</p>
+<p>There are many additional specifications that can be set on sections and individual packages in this configuration file. See existing listings for inspiration (<em>full documentation TBD</em>).</p>
+<blockquote>
+<p><em>Note that compilers and MPIs installed into the </em><em>spack.yaml</em><em> but not listed in </em><em>packages.cfg</em><em> will NOT be used for cdep and mdep  sections. This is another useful feature of using </em><em>packages.cfg</em><em> - think of it a record of the "actively updated" compiler and MPI stacks, while </em><em>spack.yaml</em><em> contains both active and inactive/deprecated versions.</em></p>
+</blockquote>
+<p>Once you have added the package <code>&lt;spec&gt;</code> to <strong>packages.cfg</strong>, you can begin the source builds by running <code>bin/install_packages</code>. If all goes well, this should install the package(s) and any necessary dependencies into the <em>build</em> environment. If something goes wrong, ask colleagues in <strong>#spack</strong> on the <strong>hpc-ucar</strong> Slack. :speech_balloon:</p>
+<h3 id="testing-the-package">Testing the package</h3>
+<p>Once you have successfully built the package, you should run the following additional steps to prepare the build environment for testing:</p>
+<pre><code>spack module lmod refresh -y
+bin/postprocess
+</code></pre>
+<p>Even if your package does not produce a new environment module, it is good to run these commands to get a sense of how the production environment will look to users. Once this is ready, you can use a helper script to switch your environment from the default (production <em>public</em>) to the build stack:</p>
+<pre><code>bin/use_modules[.csh]
+</code></pre>
+<p>You should see your package binaries/libraries/headers either in the default environment (if set to exist in the <em>view</em>) or in the module listing from <code>module avail</code>. At this point, do whatever testing you need to do to ensure the package seems robust. <strong>You can also ask the user to run <code>use_modules</code> and they can provide you feedback, before you ever make the package available to other users!</strong></p>
+<h3 id="publishing-the-package">Publishing the package</h3>
+<p>Finally, assuming all goes well to this point and testing was a success, you can publish the changes from the <em>build</em> environment to the <em>public</em> environment. A helper script should handle all of this for you.</p>
+<p>:rotating_light: <strong>You should rarely, if ever, need to manually make changes to the public environment!</strong> :rotating_light:</p>
+<p>All published changes get committed and pushed to a GitHub repo (if this is a production deployment) called <code>spack-&lt;cluster&gt;</code> . This repo is publicly visible and can be used by the community to report bugs and request new packages. Thus, the publish script expects one argument - a commit message.</p>
+<pre><code>bin/publish &quot;Installed latest emacs for benkirk in #4&quot;
+</code></pre>
+<p>The <code>publish</code> script will describe all of the changes it makes, including package installs, <strong>spack.yaml</strong> changes,  refreshing the module tree, and postprocessing.</p>
+<h4 id="what-if-something-went-wrong">What if something went wrong?</h4>
+<p>Spack is finnicky and it is rather easy to get in a pickle, but <em>most</em> situations are recoverable if addressed early. If you are unsure about what to do, please ask for help in our <strong>hpc-ucar #spack</strong> Slack channel!</p>
+<h2 id="updating-a-cluster-definition-with-production-changes">Updating a cluster definition with production changes</h2>
+<p>TODO: document when and how to do this</p>
+              
+            </div>
+          </div><footer>
+
+  <hr/>
+
+  <div role="contentinfo">
+    <!-- Copyright etc -->
+  </div>
+
+  Built with <a href="https://www.mkdocs.org/">MkDocs</a> using a <a href="https://github.com/readthedocs/sphinx_rtd_theme">theme</a> provided by <a href="https://readthedocs.org">Read the Docs</a>.
+</footer>
+          
+        </div>
+      </div>
+
+    </section>
+
+  </div>
+
+  <div class="rst-versions" role="note" aria-label="Versions">
+  <span class="rst-current-version" data-toggle="rst-current-version">
+    
+    
+    
+  </span>
+</div>
+    <script src="../js/jquery-3.6.0.min.js"></script>
+    <script>var base_url = "..";</script>
+    <script src="../js/theme_extra.js"></script>
+    <script src="../js/theme.js"></script>
+      <script src="../search/main.js"></script>
+    <script>
+        jQuery(function () {
+            SphinxRtdTheme.Navigation.enable(true);
+        });
+    </script>
+
+</body>
+</html>

@@ -1,0 +1,330 @@
+<!DOCTYPE html>
+<html class="writer-html5" lang="en" >
+<head>
+    <meta charset="utf-8" />
+    <meta http-equiv="X-UA-Compatible" content="IE=edge" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+      <link rel="shortcut icon" href="../../img/favicon.ico" />
+    <title>Design Choices - ncar-spack</title>
+    <link rel="stylesheet" href="../../css/theme.css" />
+    <link rel="stylesheet" href="../../css/theme_extra.css" />
+        <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.8.0/styles/github.min.css" />
+    
+      <script>
+        // Current page data
+        var mkdocs_page_name = "Design Choices";
+        var mkdocs_page_input_path = "appendix/design.md";
+        var mkdocs_page_url = null;
+      </script>
+    
+    <!--[if lt IE 9]>
+      <script src="../../js/html5shiv.min.js"></script>
+    <![endif]-->
+      <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.8.0/highlight.min.js"></script>
+      <script>hljs.highlightAll();</script> 
+</head>
+
+<body class="wy-body-for-nav" role="document">
+
+  <div class="wy-grid-for-nav">
+    <nav data-toggle="wy-nav-shift" class="wy-nav-side stickynav">
+    <div class="wy-side-scroll">
+      <div class="wy-side-nav-search">
+          <a href="../.." class="icon icon-home"> ncar-spack
+        </a><div role="search">
+  <form id ="rtd-search-form" class="wy-form" action="../../search.html" method="get">
+      <input type="text" name="q" placeholder="Search docs" aria-label="Search docs" title="Type search term here" />
+  </form>
+</div>
+      </div>
+
+      <div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="Navigation menu">
+              <ul>
+                <li class="toctree-l1"><a class="reference internal" href="../..">Home</a>
+                </li>
+              </ul>
+              <p class="caption"><span class="caption-text">Main Workflows</span></p>
+              <ul>
+                  <li class="toctree-l1"><a class="" href="../../workflows/deploy.md">Create a New Deployment</a>
+                  </li>
+                  <li class="toctree-l1"><a class="" href="../../workflows/packages.md">Install a Package</a>
+                  </li>
+                  <li class="toctree-l1"><a class="" href="../../workflows/postprocess.md">Postprocessing</a>
+                  </li>
+                  <li class="toctree-l1"><a class="" href="../../workflows/publish.md">Publish Changes</a>
+                  </li>
+                  <li class="toctree-l1"><a class="" href="../../workflows/removing.md">Removing Things</a>
+                  </li>
+              </ul>
+              <p class="caption"><span class="caption-text">How To</span></p>
+              <ul>
+                  <li class="toctree-l1"><a class="" href="../../how/cpe.md">Add New CPE</a>
+                  </li>
+                  <li class="toctree-l1"><a class="" href="../../how/tools.md">Add User Tools</a>
+                  </li>
+                  <li class="toctree-l1"><a class="" href="../../how/hide.md">Hide Modules</a>
+                  </li>
+                  <li class="toctree-l1"><a class="" href="../../how/update.md">Update Cluster Recipes</a>
+                  </li>
+              </ul>
+              <p class="caption"><span class="caption-text">Manual Installs</span></p>
+              <ul>
+                  <li class="toctree-l1"><a class="" href="../../manual/idl.md">IDL</a>
+                  </li>
+                  <li class="toctree-l1"><a class="" href="../../manual/matlab.md">Matlab</a>
+                  </li>
+                  <li class="toctree-l1"><a class="" href="../../manual/ncl.md">NCL</a>
+                  </li>
+                  <li class="toctree-l1"><a class="" href="../../manual/rocm.md">ROCm</a>
+                  </li>
+                  <li class="toctree-l1"><a class="" href="../../manual/vapor.md">VAPOR</a>
+                  </li>
+              </ul>
+              <p class="caption"><span class="caption-text">Appendix</span></p>
+              <ul class="current">
+                  <li class="toctree-l1 current"><a class="reference internal current" href="#">Design Choices</a>
+    <ul class="current">
+    <li class="toctree-l2"><a class="reference internal" href="#reuse-vs-reproducibility">Reuse vs Reproducibility</a>
+        <ul>
+    <li class="toctree-l3"><a class="reference internal" href="#reuse-true">reuse: true</a>
+    </li>
+    <li class="toctree-l3"><a class="reference internal" href="#reuse-false">reuse: false</a>
+    </li>
+        </ul>
+    </li>
+    <li class="toctree-l2"><a class="reference internal" href="#reducing-package-duplication">Reducing Package Duplication</a>
+        <ul>
+    <li class="toctree-l3"><a class="reference internal" href="#externals-vs-upstream-packages">Externals vs Upstream Packages</a>
+    </li>
+    <li class="toctree-l3"><a class="reference internal" href="#the-downside-of-externals">The Downside of Externals</a>
+    </li>
+        </ul>
+    </li>
+    <li class="toctree-l2"><a class="reference internal" href="#non-buildable-externals">Non-buildable Externals</a>
+    </li>
+    <li class="toctree-l2"><a class="reference internal" href="#user-packages-in-the-view">User Packages in the View</a>
+    </li>
+    </ul>
+                  </li>
+                  <li class="toctree-l1"><a class="reference internal" href="../traps/">Traps and Pitfalls</a>
+                  </li>
+              </ul>
+      </div>
+    </div>
+    </nav>
+
+    <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap">
+      <nav class="wy-nav-top" role="navigation" aria-label="Mobile navigation menu">
+          <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
+          <a href="../..">ncar-spack</a>
+        
+      </nav>
+      <div class="wy-nav-content">
+        <div class="rst-content"><div role="navigation" aria-label="breadcrumbs navigation">
+  <ul class="wy-breadcrumbs">
+    <li><a href="../.." class="icon icon-home" aria-label="Docs"></a></li>
+          <li class="breadcrumb-item">Appendix</li>
+      <li class="breadcrumb-item active">Design Choices</li>
+    <li class="wy-breadcrumbs-aside">
+    </li>
+  </ul>
+  <hr/>
+</div>
+          <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
+            <div class="section" itemprop="articleBody">
+              
+                <h1 id="design-choices">Design Choices</h1>
+<p>Many things can be accomplished in multiple ways using Spack, but from
+experience some methods are fraught with issues for the NCAR HPC module tree. As
+a reminder, here are basic design objectives we've tried to adhere to in order
+to match user expectations:</p>
+<ol>
+<li>Software stacks evolve over time, with new versions of packages being added
+   as they become available.</li>
+<li>Much of the software stack should be roughly the same on both the HPC system
+   and the analysis system.</li>
+</ol>
+<h2 id="reuse-vs-reproducibility">Reuse vs Reproducibility</h2>
+<p>One of the biggest choices in Spack behavior is whether to encourage the
+concretizer to reuse packages or to instead prefer "fresh" solutions. When
+<code>reuse: true</code> is specified, the concretizer will be much more likely to use
+existing builds for package dependencies - basically, even if the version of the
+package or the variants aren't "ideal", the concretizer will typically use the
+installed dependency anyway as long as it doesn't violate a requirement. If
+<code>reuse: false</code> is specified, the concretizer will always create an "optimal"
+solution as it sees things.</p>
+<p>Both approaches bring major advantages and severe disadvantages, and I have gone
+back and forth on which is preferable.</p>
+<h3 id="reuse-true">reuse: true</h3>
+<p><strong>This is currently the preferred mode for ncar-spack!</strong></p>
+<p><strong>The Good</strong></p>
+<ul>
+<li>Significantly reduces package duplication with unnecessary additional versions
+  and variants.</li>
+<li>Since v1.0, this mode is pretty much required if you want to mix a "core" GCC
+  and a newer GCC or vendor compiler in the same spec.</li>
+</ul>
+<p><strong>The Bad</strong></p>
+<ul>
+<li>The package solution depends on the order you have installed packages before
+  it. If a dependency exists already, it may look different than if Spack needs
+  to figure out that dependency from scratch.</li>
+<li>Because of the above, performing concurrent package installs is not advisable
+  as the solution will be non-deterministic.</li>
+</ul>
+<h3 id="reuse-false">reuse: false</h3>
+<div class="admonition note">
+<p class="admonition-title">Note</p>
+<p>This mode does not mean that existing packages cannot be "reused" as
+dependencies - but that will only happen if the existing install exactly
+matches what the concretizer would want to use anyway. Basically, this is
+something analogous to a "strict matching" mode.</p>
+</div>
+<p><strong>The Good</strong></p>
+<ul>
+<li>The solution is repeatable as long as you either keep the package repository
+  unchanged or track which commit of the package repository was available when
+  the package was installed and be consistent.</li>
+<li>Concretizer behavior is much less bewildering.</li>
+</ul>
+<p><strong>The Bad</strong></p>
+<ul>
+<li>In Spack v1.0+, compiler mixing becomes very difficult to impossible when
+  using this mode. While vendor compilers and GCC can still be mixed via
+  requirements, different GCC versions cannot be mixed due to <code>gcc-runtime</code>
+  differences. Maybe this will change again in the future...</li>
+<li>If <em>any</em> change is made to a package recipe (<code>package.py</code>), the hash of the
+  concretized solution will change even if the version and variants are the
+  same. So basically, adding new versions to a package via upstream fetching
+  breaks the continuity of the stack, and in practice cannot really be done.</li>
+</ul>
+<p>These negatives are fatal for our design, and so <code>reuse: false</code> is not practical
+to use. Any updates to the package repository would really require a whole new
+deployment if we used this mode.</p>
+<h2 id="reducing-package-duplication">Reducing Package Duplication</h2>
+<p>Certain packages do not need to be installed uniquely on both systems - most
+notably vendor software. Many of these packages are indeed quite bloated, so
+having multiple installs is wasteful of space as well (e.g.,
+<code>intel-oneapi-compilers</code> and <code>nvhpc</code>).</p>
+<p>To avoid duplication, we use a third cluster called <strong>common</strong>, which contains
+these packages. The packages are then exposed to the production clusters (i.e.
+<strong>derecho</strong> and <strong>casper</strong>) as externals, which are defined with the help of the
+<code>add_constraints</code> script and the <code>constraints.cfg</code> file.</p>
+<p>In theory, these packages could be installed into one of the cluster deployments
+and then exposed to the other cluster, removing the need for <strong>common</strong>, but
+this is not advisable for reasons described in the next section.</p>
+<div class="admonition info">
+<p class="admonition-title">Historical Information</p>
+<p>The original reason for the <strong>common</strong> environment was to constrain how the
+concretizer would build packages by extensive use of externals. In old
+versions of Spack, the <code>require:</code> specifier was not available. By putting
+commonly-used dependencies into <strong>common</strong>, this mostly prevented Spack from
+wildly choosing to build new versions and use undesired compilers.
+Fortunately, this problem can be mitigated in cleaner ways now.</p>
+</div>
+<h3 id="externals-vs-upstream-packages">Externals vs Upstream Packages</h3>
+<p>In theory, the <strong>common</strong> environment could be exposed in one of two ways to
+cluster deployments:</p>
+<ol>
+<li>Add packages from common to clusters as <em>externals</em></li>
+<li>Add the entire common deployment to each cluster as an upstream (or chained)
+   installation of Spack</li>
+</ol>
+<p>The second option has many advantages, but unfortunately is not workable at
+present because Spack considers <code>sles</code> and <code>opensuse</code> to be distinct operating
+systems, so if used as an upstream, the packages in <strong>common</strong> will only be used
+on the system with the matching OS.</p>
+<div class="admonition note">
+<p class="admonition-title">Note</p>
+<p>The Spack developers claim they want to eliminate the OS concept entirely
+from specs. If this happens, or if <code>os_compatible</code> can be made to work, the
+upstream approach would be recommended.</p>
+</div>
+<h3 id="the-downside-of-externals">The Downside of Externals</h3>
+<p>The major downside of externals is that they don't have any dependency
+information. As a result, if you try to use source-built packages from another
+Spack installation as externals in your deployment, you may get build errors
+since Spack does not know what dependencies it needs to link in at compile time
+for the external you are using. This can affect user usage as well as module
+<code>depends_on</code> settings can be missing.</p>
+<p>This is why we focus on vendor software for use as externals from <strong>common</strong>.
+The one exception currently is <code>gcc</code>. As of v1.1, Spack's compiler support is
+still in flux and if you install a compiler into the environment, it can be hard
+to track and customize via YAML how the compiler is defined. Using externals to
+bring in compilers from the <strong>common</strong> deployment helps constrain behavior.</p>
+<h2 id="non-buildable-externals">Non-buildable Externals</h2>
+<p>When you add an external, you can specify whether or not Spack can also build a
+non-external version of the package using <code>buildable: [true/false]</code>. Most of the
+time, we prefer non-buildable externals as this has the advantageous property of
+constraining the concretizer behavior. Otherwise, it may decide to ignore your
+external and reinstall a package, which is time consuming and annoying if the
+package is something like <code>nvhpc</code>.</p>
+<h2 id="user-packages-in-the-view">User Packages in the View</h2>
+<p>On prior systems, we had HSG install many low-level packages into the image
+directly using RPMs. With Derecho, HSG wanted to slim down the image and so many
+fundamental packages (e.g., <code>tmux</code>, <code>imagemagick</code>, <code>parallel</code>) needed to be
+installed with Spack by CSG instead.</p>
+<p>These packages could all be modules, but it was decided instead to incorporate
+them into a single directory using Spack's environment <em>view</em> capability, which
+creates links (or if desired copies) of all requested package libraries,
+binaries, man pages, etc in a single prefix. Essentially, we use it to mimic
+what would traditionally go in <code>/usr/local</code> via RPM installs. The view is then
+added to to the user environment via <code>ncarenv</code>, so it should be always available
+for the majority of users.</p>
+<p>The reasons for this choice vs using modules exclusively is as follows:</p>
+<ol>
+<li>A large module list is visually intimidating</li>
+<li>It imposes a burden on users to know what they might want, whereas with the
+   view we can curate the "basic" experience</li>
+<li>Since many packages depend on libraries like <code>zlib</code>, the <code>depends_on</code>
+   conflicts in module loads could be severe</li>
+<li>A simpler stack improves Lmod performance</li>
+</ol>
+              
+            </div>
+          </div><footer>
+    <div class="rst-footer-buttons" role="navigation" aria-label="Footer Navigation">
+        <a href="../.." class="btn btn-neutral float-left" title="Home"><span class="icon icon-circle-arrow-left"></span> Previous</a>
+        <a href="../traps/" class="btn btn-neutral float-right" title="Traps and Pitfalls">Next <span class="icon icon-circle-arrow-right"></span></a>
+    </div>
+
+  <hr/>
+
+  <div role="contentinfo">
+    <!-- Copyright etc -->
+  </div>
+
+  Built with <a href="https://www.mkdocs.org/">MkDocs</a> using a <a href="https://github.com/readthedocs/sphinx_rtd_theme">theme</a> provided by <a href="https://readthedocs.org">Read the Docs</a>.
+</footer>
+          
+        </div>
+      </div>
+
+    </section>
+
+  </div>
+
+  <div class="rst-versions" role="note" aria-label="Versions">
+  <span class="rst-current-version" data-toggle="rst-current-version">
+    
+    
+      <span><a href="../.." style="color: #fcfcfc">&laquo; Previous</a></span>
+    
+    
+      <span><a href="../traps/" style="color: #fcfcfc">Next &raquo;</a></span>
+    
+  </span>
+</div>
+    <script src="../../js/jquery-3.6.0.min.js"></script>
+    <script>var base_url = "../..";</script>
+    <script src="../../js/theme_extra.js"></script>
+    <script src="../../js/theme.js"></script>
+      <script src="../../search/main.js"></script>
+    <script>
+        jQuery(function () {
+            SphinxRtdTheme.Navigation.enable(true);
+        });
+    </script>
+
+</body>
+</html>
