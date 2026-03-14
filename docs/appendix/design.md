@@ -10,6 +10,69 @@ to match user expectations:
 2. Much of the software stack should be roughly the same on both the HPC system
    and the analysis system.
 
+## Reuse vs Reproducibility
+
+One of the biggest choices in Spack behavior is whether to encourage the
+concretizer to reuse packages or to instead prefer "fresh" solutions. When
+`reuse: true` is specified, the concretizer will be much more likely to use
+existing builds for package dependencies - basically, even if the version of the
+package or the variants aren't "ideal", the concretizer will typically use the
+installed dependency anyway as long as it doesn't violate a requirement. If
+`reuse: false` is specified, the concretizer will always create an "optimal"
+solution as it sees things.
+
+Both approaches bring major advantages and severe disadvantages, and I have gone
+back and forth on which is preferable.
+
+### reuse: true
+
+**This is currently the preferred mode for ncar-spack!**
+
+**The Good**
+
+- Significantly reduces package duplication with unnecessary additional versions
+  and variants.
+- Since v1.0, this mode is pretty much required if you want to mix a "core" GCC
+  and a newer GCC or vendor compiler in the same spec.
+
+**The Bad**
+
+- The package solution depends on the order you have installed packages before
+  it. If a dependency exists already, it may look different than if Spack needs
+  to figure out that dependency from scratch.
+- Because of the above, performing concurrent package installs is not advisable
+  as the solution will be non-deterministic.
+
+### reuse: false
+
+!!! note
+    This mode does not mean that existing packages cannot be "reused" as
+    dependencies - but that will only happen if the existing install exactly
+    matches what the concretizer would want to use anyway. Basically, this is
+    something analogous to a "strict matching" mode.
+
+**The Good**
+
+- The solution is repeatable as long as you either keep the package repository
+  unchanged or track which commit of the package repository was available when
+  the package was installed and be consistent.
+- Concretizer behavior is much less bewildering.
+
+**The Bad**
+
+- In Spack v1.0+, compiler mixing becomes very difficult to impossible when
+  using this mode. While vendor compilers and GCC can still be mixed via
+  requirements, different GCC versions cannot be mixed due to `gcc-runtime`
+  differences. Maybe this will change again in the future...
+- If *any* change is made to a package recipe (`package.py`), the hash of the
+  concretized solution will change even if the version and variants are the
+  same. So basically, adding new versions to a package via upstream fetching
+  breaks the continuity of the stack, and in practice cannot really be done.
+
+These negatives are fatal for our design, and so `reuse: false` is not practical
+to use. Any updates to the package repository would really require a whole new
+deployment if we used this mode.
+
 ## Reducing Package Duplication
 
 Certain packages do not need to be installed uniquely on both systems - most
@@ -33,6 +96,7 @@ this is not advisable for reasons described in the next section.
     commonly-used dependencies into **common**, this mostly prevented Spack from
     wildly choosing to build new versions and use undesired compilers.
     Fortunately, this problem can be mitigated in cleaner ways now.
+
 
 ### Externals vs Upstream Packages
 

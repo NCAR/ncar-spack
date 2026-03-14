@@ -2,7 +2,23 @@ site_name: ncar-spack
 theme: readthedocs
 nav:
   - Home: index.md
-  - Deployments: deploy.md
+  - Main Workflows:
+    - Create a New Deployment: workflows/deploy.md
+    - Install a Package: workflows/packages.md
+    - Postprocessing: workflows/postprocess.md
+    - Publish Changes: workflows/publish.md
+    - Removing Things: workflows/removing.md
+  - How To:
+    - Add New CPE: how/cpe.md
+    - Add User Tools: how/tools.md
+    - Hide Modules: how/hide.md
+    - Update Cluster Recipes: how/update.md
+  - Manual Installs:
+    - IDL: manual/idl.md
+    - Matlab: manual/matlab.md
+    - NCL: manual/ncl.md
+    - ROCm: manual/rocm.md
+    - VAPOR: manual/vapor.md
   - Appendix:
     - Design Choices: appendix/design.md
     - Traps and Pitfalls: appendix/traps.md
