@@ -7,8 +7,8 @@ import spack.util.spack_yaml as yaml
 from spack.vendor.ruamel.yaml.comments import CommentedMap
 import os, sys
 
-if len(sys.argv) != 5:
-    raise TypeError("add_external.py takes 4 arguments ({} given)".format(len(sys.argv) - 1))
+if len(sys.argv) < 5:
+    raise TypeError("add_external.py takes 4+ arguments ({} given)".format(len(sys.argv) - 1))
 
 # First get our package input
 pkg_spec = sys.argv[1]
@@ -18,6 +18,12 @@ pkg_name = pkg_spec.split("@")[0]
 
 # Scope determines while file to use
 yaml_scope = sys.argv[4]
+
+# Add variants to the spec if given
+try:
+    pkg_spec += " {}".format(sys.argv[5])
+except IndexError:
+    pass
 
 # Infer some settings from the environment
 env_dir = os.environ["SPACK_ENV"]

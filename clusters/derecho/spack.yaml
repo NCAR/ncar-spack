@@ -12,11 +12,11 @@ spack:
         all: '{name}/{version}/{hash:4}'
       padded_length: 128
     build_jobs: 4
-    test_stage: '%TMPROOT%/$user/temp/spack/%DEPLOYMENT%/tests'
-    source_cache: '%TMPROOT%/$user/temp/spack/cache'
+    test_stage: /local_scratch/spack/%DEPLOYMENT%/tests
+    source_cache: /local_scratch/spack/cache
     misc_cache: '%TMPROOT%/$user/temp/spack/%DEPLOYMENT%/misc'
     build_stage:
-    - '%TMPROOT%/$user/temp/spack/%DEPLOYMENT%/builds'
+    - /local_scratch/spack/%DEPLOYMENT%/builds
     shared_linking:
     # Turning bind setting on would be beneficial but vendor compilers do not
     # seem to work with it! Avoid!
@@ -360,8 +360,8 @@ spack:
       - +external-libfabric
       - +generic-names
     intel-oneapi-runtime:
-      conflict:
-      - ^gcc-runtime@14.3.0
+      require:
+      - ^gcc-runtime@12.5.0
     ioapi:
       require:
       - cflags=-Wno-error=implicit-function-declaration
@@ -408,7 +408,7 @@ spack:
       prefer:
       - +gnutls
     linaro-forge:
-      require:
+      prefer:
       - +accept-eula
     llvm:
       prefer:
@@ -433,11 +433,6 @@ spack:
       - +makeplots
       - +plotdataplane
       - +series_analysis
-    miniconda3:
-      externals:
-      - spec: miniconda3@25.5.1
-        prefix: /glade/u/apps/opt/conda
-      buildable: false
     miniforge3:
       externals:
       - spec: miniforge3@25.11
@@ -460,6 +455,10 @@ spack:
       variants:
       - ~tuvx
     mvapich:
+      variants:
+      - file_systems=lustre,gpfs,nfs,ufs
+      - process_managers=auto
+    mvapich-plus:
       variants:
       - file_systems=lustre,gpfs,nfs,ufs
       - process_managers=auto
@@ -749,6 +748,10 @@ spack:
         lib64/pkgconfig:
         - PKG_CONFIG_PATH
       lmod:
+        +debug:
+          environment:
+            append_path:
+              NCAR_SOURCE_DIRS: '{prefix}/share/{name}/src'
         adios2:
           environment:
             set:
@@ -757,8 +760,8 @@ spack:
           environment:
             set:
               NCAR_ROOT_{name}: '{prefix}'
-              NCAR_VERSION_{name}: '{version}'
               NCAR_SPACK_HASH_{name}: '{hash}'
+              NCAR_VERSION_{name}: '{version}'
           template: ncar_default.lua
         apptainer:
           environment:
@@ -767,6 +770,10 @@ spack:
           filter:
             exclude_env_vars:
             - GOPATH
+        build_type=Debug:
+          environment:
+            append_path:
+              NCAR_SOURCE_DIRS: '{prefix}/share/{name}/src'
         c:
           environment:
             set:
@@ -781,6 +788,10 @@ spack:
         core_compilers:
         - gcc@12.5.0
         core_specs: []
+        cppflags=-g:
+          environment:
+            append_path:
+              NCAR_SOURCE_DIRS: '{prefix}/share/{name}/src'
         darshan-runtime:
           autoload: none
           environment:
@@ -850,9 +861,9 @@ spack:
               MPICH_CXX: icpx
               MPICH_FC: ifx
               NCAR_ID_COMPILER: intel-{version}
+              NCAR_MFLAGS_PROFILE: -debug minimal -O3 -fno-inline -no-ip -no-ipo -fno-omit-frame-pointer -fno-optimize-sibling-calls
               NCAR_ROOT_INTEL: '{prefix}'
               NCAR_SPACK_HASH_INTEL: '{hash}'
-              NCAR_MFLAGS_PROFILE: -debug minimal -O3 -fno-inline -no-ip -no-ipo -fno-omit-frame-pointer -fno-optimize-sibling-calls
               OMPI_CC: icx
               OMPI_CXX: icpx
               OMPI_F77: ifx
@@ -969,6 +980,7 @@ spack:
             - CONDA_PYTHON_EXE
             - CONDA_SHLVL
             - LD_LIBRARY_PATH
+            - MAMBA_ROOT_PREFIX
             - MANPATH
             - NCAR_INC_MINIFORGE3
             - NCAR_LDFLAGS_MINIFORGE3
@@ -979,7 +991,6 @@ spack:
             - _CE_M
             - _CONDA_EXE
             - _CONDA_ROOT
-            - MAMBA_ROOT_PREFIX
           environment:
             set:
               NCAR_ROOT_CONDA: '{prefix}'
@@ -1015,6 +1026,10 @@ spack:
           template: ncar_neovim.lua
         netcdf:
           autoload: all
+        netcdf+debug:
+          environment:
+            append_path:
+              NCAR_SOURCE_DIRS: '{^netcdf-c.prefix}/share/netcdf-c/src:{^netcdf-fortran.prefix}/share/netcdf-fortran/src:{^netcdf-cxx4.prefix}/share/netcdf-cxx4/src'
         netcdf+mpi:
           conflict:
           - netcdf
@@ -1024,9 +1039,9 @@ spack:
         nvhpc:
           environment:
             set:
+              NCAR_MFLAGS_PROFILE: -g -O3 -Meh_frame -Mnoautoinline
               NVIDIA_PATH: '{prefix}'
               NVIDIA_VERSION: '{version}'
-              NCAR_MFLAGS_PROFILE: -g -O3 -Meh_frame -Mnoautoinline
             prepend_path:
               LD_LIBRARY_PATH: '{prefix}/Linux_x86_64/{version}/compilers/lib'
         octave:
@@ -1034,15 +1049,15 @@ spack:
         openmpi:
           environment:
             set:
-              # https://github.com/open-mpi/ompi/issues/9647
-              OMPI_MCA_oob_tcp_if_exclude: mgt
-              OMPI_MCA_plm: tm
-              OMPI_MCA_rmaps_default_mapping_policy: :hwtcpus
-              OMPI_MCA_shmem_mmap_enable_nfs_warning: '0'
-              PRTE_MCA_prte_tmpdir_base: /tmp
               # Open MPI puts Fortran modules in an atypical place
               # https://github.com/open-mpi/ompi/issues/12600
               NCAR_INC_OPENMPIMOD: '{prefix}/lib'
+              OMPI_MCA_oob_tcp_if_exclude: mgt
+              OMPI_MCA_plm: tm
+              # https://github.com/open-mpi/ompi/issues/9647
+              OMPI_MCA_rmaps_default_mapping_policy: :hwtcpus
+              OMPI_MCA_shmem_mmap_enable_nfs_warning: '0'
+              PRTE_MCA_prte_tmpdir_base: /tmp
             prepend_path:
               LD_LIBRARY_PATH: '{prefix}/lib'
         parallel-netcdf:
@@ -1136,22 +1151,6 @@ spack:
           environment:
             set:
               UV_CACHE_DIR: /glade/derecho/scratch/" .. os.getenv("USER") .. "/.cache/uv
-        +debug:
-          environment:
-            append_path:
-              NCAR_SOURCE_DIRS: '{prefix}/share/{name}/src'
-        netcdf+debug:
-          environment:
-            append_path:
-              NCAR_SOURCE_DIRS: '{^netcdf-c.prefix}/share/netcdf-c/src:{^netcdf-fortran.prefix}/share/netcdf-fortran/src:{^netcdf-cxx4.prefix}/share/netcdf-cxx4/src'
-        cppflags=-g:
-          environment:
-            append_path:
-              NCAR_SOURCE_DIRS: '{prefix}/share/{name}/src'
-        build_type=Debug:
-          environment:
-            append_path:
-              NCAR_SOURCE_DIRS: '{prefix}/share/{name}/src'
   concretizer:
     unify: false
     reuse: true

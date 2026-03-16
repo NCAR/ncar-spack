@@ -6,7 +6,7 @@
 #   - to the YAML file.
 #
 #   Author:         Brian Vanderwende
-#   Last Revised:   10:06, 12 Mar 2026
+#   Last Revised:   16:31, 14 Mar 2026
 #
 
 function usage {
@@ -77,9 +77,9 @@ function manual_require {
 
 function manual_external {
     if [[ ${meta_buildable:-yes} == no ]]; then
-        spack python $my_dir/tools/add_external.py $pkg_spec fixed $pkg_path ${meta_scope:-spack} || skipped=yes
+        spack python $my_dir/tools/add_external.py $pkg_spec fixed $pkg_path ${meta_scope:-spack} $meta_variants || skipped=yes
     else
-        spack python $my_dir/tools/add_external.py $pkg_spec buildable $pkg_path ${meta_scope:-spack} || skipped=yes
+        spack python $my_dir/tools/add_external.py $pkg_spec buildable $pkg_path ${meta_scope:-spack} $meta_variants || skipped=yes
     fi
 
     if [[ -z $skipped ]]; then
@@ -162,6 +162,11 @@ function process_entry {
                         if [[ -d $pkg_path ]] && [[ ! -L $pkg_path ]]; then
                             if [[ " ${known_externals[@]} " != *" ${pkg_path%%/} "* ]]; then
                                 if [[ ${meta_detection:-auto} == auto ]]; then
+                                    if [[ -n $meta_variants ]]; then
+                                        tsecho "${PCOL}Note: Variants cannot be specified when using automatic$DCOL"
+                                        tsecho "${PCOL}      external detection. Ignoring given variants$DCOL"
+                                    fi
+
                                     auto_result=$(spack external find $ext_flags $pkg_path $pkg_name)
                                 else
                                     unset auto_result
@@ -284,7 +289,7 @@ if [[ -f $SPACK_ENV/constraints.cfg ]]; then
                     elif [[ $meta_data == compat ]]; then
                         if [[ -z $NCAR_SPACK_COMPAT_GCC ]]; then
                             tsecho "${PCOL}Note: Compatibility GCC version requested, but NCAR_SPACK_COMPAT_GCC not set$DCOL"
-                            tsecho "${PCOL}      Using NCAR_SPACK_CORE_GCC as compatibility GCC.$DCOL"
+                            tsecho "${PCOL}      Using NCAR_SPACK_CORE_GCC as compatibility GCC$DCOL"
                             NCAR_SPACK_COMPAT_GCC=$NCAR_SPACK_CORE_GCC
                         fi
 

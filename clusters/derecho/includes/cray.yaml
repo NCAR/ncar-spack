@@ -5,60 +5,60 @@ packages:
       when: ^cuda
   cray-libsci:
     externals:
-    - spec: cray-libsci@25.03.0 %cce
+    - spec: cray-libsci@25.03.0 %cce@19.0.0
       prefix: /opt/cray/pe/libsci/25.03.0/CRAY/17.0/x86_64
-    - spec: cray-libsci@25.03.0 %gcc
+    - spec: cray-libsci@25.03.0 %gcc@15.2.0
       prefix: /opt/cray/pe/libsci/25.03.0/GNU/12.3/x86_64
-    - spec: cray-libsci@25.03.0 %nvhpc
+    - spec: cray-libsci@25.03.0 %nvhpc@26.1
       prefix: /opt/cray/pe/libsci/25.03.0/NVIDIA/23.3/x86_64
-    - spec: cray-libsci@25.03.0 %intel-oneapi-compilers
+    - spec: cray-libsci@25.03.0 %intel-oneapi-compilers@2025.3.2
       prefix: /opt/cray/pe/libsci/25.03.0/INTEL/2025.0/x86_64
     buildable: false
   cray-mpich:
     externals:
-    - spec: cray-mpich@8.1.32 %gcc
+    - spec: cray-mpich@8.1.32 %gcc@15.2.0
       prefix: /opt/cray/pe/mpich/8.1.32/ofi/gnu/12.3
       extra_attributes:
         environment:
           append_path:
             LD_LIBRARY_PATH: /opt/cray/libfabric/1.22.0/lib64
-    - spec: cray-mpich@8.1.32 %cce
+    - spec: cray-mpich@8.1.32 %cce@19.0.0
       prefix: /opt/cray/pe/mpich/8.1.32/ofi/cray/17.0
       extra_attributes:
         environment:
           append_path:
             LD_LIBRARY_PATH: /opt/cray/libfabric/1.22.0/lib64
-    - spec: cray-mpich@8.1.32 %nvhpc
+    - spec: cray-mpich@8.1.32 %nvhpc@26.1
       prefix: /opt/cray/pe/mpich/8.1.32/ofi/nvidia/23.3
       extra_attributes:
         environment:
           append_path:
             LD_LIBRARY_PATH: /opt/cray/libfabric/1.22.0/lib64
-    - spec: cray-mpich@8.1.32 %intel-oneapi-compilers
+    - spec: cray-mpich@8.1.32 %intel-oneapi-compilers@2025.3.2
       prefix: /opt/cray/pe/mpich/8.1.32/ofi/intel/2022.1
       extra_attributes:
         environment:
           append_path:
             LD_LIBRARY_PATH: /opt/cray/libfabric/1.22.0/lib64
-    - spec: cray-mpich@9.0.0 %gcc
+    - spec: cray-mpich@9.0.0 %gcc@15.2.0
       prefix: /opt/cray/pe/mpich/9.0.0/ofi/gnu/12.3
       extra_attributes:
         environment:
           append_path:
             LD_LIBRARY_PATH: /opt/cray/libfabric/1.22.0/lib64
-    - spec: cray-mpich@9.0.0 %cce
+    - spec: cray-mpich@9.0.0 %cce@19.0.0
       prefix: /opt/cray/pe/mpich/9.0.0/ofi/cray/17.0
       extra_attributes:
         environment:
           append_path:
             LD_LIBRARY_PATH: /opt/cray/libfabric/1.22.0/lib64
-    - spec: cray-mpich@9.0.0 %nvhpc
+    - spec: cray-mpich@9.0.0 %nvhpc@26.1
       prefix: /opt/cray/pe/mpich/9.0.0/ofi/nvidia/23.3
       extra_attributes:
         environment:
           append_path:
             LD_LIBRARY_PATH: /opt/cray/libfabric/1.22.0/lib64
-    - spec: cray-mpich@9.0.0 %intel-oneapi-compilers
+    - spec: cray-mpich@9.0.0 %intel-oneapi-compilers@2025.3.2
       prefix: /opt/cray/pe/mpich/9.0.0/ofi/intel/2022.1
       extra_attributes:
         environment:
@@ -82,13 +82,26 @@ packages:
     - cray-mpich
   mpich:
     require:
+    - spec: cuda_arch=80
+      when: +cuda
     - netmod=ofi
     - +xpmem
   mvapich:
     require:
     - netmod=ofi
+  mvapich-plus:
+    require:
+    - spec: cuda_arch=80
+      when: +cuda
+    - netmod=ofi
+  nvtop:
+    require:
+    - spec: cuda_arch=80
+      when: +cuda
   openmpi:
     require:
+    - spec: cuda_arch=80
+      when: +cuda
     - fabrics=cma,ofi
     - spec: '^libfabric@2: fabrics=cxi,lnx,mrail,rxd,rxm,shm,sockets,tcp,udp'
 modules:

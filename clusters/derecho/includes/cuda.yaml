@@ -36,15 +36,13 @@ packages:
   mpich:
     variants:
     - +cuda
-  mvapich:
+  mvapich-plus:
     require:
-    - spec: ~cuda
-      when: '%intel-oneapi-compilers'
-    - spec: +cuda
-      when: '%nvhpc'
+    - +cuda
   nvtop:
-    variants:
-    - support=nvidia
+    require:
+    - +cuda
+    - support:=nvidia
   openmpi:
     require:
     - +cuda
