@@ -8,7 +8,7 @@
 #           and any other packages that need it
 #
 #   Author:         Brian Vanderwende
-#   Last Revised:   13:43, 12 Mar 2026
+#   Last Revised:   23:08, 14 Mar 2026
 #
 
 
@@ -93,7 +93,7 @@ The following options are supported by section and package config:
                   Ex) automake <access:view>
 
     build       - Do we want to "install" the package into the environment? For
-                  some vendor software (e.g., cce), we do not. [true, false]
+                  some vendor software, we may not. [true, false]
 
     cache       - Do we want to use the build cache to install this package?
                   (default yes) [no, dep, yes]

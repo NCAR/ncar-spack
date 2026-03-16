@@ -9,6 +9,7 @@ nav:
     - Publish Changes: workflows/publish.md
     - Removing Things: workflows/removing.md
   - How To:
+    - Debug Failures: how/debug.md
     - Add New CPE: how/cpe.md
     - Add User Tools: how/tools.md
     - Hide Modules: how/hide.md

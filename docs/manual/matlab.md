@@ -16,8 +16,7 @@ script `./install`.
 
 !!! tip
     As you will need to run the installer as **csgteam**, you should ensure that
-    you `sudo` to csgteam using X11 forwarding. You can do this with `sudox
-    csgteam`.
+    you `sudo` to csgteam using X11 forwarding. You can do this with `sudox csgteam`.
 
 The installer will also require you to log into a Mathworks account tied to our
 license. It will then ask you to select a license to use; probably you will want
