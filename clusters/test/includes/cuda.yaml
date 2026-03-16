@@ -46,12 +46,6 @@ packages:
   openmpi:
     require:
     - +cuda
-  osu-micro-benchmarks:
-    variants:
-    - +cuda
-    prefer:
-    - spec: ~cuda
-      when: '%gcc@15'
   ucx:
     variants:
     - +cuda
