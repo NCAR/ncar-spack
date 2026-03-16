@@ -1,0 +1,78 @@
+# Deployment Postprocessing
+
+There are a number of deployment steps that either cannot easily be done in
+Spack or cannot be done at all. For these tasks, a number of postprocessing
+scripts (termed *units*, as in systemd) have been written. The postprocessing
+units are stored in:
+
+```bash
+$NCAR_SPACK_ENV_BUILD/postprocess
+```
+
+And the units are executed by the script:
+
+```bash
+$NCAR_SPACK_ENV_BUILD/bin/postprocess
+```
+
+Existing postprocess units cover the following tasks and more:
+
+- Add Cray Programming Environment modules
+- Add utilites like `qhist` to the *view*
+- Create Lmod init scripts for module initialization
+- Write the top level `ncarenv` and `crayenv` modules
+- Hide modules that we don't want all users to see
+- Install Perl packages for CSEG and GDEX
+
+Most postprocessing units can be run on the build environment or in the public
+environment, and two copies are kept so that development can occur in build
+without affecting public.
+
+Manual postprocessing of the public environment is not typically required, as
+this should be done by the `publish` script. That said, occasionally you may
+want to postprocess the public environment without publishing, and that can be
+done as follows:
+
+```bash
+NCAR_SPACK_ENV_TYPE=public $NCAR_SPACK_ENV_BUILD/bin/postprocess
+```
+
+## Special Units
+
+Each unit will - by default - be run for both the build and public environments
+and will be executed in alphabetical order. There are a few ways to modify this
+behavior:
+
+### Ordered Units
+
+If you need a unit to run before other units, you can prepend the name with a
+two-digit number. For example, the `01.X` unit will run before the `02.Y` unit
+and all non-ordered units.
+
+This type of ordering can be useful if you know other units need some setup done
+first.
+
+### Env-specific Units
+
+Sometimes, you may want to only run a unit in the public (or less commonly
+build) environment. To accomplish this, simply add the `.public` suffix to the
+unit filename.
+
+Such a restriction can be useful if a unit can take a long time to run and won't
+be tested via normal mechanisms in the build environment (e.g., Perl module
+installations).
+
+### Helper Units
+
+You may wish to share code/functions among multiple units. For this purpose, you
+can create a helper unit by appending the `.helper` suffix to the unit script
+name. Such a unit will not actually be executed, but can be sourced by any unit
+that does run:
+
+```bash
+# Source helper functions
+. $POSTPROCESS_UNIT_DIR/functions.helper
+```
+
+All units can be referenced via the `$POSTPROCESS_UNIT_DIR` variable, which is
+set for you by the `postprocess` script.
