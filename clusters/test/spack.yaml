@@ -28,19 +28,10 @@ spack:
     optional: true
   - name: cray
     path: %BASEROOT%/includes/cray.yaml
-    when: env.get("NCAR_SPACK_HOST") == "derecho" or env.get("NCAR_SPACK_HOST") == "gust"
-  - name: casper
-    path: %BASEROOT%/includes/casper.yaml
-    when: env.get("NCAR_SPACK_HOST") == "casper"
+    when: env.get("NCAR_SPACK_HOST") == "gust"
   - name: cuda
     path: %BASEROOT%/includes/cuda.yaml
     when: env.get("NCAR_SPACK_GPU_TYPE") == "cuda"
-  - name: cuda_casper
-    path: %BASEROOT%/includes/cuda_casper.yaml
-    when: env.get("NCAR_SPACK_HOST") == "casper" and env.get("NCAR_SPACK_GPU_TYPE") == "cuda"
-  - name: rocm
-    path: %BASEROOT%/includes/rocm.yaml
-    when: env.get("NCAR_SPACK_GPU_TYPE") == "rocm"
   packages:
     adios2:
       prefer:
