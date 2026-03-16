@@ -1,7 +1,7 @@
 #!/bin/bash
 #
 #   Author:         Brian Vanderwende
-#   Last Revised:   09:32, 12 Mar 2026
+#   Last Revised:   10:46, 16 Mar 2026
 #
 
 set -e
@@ -551,10 +551,11 @@ Type:           $NCAR_SPACK_DEPLOY_TYPE
 Spack root:     $SPACK_ROOT
 Build root:     $NCAR_SPACK_ENV_BUILD
 Public root:    $NCAR_SPACK_ENV_PUBLIC
+Package root:   ${packages_path:-$NCAR_SPACK_ROOT_PACKAGES}
 
 Github repo:    $NCAR_SPACK_GITHUB
 Spack branch:   ${NCAR_SPACK_CUSTOM_BRANCH:-ncar-mods}
-Pkgs branch:    ${NCAR_SPACK_PACKAGES_BRANCH:-ncar-mods}
+Package branch: ${NCAR_SPACK_PACKAGES_BRANCH:-ncar-mods}
 
 EOF
 
