@@ -12,7 +12,7 @@ nav:
     - Debug Failures: how/debug.md
     - Add New CPE: how/cpe.md
     - Add User Tools: how/tools.md
-    - Hide Modules: how/hide.md
+    - Hide Packages and Modules: how/hide.md
     - Update Cluster Recipes: how/update.md
   - Manual Installs:
     - IDL: manual/idl.md

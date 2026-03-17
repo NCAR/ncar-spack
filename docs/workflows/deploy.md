@@ -130,3 +130,17 @@ spacktivate -p .
 Since `clean_bash` places you in the *build* directory, you can use `.` to
 indicate the environment path. The `-p` option provides a nice prompt decorator
 indicating the build environment is active.
+
+## Setting Up a New Production Cluster
+
+All production deployments are version tracked and config files are uploaded to
+GitHub for reference and public consumption. For example:
+
+- [spack-derecho](https://github.com/NCAR/spack-derecho)
+- [spack-casper](https://github.com/NCAR/spack-casper)
+- [spack-gust](https://github.com/NCAR/spack-gust)
+
+If you are creating a software stack for a new cluster, you will need to create
+an empty GitHub repository for that new cluster before you can run `publish`, as
+this script will create a branch in the repo and then push to the remote you
+create and specify (in `main.cfg`).

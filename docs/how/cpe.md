@@ -31,6 +31,13 @@ All other CPE components will be installed into `/opt/cray/pe`.
 
     **/opt/cray/pe/gcc-native**
 
+!!! warning
+    CPE traditionally has wanted to set up an `/etc/bash.bashrc.local` file that
+    initializes TCL environment modules from HPE. These modules conflict with
+    our Lmod module tree and so HSG disables this file for us. Still, it can be
+    good to check to make sure this file is disable/erased before proceeding
+    after a new CPE install. The resulting errors can be confusing!
+
 ## Setting Up Externals
 
 There are three CPE components we actually use in Spack as externals:

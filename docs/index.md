@@ -28,7 +28,40 @@ git clone git@github.com:NCAR/ncar-spack.git
 !!! Note
     The above command assumes SSH-key usage, which you will probably want to
     utilize over the HTTPS method as unattended GitHub commands are integral to
-    many workflows in these scripts.
+    many workflows in these scripts. See below for pointers on setting this up.
+
+#### GitHub SSH keys
+
+These scripts perform many pulls, pushes, and queries to- and from- GitHub, and
+so we rely on the "ssh" form of git remotes to avoid repetitive authentications.
+As a result, you should ensure that you have your GitHub SSH key configured for
+personal use of this repo on each system of interest.
+
+- [GitHub SSH Key Instructions](https://docs.github.com/en/authentication/connecting-to-github-with-ssh)
+
+When you are running as **csgteam**, you will need to set up the SSH key sudo
+mechanism. First, this logic should already be in csgteam's `~/.bashrc` file:
+
+```bash
+# Configure Git to work as sudo-user
+if [[ -n $SUDO_USER ]]; then
+    my_name=$(getent passwd $SUDO_USER | awk -F[:,] '{print $5}')
+    export GIT_SSH=/glade/u/home/csgteam/.ssh/gitwrap.ssh
+    export {GIT_AUTHOR_NAME,GIT_COMMITTER_NAME}=$my_name
+    export {GIT_AUTHOR_EMAIL,GIT_COMMITTER_EMAIL}=${SUDO_USER}@ucar.edu
+fi
+```
+
+The `gitwrap.ssh` script looks like this:
+
+```bash
+#!/bin/bash
+
+/usr/bin/ssh -i ~/.ssh/id_rsa.${SUDO_USER} $*
+```
+
+So for this to work for you, you'll simply need to add an SSH key to csgteam's
+`~/.ssh` directory and append your username to the end of the `id.rsa` file.
 
 #### Vim users: YAML configuration
 
@@ -52,6 +85,22 @@ default.
 If you need to create a new GPG key, it will be pushed to the build caches
 associated with the deployment (the mirrors in `spack.yaml`) assuming you are
 the owner of those mirrors.
+
+## Setting up S3 Credentials for Boreas
+
+AWS S3 credentials should be configured for access to Boreas so that Spack build
+caches can be accessed. These credentials are stored in a file in your/csgteam's
+home directory - `~/.aws/credentials`. The credential will look as follows:
+
+```
+[boreas]
+service_name = s3
+aws_access_key_id = 
+aws_secret_access_key = 
+endpoint_url = https://boreas.hpc.ucar.edu:6443
+```
+
+If you cannot find an existing listing of the key and secret, reach out to HSG.
 
 ## Useful Resources
 
