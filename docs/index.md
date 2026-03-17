@@ -86,7 +86,7 @@ If you need to create a new GPG key, it will be pushed to the build caches
 associated with the deployment (the mirrors in `spack.yaml`) assuming you are
 the owner of those mirrors.
 
-## Setting up S3 Credentials for Boreas
+## Setting up S3 Credentials
 
 AWS S3 credentials should be configured for access to Boreas so that Spack build
 caches can be accessed. These credentials are stored in a file in your/csgteam's
