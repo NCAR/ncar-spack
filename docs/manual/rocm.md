@@ -13,7 +13,7 @@ that allows us to install the unified ROCm package into a custom space with user
 privileges. Before this version, the unified package can only be installed via
 RPM, and we do not want too much of this massive kit in our compute image.
 
-The unified toolkit can be installed using the script in `etc/manual`. The
+The unified toolkit can be installed using the script in `etc/installers`. The
 modifications you may need to make should all be in the **USER CONFIG** section
 of the file.
 

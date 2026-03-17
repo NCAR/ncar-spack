@@ -12,7 +12,7 @@ external for module creation.
 
 After you download the AppImage from Scott (or
 [here](https://vapordocumentationwebsite.readthedocs.io/en/latest/downloads.html)),
-you can run the installer in `etc/manual`. Simply modify the install prefix.
+you can run the installer in `etc/installers`. Simply modify the install prefix.
 This installer will copy the AppImage to the prefix and also generate a wrapper
 script. The wrapper starts the AppImage and also makes a few environment
 modifications to avoid potential software conflicts.
