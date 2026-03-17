@@ -12,11 +12,11 @@ spack:
         all: '{name}/{version}/{hash:4}'
       padded_length: 128
     build_jobs: 4
-    test_stage: /local_scratch/spack/%DEPLOYMENT%/tests
-    source_cache: /local_scratch/spack/cache
+    test_stage: '%TMPROOT%/$user/temp/spack/%DEPLOYMENT%/tests'
+    source_cache: '%TMPROOT%/$user/temp/spack/cache'
     misc_cache: '%TMPROOT%/$user/temp/spack/%DEPLOYMENT%/misc'
     build_stage:
-    - /local_scratch/spack/%DEPLOYMENT%/builds
+    - %TMPROOT%/$user/temp/spack/%DEPLOYMENT%/builds
     shared_linking:
     # Turning bind setting on would be beneficial but vendor compilers do not
     # seem to work with it! Avoid!
