@@ -10,7 +10,7 @@
 #   Follows documentation from here:
 #   https://rocm.docs.amd.com/projects/install-on-linux/en/docs-6.4.3/install/rocm-runfile-installer.html
 #
-#   Last Revised:   14:28, 25 Nov 2025
+#   Last Revised:   21:13, 17 Mar 2026
 #
 
 my_exe=$(readlink -f $0)
