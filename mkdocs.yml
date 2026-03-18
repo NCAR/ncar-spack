@@ -14,6 +14,7 @@ nav:
     - Add User Tools: how/tools.md
     - Hide Packages and Modules: how/hide.md
     - Update Cluster Recipes: how/update.md
+    - Add CESM Dev Packages: how/cesm.md
   - Manual Installs:
     - IDL: manual/idl.md
     - Matlab: manual/matlab.md
