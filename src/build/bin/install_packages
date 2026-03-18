@@ -8,7 +8,7 @@
 #           and any other packages that need it
 #
 #   Author:         Brian Vanderwende
-#   Last Revised:   23:08, 14 Mar 2026
+#   Last Revised:   10:58, 18 Mar 2026
 #
 
 
@@ -144,6 +144,11 @@ The following options are supported by section and package config:
                   (can only be used in mdep section)
 
                   Ex) esmf+mpi <mpis:openmpi,cray-mpich@8.1.32>
+
+    <spec>      - If the compiler or MPI matches the given spec, use the text in
+                  the given input; otherwise ignore it.
+
+                  Ex) py-mpi4py <nvhpc:cppflags=-noswitcherror>
 
     register    - If the package type is a compiler, this option can be used to
                   indicate whether we want to register the package as a compiler.
