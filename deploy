@@ -1,7 +1,7 @@
 #!/bin/bash
 #
 #   Author:         Brian Vanderwende
-#   Last Revised:   19:49, 16 Mar 2026
+#   Last Revised:   22:16, 18 Mar 2026
 #
 
 set -e
@@ -398,19 +398,21 @@ if [[ -e clusters/$NCAR_SYS/postprocess ]]; then
     cp -r -L clusters/$NCAR_SYS/postprocess $NCAR_SPACK_ENV_BUILD
 fi
 
-# Make cluster-specific substitutions in spack.yaml
-sed -i "s|%HOST%|$NCAR_SPACK_HOST|" $NCAR_SPACK_ENV_BUILD/spack.yaml
-sed -i "s|%VERSION%|$NCAR_SPACK_HOST_VERSION|" $NCAR_SPACK_ENV_BUILD/spack.yaml
-sed -i "s|%DEPLOYMENT%|${NCAR_SPACK_HOST}/$NCAR_SPACK_HOST_VERSION|" $NCAR_SPACK_ENV_BUILD/spack.yaml
-sed -i "s|%INSTALLROOT%|${NCAR_SPACK_ENV_BUILD}/opt|" $NCAR_SPACK_ENV_BUILD/spack.yaml
-sed -i "s|%MODULESROOT%|${NCAR_SPACK_ENV_BUILD}/modules/$NCAR_SPACK_HOST_VERSION|" $NCAR_SPACK_ENV_BUILD/spack.yaml
-sed -i "s|%BASEROOT%|$NCAR_SPACK_ENV_BUILD|" $NCAR_SPACK_ENV_BUILD/spack.yaml
-sed -i "s|%TMPROOT%|$NCAR_SPACK_TMPROOT|g" $NCAR_SPACK_ENV_BUILD/spack.yaml
-
 # Copy any YAML includes
 if [[ -d $NCAR_SPACK_DEPLOY_DIR/clusters/$NCAR_SYS/includes ]]; then
     cp -r -L $NCAR_SPACK_DEPLOY_DIR/clusters/$NCAR_SYS/includes $NCAR_SPACK_ENV_BUILD
 fi
+
+# Make cluster-specific substitutions in YAML FILES
+for yaml_file in $NCAR_SPACK_ENV_BUILD/spack.yaml $(ls $NCAR_SPACK_ENV_BUILD/includes/* 2> /dev/null); do
+    sed -i "s|%HOST%|$NCAR_SPACK_HOST|" $yaml_file
+    sed -i "s|%VERSION%|$NCAR_SPACK_HOST_VERSION|" $yaml_file
+    sed -i "s|%DEPLOYMENT%|${NCAR_SPACK_HOST}/$NCAR_SPACK_HOST_VERSION|" $yaml_file
+    sed -i "s|%INSTALLROOT%|${NCAR_SPACK_ENV_BUILD}/opt|" $yaml_file
+    sed -i "s|%MODULESROOT%|${NCAR_SPACK_ENV_BUILD}/modules/$NCAR_SPACK_HOST_VERSION|" $yaml_file
+    sed -i "s|%BASEROOT%|$NCAR_SPACK_ENV_BUILD|" $yaml_file
+    sed -i "s|%TMPROOT%|$NCAR_SPACK_TMPROOT|g" $yaml_file
+done
 
 # Activate the environment
 spack env activate $NCAR_SPACK_ENV_BUILD
