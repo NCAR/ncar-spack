@@ -27,9 +27,10 @@ All other CPE components will be installed into `/opt/cray/pe`.
     For recent versions of CPE, GCC 12 or higher is required, so we cannot use
     the system GCC 7.5.0 as the core compiler. There may be better ways to
     figure this version requirement out, but the best I've found is to get the
-    minimum version listed in this directory:
+    version listed in this directory that contains your desired version of
+    cray-mpich from the CPE of interest:
 
-    **/opt/cray/pe/gcc-native**
+    /opt/cray/pe/lmod/modulefiles/comnet/gnu/??/ofi/1.0/cray-mpich
 
 !!! warning
     CPE traditionally has wanted to set up an `/etc/bash.bashrc.local` file that
