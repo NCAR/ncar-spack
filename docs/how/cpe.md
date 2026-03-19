@@ -131,3 +131,34 @@ cdep="  cray-libsci/25.03.0
 
 These versions can be deduced from examination of the file located at
 **/opt/cray/pe/cpe/VERSION/set_default_release_VERSION.sh**.
+
+## Adding Spack Compilers to the crayenv
+
+We also offer another top-level module that a user could load instead of the
+**ncarenv** called the **crayenv**. This environment seeks to faithfully
+reproduce the module tree from HPE as one would see it on a traditional Cray
+system.
+
+We do not officially support this environment, and we also do not traditionally
+install additional software into the environment. The modules are hidden from
+view and so can only be seen using the `--show-hidden` flag to the `module`
+command.
+
+Hwoever, starting with the **ncarenv/25.10** deployment, we can now incorporate
+Spack-built compilers into the **crayenv** module tree. This allows the
+*nvidia*, *intel*, and *gcc* `PrgEnv` modules to be loaded while using
+**crayenv**, as they depend on having a compiler available and we don't install
+any provided by HPE.
+
+To enable this, a few additions have been made:
+
+1. In the `include/cray.yaml` file, there is a *crayenv* module set defined. As
+   Cray compiler support evolves, you will probably need to modify three
+   variables set for gcc, intel-oneapi-compilers, and nvhpc: `MODULEPATH`,
+   `COMPAT_VERSION`, and `CRAY_LMOD_COMPILER`.
+2. Logic has been added to the **add_cpe_modules** postprocessing unit to
+   regenerate the *crayenv* module set if it is defined in the deployment.
+
+The primary motivation for adding this functionality was to support efforts like
+[spack-stack](https://github.com/jcsda/spack-stack/wiki) which expects a
+"native" CPE environment on their Cray deployment systems.
