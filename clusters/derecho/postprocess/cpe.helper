@@ -6,7 +6,7 @@
 #       versions for a particular CPE installation.
 #
 #   Author:         Brian Vanderwende
-#   Last Revised:   14:02, 23 Sep 2025
+#   Last Revised:   22:43, 18 Mar 2026
 #
 
 #
@@ -37,12 +37,16 @@ cpe_needs_gcc=12
 
 # This function takes a package name and package version and returns which
 # CPE version provides it.
+#
+# NOTE: this function (and the next) used to use set_default_release_${cpe}.sh,
+#       but CPE/25.09 has eliminated this file. For now, equivalent information
+#       seems available from the modulerc file in the same directory.
 function get_cpe_version {
     for cpe in $cpe_versions; do
-        def_file=/opt/cray/pe/cpe/${cpe}/set_default_release_${cpe}.sh
+        def_file=/opt/cray/pe/cpe/${cpe}/modulerc
 
         for my_name in $1 ${1#cray-}; do 
-            if grep -q default_${my_name}_${2}$ $def_file; then
+            if grep -q $1/$2 $def_file; then
                 echo $cpe
                 return
             fi
@@ -59,10 +63,10 @@ function get_package_version {
     my_cpe_versions=$(sed "s/.*\($1.*\)/\1/" <<< $cpe_versions)
 
     for cpe in $my_cpe_versions; do
-        def_file=/opt/cray/pe/cpe/$cpe/set_default_release_$cpe.sh
+        def_file=/opt/cray/pe/cpe/${cpe}/modulerc
 
         for my_name in $2 ${2#cray-}; do
-            my_version=$(sed -n "s/.*${my_name}_\([0-9.]*\)$/\1/p" $def_file)
+            my_version=$(sed -n "s|.* ${my_name}/\([^ ]*\).*|\1|p" $def_file)
 
             if [[ -n $my_version ]]; then
                 echo $my_version

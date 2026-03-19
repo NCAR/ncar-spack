@@ -70,12 +70,12 @@ spack:
         when: '%gcc@12.5.0 ^udunits'
       - spec: ^openblas %gcc@12.5.0
         when: '%gcc@12.5.0 ^openblas'
-      - spec: ^hdf5 %gcc@14.3.0
-        when: '%gcc@14.3.0 ^hdf5'
-      - spec: ^udunits %gcc@14.3.0
-        when: '%gcc@12.5.0 ^udunits'
-      - spec: ^openblas %gcc@14.3.0
-        when: '%gcc@14.3.0 ^openblas'
+      - spec: ^hdf5 %gcc@15.2.0
+        when: '%gcc@15.2.0 ^hdf5'
+      - spec: ^udunits %gcc@15.2.0
+        when: '%gcc@15.2.0 ^udunits'
+      - spec: ^openblas %gcc@15.2.0
+        when: '%gcc@15.2.0 ^openblas'
     aocc:
       require:
       - +license-agreed

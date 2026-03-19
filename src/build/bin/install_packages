@@ -8,7 +8,7 @@
 #           and any other packages that need it
 #
 #   Author:         Brian Vanderwende
-#   Last Revised:   10:58, 18 Mar 2026
+#   Last Revised:   20:59, 18 Mar 2026
 #
 
 
@@ -487,7 +487,7 @@ function prepare_spec {
         mod_safe=${mod_type//-/_}
 
         if [[ -n ${config[$mod_safe]} ]]; then
-            spec="$(sed "s|<[^>]*${config[$mod_safe]}>|${config[$mod_safe]}|" <<< "$spec")"
+            spec="$(sed "s|<[^>]*${config[$mod_safe]}>|${config[$mod_safe]}|g" <<< "$spec")"
         fi
     done
 

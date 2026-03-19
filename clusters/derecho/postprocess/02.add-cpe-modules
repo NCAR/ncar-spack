@@ -7,7 +7,7 @@
 #       many packages are not tracked in Spack at all.
 #
 #   Author:         Brian Vanderwende
-#   Last Revised:   17:21, 11 Mar 2026
+#   Last Revised:   22:45, 18 Mar 2026
 #
 
 #
@@ -115,8 +115,8 @@ fi
 
 function modify_mpi {
 mpich_cpe=${mpich_cpe:-$(get_cpe_version $mod_name $mod_version)}
-pmi_version=${pmi_explicit:-$(get_package_version $mpich_cpe pmi)}
-cti_version=${cti_explicit:-$(get_package_version $mpich_cpe cti)}
+pmi_version=${pmi_explicit:-$(get_package_version $mpich_cpe cray-pmi)}
+cti_version=${cti_explicit:-$(get_package_version $mpich_cpe cray-cti)}
 
 if [[ $log_me != no ]]; then
 tsecho "    using CPE=$mpich_cpe, PALS=$pals_version, PMI=$pmi_version, CTI=$cti_version"
@@ -471,7 +471,7 @@ crayenv_lmod=$(spack config get modules | grep lmod:.*crayenv | awk '{print $2}'
 if [[ -n $crayenv_lmod ]]; then
     if [[ ${NCAR_SPACK_ENV_TYPE:-build} == public ]] || [[ ! -e $crayenv_lmod ]]; then
         tsecho " >> Generating modules: $GCOL$crayenv_lmod$DCOL"
-        spack module lmod -n crayenv refresh -y
+        spack module lmod -n crayenv refresh -y |& grep -v "LMod hierarchy"
     fi
 fi
 

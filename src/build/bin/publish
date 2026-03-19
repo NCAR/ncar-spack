@@ -10,7 +10,7 @@
 #           shell script. So we must activate in the script!
 #
 #   Author:         Brian Vanderwende
-#   Last Revised:   14:46, 11 Mar 2026
+#   Last Revised:   23:20, 18 Mar 2026
 #
 
 
@@ -393,12 +393,14 @@ if [[ -d $NCAR_SPACK_ENV_BUILD/includes ]]; then
     rsync -a --delete $NCAR_SPACK_ENV_BUILD/includes/ .prototype/includes
 fi
 
-if [[ -n $pad_length ]]; then
-    sed -i -r "/${NCAR_SPACK_ENV_BUILD//\//\\/}\/opt/ s|^([^/]*).{$pad_length}|\1$SPACK_ROOT/opt/spack/|" .prototype/spack.yaml
-fi
+for yaml_file in .prototype/spack.yaml $(ls .prototype/includes/* 2> /dev/null); do
+    if [[ -n $pad_length ]]; then
+        sed -i -r "/${NCAR_SPACK_ENV_BUILD//\//\\/}\/opt/ s|^([^/]*).{$pad_length}|\1$SPACK_ROOT/opt/spack/|" $yaml_file
+    fi
 
-sed -i "s|\([ ]*lmod: \)/.*|\1$NCAR_SPACK_ROOT_MODULES/$NCAR_SPACK_HOST_VERSION|" .prototype/spack.yaml
-sed -i -r "s|${NCAR_SPACK_ENV_BUILD}/(view\|wrappers)|${NCAR_SPACK_ROOT_BASE}/\1|" .prototype/spack.yaml
+    sed -i "s|\([ ]*lmod:['\" ]*\)$NCAR_SPACK_ENV_BUILD/modules\(.*\)|\1$NCAR_SPACK_ROOT_MODULES\2|" $yaml_file
+    sed -i -r "s|${NCAR_SPACK_ENV_BUILD}/(view\|wrappers)|${NCAR_SPACK_ROOT_BASE}/\1|" $yaml_file
+done
 
 spack env activate .prototype
 
@@ -597,7 +599,7 @@ done
 
 if [[ -n $NCAR_SPACK_ROOT_MODULES ]]; then
     tsecho "Generating modules in public environment"
-    spack module lmod refresh $NCAR_SPACK_MODULE_FLAGS -y
+    spack module lmod refresh $NCAR_SPACK_MODULE_FLAGS -y |& grep -v "LMod hierarchy"
 fi
 
 if [[ -d $NCAR_SPACK_ENV_BUILD/postprocess ]]; then
