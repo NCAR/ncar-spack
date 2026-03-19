@@ -130,7 +130,7 @@ cdep="  cray-libsci/25.03.0
 ```
 
 These versions can be deduced from examination of the file located at
-**/opt/cray/pe/cpe/VERSION/set_default_release_VERSION.sh**.
+**/opt/cray/pe/cpe/VERSION/modulerc**.
 
 ## Adding Spack Compilers to the crayenv
 
