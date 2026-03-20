@@ -1,3 +1,16 @@
+# If TMPDIR is unset, this script seems to trigger infinite recursion
+# on Gust. Here is a hacky workaround until root cause can be
+# determined there.
+if [[ -z $TMPDIR ]]; then
+    tmpdir_user=$(whoami)
+
+    if [[ -d /glade/derecho/scratch/$tmpdir_user ]]; then
+        export TMPDIR=/glade/derecho/scratch/$tmpdir_user
+    else
+        export TMPDIR=/glade/gust/scratch/$tmpdir_user
+    fi
+fi
+
 # Make sure module environment is consistent regardless of whether
 # we are working on a clean system or not!
 if [[ -f /etc/bash.bashrc.local ]]; then
