@@ -9,33 +9,33 @@ packages:
       when: ^cuda
   cray-libsci:
     externals:
-    - spec: cray-libsci@25.03.0 %cce@19.0.0
-      prefix: /opt/cray/pe/libsci/25.03.0/CRAY/17.0/x86_64
-    - spec: cray-libsci@25.03.0 %gcc@15.2.0
-      prefix: /opt/cray/pe/libsci/25.03.0/GNU/12.3/x86_64
-    - spec: cray-libsci@25.03.0 %nvhpc@26.1
-      prefix: /opt/cray/pe/libsci/25.03.0/NVIDIA/23.3/x86_64
-    - spec: cray-libsci@25.03.0 %intel-oneapi-compilers@2025.3.2
-      prefix: /opt/cray/pe/libsci/25.03.0/INTEL/2025.0/x86_64
+    - spec: cray-libsci@25.09.0 %cce@20.0.0
+      prefix: /opt/cray/pe/libsci/25.09.0/CRAY/20.0/x86_64
+    - spec: cray-libsci@25.09.0 %gcc@15.2.0
+      prefix: /opt/cray/pe/libsci/25.09.0/GNU/12.3/x86_64
+    - spec: cray-libsci@25.09.0 %nvhpc@26.1
+      prefix: /opt/cray/pe/libsci/25.09.0/NVIDIA/23.3/x86_64
+    - spec: cray-libsci@25.09.0 %intel-oneapi-compilers@2025.3.2
+      prefix: /opt/cray/pe/libsci/25.09.0/INTEL/2025.0/x86_64
     buildable: false
   cray-mpich:
     externals:
-    - spec: cray-mpich@8.1.32 +cuda cuda_arch=80 +wrappers %gcc@15.2.0 ^libfabric@1.22.0
-      prefix: /opt/cray/pe/mpich/8.1.32/ofi/gnu/12.3
-    - spec: cray-mpich@8.1.32 +cuda cuda_arch=80 +wrappers %cce@19.0.0 ^libfabric@1.22.0
-      prefix: /opt/cray/pe/mpich/8.1.32/ofi/cray/17.0
-    - spec: cray-mpich@8.1.32 +cuda cuda_arch=80 +wrappers %nvhpc@26.1 ^libfabric@1.22.0
-      prefix: /opt/cray/pe/mpich/8.1.32/ofi/nvidia/23.3
-    - spec: cray-mpich@8.1.32 +cuda cuda_arch=80 +wrappers %intel-oneapi-compilers@2025.3.2 ^libfabric@1.22.0
-      prefix: /opt/cray/pe/mpich/8.1.32/ofi/intel/2022.1
-    - spec: cray-mpich@9.0.0 +cuda cuda_arch=80 +wrappers %gcc@15.2.0 ^libfabric@1.22.0
-      prefix: /opt/cray/pe/mpich/9.0.0/ofi/gnu/12.3
-    - spec: cray-mpich@9.0.0 +cuda cuda_arch=80 +wrappers %cce@19.0.0 ^libfabric@1.22.0
-      prefix: /opt/cray/pe/mpich/9.0.0/ofi/cray/17.0
-    - spec: cray-mpich@9.0.0 +cuda cuda_arch=80 +wrappers %nvhpc@26.1 ^libfabric@1.22.0
-      prefix: /opt/cray/pe/mpich/9.0.0/ofi/nvidia/23.3
-    - spec: cray-mpich@9.0.0 +cuda cuda_arch=80 +wrappers %intel-oneapi-compilers@2025.3.2 ^libfabric@1.22.0
-      prefix: /opt/cray/pe/mpich/9.0.0/ofi/intel/2022.1
+    - spec: cray-mpich@8.1.33 +cuda cuda_arch=80 +wrappers %gcc@15.2.0 ^libfabric@1.22.0
+      prefix: /opt/cray/pe/mpich/8.1.33/ofi/gnu/12.3
+    - spec: cray-mpich@8.1.33 +cuda cuda_arch=80 +wrappers %cce@20.0.0 ^libfabric@1.22.0
+      prefix: /opt/cray/pe/mpich/8.1.33/ofi/cray/20.0
+    - spec: cray-mpich@8.1.33 +cuda cuda_arch=80 +wrappers %nvhpc@26.1 ^libfabric@1.22.0
+      prefix: /opt/cray/pe/mpich/8.1.33/ofi/nvidia/23.3
+    - spec: cray-mpich@8.1.33 +cuda cuda_arch=80 +wrappers %intel-oneapi-compilers@2025.3.2 ^libfabric@1.22.0
+      prefix: /opt/cray/pe/mpich/8.1.33/ofi/intel/2022.1
+    - spec: cray-mpich@9.0.1 +cuda cuda_arch=80 +wrappers %gcc@15.2.0 ^libfabric@1.22.0
+      prefix: /opt/cray/pe/mpich/9.0.1/ofi/gnu/12.3
+    - spec: cray-mpich@9.0.1 +cuda cuda_arch=80 +wrappers %cce@20.0.0 ^libfabric@1.22.0
+      prefix: /opt/cray/pe/mpich/9.0.1/ofi/cray/20.0
+    - spec: cray-mpich@9.0.1 +cuda cuda_arch=80 +wrappers %nvhpc@26.1 ^libfabric@1.22.0
+      prefix: /opt/cray/pe/mpich/9.0.1/ofi/nvidia/23.3
+    - spec: cray-mpich@9.0.1 +cuda cuda_arch=80 +wrappers %intel-oneapi-compilers@2025.3.2 ^libfabric@1.22.0
+      prefix: /opt/cray/pe/mpich/9.0.1/ofi/intel/2022.1
     buildable: false
   glx:
     require:

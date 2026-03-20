@@ -7,7 +7,7 @@
 #       many packages are not tracked in Spack at all.
 #
 #   Author:         Brian Vanderwende
-#   Last Revised:   22:45, 18 Mar 2026
+#   Last Revised:   09:32, 20 Mar 2026
 #
 
 #
@@ -25,26 +25,25 @@ compilers="cce gcc nvhpc oneapi intel intel-oneapi-compilers aocc"
 mpis="cray-mpich"
 
 # Specify core modules to import into the Spack module tree
-core="  craype/2.7.34
-        cce/19.0.0
-        perftools-base/25.03.0
-        atp/3.15.6
-        cray-ccdb/5.0.6
-        cray-dyninst/12.3.5
-        cray-stat/4.12.5
-        gdb4hpc/4.16.4
-        cray-mrnet/5.1.5
-        papi/7.2.0.1
-        sanitizers4hpc/1.1.5
-        valgrind4hpc/2.13.5"
+core="  craype/2.7.35
+        cce/20.0.0
+        perftools-base/25.09.0
+        atp/3.15.7
+        cray-ccdb/5.0.7
+        cray-dyninst/12.3.6
+        cray-stat/4.12.6
+        gdb4hpc/4.16.5
+        cray-mrnet/5.1.6
+        papi/7.2.0.2
+        sanitizers4hpc/1.1.6
+        valgrind4hpc/2.13.6"
 
 # Specify compiler-dependent modules to import into the Spack module tree
-cdep="  cray-libsci/25.03.0
-        cray-mpich/8.1.32 default variants=debug
-        cray-mpich/9.0.0 cpe=25.03"
-
-# Specify mpi-dependent modules to import into the Spack module tree
-mdep="  cray-mpixlate/1.0.2"
+# We need to specify cpe version manually for anything here that is not given
+# as a "default" in /opt/cray/pe/cpe/*/modulerc files
+cdep="  cray-libsci/25.09.0
+        cray-mpich/8.1.33 variants=debug cpe=25.09
+        cray-mpich/9.0.1 default variants=debug"
 
 # Override auto-detection of component versions
 cti_explicit=2.18.3     # Latest version has GLIBCXX symbols not supported by Forge 25.1
