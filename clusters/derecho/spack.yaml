@@ -496,7 +496,7 @@ spack:
       - build_system=autotools
       require:
       - +nczarr_zip
-      - spec: build_type=Debug
+      - spec: cppflags=-g
         when: +logging
     nvhpc:
       require:

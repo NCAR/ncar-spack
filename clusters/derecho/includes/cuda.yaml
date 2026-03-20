@@ -39,6 +39,9 @@ packages:
   mvapich-plus:
     require:
     - +cuda
+  nccl:
+    variants:
+    - fabrics=auto
   nvtop:
     require:
     - +cuda
