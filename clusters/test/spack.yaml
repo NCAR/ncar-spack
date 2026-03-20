@@ -751,7 +751,7 @@ spack:
           environment:
             set:
               NCAR_ROOT_{name}: '{prefix}'
-              NCAR_SPACK_HASH_{name}: '{hash}'
+              NCAR_HASH_{name}: '{hash}'
               NCAR_VERSION_{name}: '{version}'
           template: ncar_default.lua
         apptainer:
@@ -827,17 +827,17 @@ spack:
           filter:
             exclude_env_vars:
             - NCAR_ROOT_INTEL_ONEAPI_ADVISOR
-            - NCAR_SPACK_HASH_INTEL_ONEAPI_ADVISOR
+            - NCAR_HASH_INTEL_ONEAPI_ADVISOR
           environment:
             set:
               NCAR_ROOT_INTEL_ADVISOR: '{prefix}'
-              NCAR_SPACK_HASH_INTEL_ADVISOR: '{hash}'
+              NCAR_HASH_INTEL_ADVISOR: '{hash}'
         intel-oneapi-compilers:
           template: ncar_intel.lua
           filter:
             exclude_env_vars:
             - NCAR_ROOT_INTEL_ONEAPI_COMPILERS
-            - NCAR_SPACK_HASH_INTEL_ONEAPI_COMPILERS
+            - NCAR_HASH_INTEL_ONEAPI_COMPILERS
           environment:
             set:
               INTEL_COMPILER_TYPE: ONEAPI
@@ -854,7 +854,7 @@ spack:
               NCAR_ID_COMPILER: intel-{version}
               NCAR_MFLAGS_PROFILE: -debug minimal -O3 -fno-inline -no-ip -no-ipo -fno-omit-frame-pointer -fno-optimize-sibling-calls
               NCAR_ROOT_INTEL: '{prefix}'
-              NCAR_SPACK_HASH_INTEL: '{hash}'
+              NCAR_HASH_INTEL: '{hash}'
               OMPI_CC: icx
               OMPI_CXX: icpx
               OMPI_F77: ifx
@@ -863,43 +863,43 @@ spack:
           filter:
             exclude_env_vars:
             - NCAR_ROOT_INTEL_ONEAPI_INSPECTOR
-            - NCAR_SPACK_HASH_INTEL_ONEAPI_INSPECTOR
+            - NCAR_HASH_INTEL_ONEAPI_INSPECTOR
           environment:
             set:
               NCAR_ROOT_INTEL_INSPECTOR: '{prefix}'
-              NCAR_SPACK_HASH_INTEL_INSPECTOR: '{hash}'
+              NCAR_HASH_INTEL_INSPECTOR: '{hash}'
         intel-oneapi-mkl:
           template: ncar_math.lua
           filter:
             exclude_env_vars:
             - NCAR_LDFLAGS_INTEL_ONEAPI_MKL
             - NCAR_ROOT_INTEL_ONEAPI_MKL
-            - NCAR_SPACK_HASH_INTEL_ONEAPI_MKL
+            - NCAR_HASH_INTEL_ONEAPI_MKL
           environment:
             set:
               NCAR_LDFLAGS_MKL: '{prefix}/mkl/{version}/lib/intel64'
               NCAR_ROOT_MKL: '{prefix}/mkl/{version}'
-              NCAR_SPACK_HASH_MKL: '{hash}'
+              NCAR_HASH_MKL: '{hash}'
         intel-oneapi-mpi:
           filter:
             exclude_env_vars:
             - NCAR_ROOT_INTEL_ONEAPI_MPI
-            - NCAR_SPACK_HASH_INTEL_ONEAPI_MPI
+            - NCAR_HASH_INTEL_ONEAPI_MPI
           environment:
             set:
               I_MPI_HYDRA_BOOTSTRAP: rsh
               I_MPI_HYDRA_BOOTSTRAP_EXEC: pbs_tmrsh
               NCAR_ROOT_INTEL_MPI: '{prefix}'
-              NCAR_SPACK_HASH_INTEL_MPI: '{hash}'
+              NCAR_HASH_INTEL_MPI: '{hash}'
         intel-oneapi-vtune:
           filter:
             exclude_env_vars:
             - NCAR_ROOT_INTEL_ONEAPI_VTUNE
-            - NCAR_SPACK_HASH_INTEL_ONEAPI_VTUNE
+            - NCAR_HASH_INTEL_ONEAPI_VTUNE
           environment:
             set:
               NCAR_ROOT_INTEL_VTUNE: '{prefix}'
-              NCAR_SPACK_HASH_INTEL_VTUNE: '{hash}'
+              NCAR_HASH_INTEL_VTUNE: '{hash}'
             append_path:
               LD_LIBRARY_PATH: '{prefix}/vtune/latest/lib64'
         kokkos:
@@ -926,14 +926,14 @@ spack:
             - NCAR_INC_LLVM
             - NCAR_LDFLAGS_LLVM
             - NCAR_ROOT_LLVM
-            - NCAR_SPACK_HASH_LLVM
+            - NCAR_HASH_LLVM
           environment:
             set:
               NCAR_ID_COMPILER: clang-{version}
               NCAR_INC_CLANG: '{prefix}/include'
               NCAR_LDFLAGS_CLANG: '{prefix}/lib'
               NCAR_ROOT_CLANG: '{prefix}'
-              NCAR_SPACK_HASH_CLANG: '{hash}'
+              NCAR_HASH_CLANG: '{hash}'
         matlab:
           environment:
             set:
@@ -1068,13 +1068,13 @@ spack:
             - NCAR_INC_PARALLELIO1
             - NCAR_LDFLAGS_PARALLELIO1
             - NCAR_ROOT_PARALLELIO1
-            - NCAR_SPACK_HASH_PARALLELIO1
+            - NCAR_HASH_PARALLELIO1
           environment:
             set:
               NCAR_INC_PARALLELIO: '{prefix}/include'
               NCAR_LDFLAGS_PARALLELIO: '{prefix}/lib'
               NCAR_ROOT_PARALLELIO: '{prefix}'
-              NCAR_SPACK_HASH_PARALLELIO: '{hash}'
+              NCAR_HASH_PARALLELIO: '{hash}'
               PIO: '{prefix}'
         parallelio~mpi:
           conflict:
