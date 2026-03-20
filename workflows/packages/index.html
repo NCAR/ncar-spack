@@ -1,0 +1,311 @@
+<!DOCTYPE html>
+<html class="writer-html5" lang="en" >
+<head>
+    <meta charset="utf-8" />
+    <meta http-equiv="X-UA-Compatible" content="IE=edge" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+      <link rel="shortcut icon" href="../../img/favicon.ico" />
+    <title>Install a Package - ncar-spack</title>
+    <link rel="stylesheet" href="../../css/theme.css" />
+    <link rel="stylesheet" href="../../css/theme_extra.css" />
+        <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.8.0/styles/github.min.css" />
+    
+      <script>
+        // Current page data
+        var mkdocs_page_name = "Install a Package";
+        var mkdocs_page_input_path = "workflows/packages.md";
+        var mkdocs_page_url = null;
+      </script>
+    
+    <!--[if lt IE 9]>
+      <script src="../../js/html5shiv.min.js"></script>
+    <![endif]-->
+      <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.8.0/highlight.min.js"></script>
+      <script>hljs.highlightAll();</script> 
+</head>
+
+<body class="wy-body-for-nav" role="document">
+
+  <div class="wy-grid-for-nav">
+    <nav data-toggle="wy-nav-shift" class="wy-nav-side stickynav">
+    <div class="wy-side-scroll">
+      <div class="wy-side-nav-search">
+          <a href="../.." class="icon icon-home"> ncar-spack
+        </a><div role="search">
+  <form id ="rtd-search-form" class="wy-form" action="../../search.html" method="get">
+      <input type="text" name="q" placeholder="Search docs" aria-label="Search docs" title="Type search term here" />
+  </form>
+</div>
+      </div>
+
+      <div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="Navigation menu">
+              <ul>
+                <li class="toctree-l1"><a class="reference internal" href="../..">Home</a>
+                </li>
+              </ul>
+              <p class="caption"><span class="caption-text">Main Workflows</span></p>
+              <ul class="current">
+                  <li class="toctree-l1"><a class="reference internal" href="../deploy/">Create a New Deployment</a>
+                  </li>
+                  <li class="toctree-l1 current"><a class="reference internal current" href="#">Install a Package</a>
+    <ul class="current">
+    <li class="toctree-l2"><a class="reference internal" href="#updating-the-builtin-repo-to-get-new-package-versions">Updating the builtin repo to get new package versions</a>
+    </li>
+    <li class="toctree-l2"><a class="reference internal" href="#example-installing-the-latest-esmf">Example: Installing the latest ESMF</a>
+    </li>
+    </ul>
+                  </li>
+                  <li class="toctree-l1"><a class="reference internal" href="../postprocess/">Postprocessing</a>
+                  </li>
+                  <li class="toctree-l1"><a class="reference internal" href="../publish/">Publish Changes</a>
+                  </li>
+                  <li class="toctree-l1"><a class="reference internal" href="../removing/">Removing Things</a>
+                  </li>
+              </ul>
+              <p class="caption"><span class="caption-text">How To</span></p>
+              <ul>
+                  <li class="toctree-l1"><a class="reference internal" href="../../how/debug/">Debug Failures</a>
+                  </li>
+                  <li class="toctree-l1"><a class="reference internal" href="../../how/cpe/">Add New CPE</a>
+                  </li>
+                  <li class="toctree-l1"><a class="reference internal" href="../../how/tools/">Add User Tools</a>
+                  </li>
+                  <li class="toctree-l1"><a class="reference internal" href="../../how/hide/">Hide Packages and Modules</a>
+                  </li>
+                  <li class="toctree-l1"><a class="reference internal" href="../../how/update/">Update Cluster Recipes</a>
+                  </li>
+                  <li class="toctree-l1"><a class="reference internal" href="../../how/cesm/">Add CESM Dev Packages</a>
+                  </li>
+              </ul>
+              <p class="caption"><span class="caption-text">Manual Installs</span></p>
+              <ul>
+                  <li class="toctree-l1"><a class="reference internal" href="../../manual/idl/">IDL</a>
+                  </li>
+                  <li class="toctree-l1"><a class="reference internal" href="../../manual/matlab/">Matlab</a>
+                  </li>
+                  <li class="toctree-l1"><a class="reference internal" href="../../manual/ncl/">NCL</a>
+                  </li>
+                  <li class="toctree-l1"><a class="reference internal" href="../../manual/rocm/">ROCm</a>
+                  </li>
+                  <li class="toctree-l1"><a class="reference internal" href="../../manual/vapor/">VAPOR</a>
+                  </li>
+              </ul>
+              <p class="caption"><span class="caption-text">Appendix</span></p>
+              <ul>
+                  <li class="toctree-l1"><a class="reference internal" href="../../appendix/design/">Design Choices</a>
+                  </li>
+                  <li class="toctree-l1"><a class="reference internal" href="../../appendix/traps/">Traps and Pitfalls</a>
+                  </li>
+              </ul>
+      </div>
+    </div>
+    </nav>
+
+    <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap">
+      <nav class="wy-nav-top" role="navigation" aria-label="Mobile navigation menu">
+          <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
+          <a href="../..">ncar-spack</a>
+        
+      </nav>
+      <div class="wy-nav-content">
+        <div class="rst-content"><div role="navigation" aria-label="breadcrumbs navigation">
+  <ul class="wy-breadcrumbs">
+    <li><a href="../.." class="icon icon-home" aria-label="Docs"></a></li>
+          <li class="breadcrumb-item">Main Workflows</li>
+      <li class="breadcrumb-item active">Install a Package</li>
+    <li class="wy-breadcrumbs-aside">
+    </li>
+  </ul>
+  <hr/>
+</div>
+          <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
+            <div class="section" itemprop="articleBody">
+              
+                <h2 id="installing-a-new-package">Installing a new package</h2>
+<p>As new versions of popular libraries (e.g., <em>netcdf</em>) are released, and users
+request new packages, consultants will need to augment cluster deployments. All
+of the tools to do this robustly are provided in a cluster deployment. Here, we
+will run through an example for a production install, and so these steps assume
+working as <em>csgteam</em>.</p>
+<p>First, a word about how the deployment is structured. There should exist one
+Spack clone, and two Spack environments: a <em>build</em> environment and a <em>public</em>
+environment. The build environment is what you will interact with. Packages are
+build from source in the <em>build</em> environment, and any changes should not be
+visible to users. Only when you are happy with your changes in the <em>build</em>
+environment should you <code>publish</code> them into the <em>public</em> environment.</p>
+<p>In a new deployment, the <code>public</code> environment will not yet exist.</p>
+<h3 id="updating-the-builtin-repo-to-get-new-package-versions">Updating the <em>builtin</em> repo to get new package versions</h3>
+<p>Unfortunately, some terminology is overloaded here. In addition to Spack itself
+being a Git repository, Spack stores its package recipes in a package
+repository. The default repo is called <em>builtin</em>, and is contained with Spack
+itself in the Spack Git repo. The problem is that checking out a newer version
+of Spack or its <em>builtin</em> repo will update many things - including the package
+API and package recipes. This can cause packages to concretize differently and
+reduce reproducibility, and in some cases can even break the whole deployment.</p>
+<p><strong>Updating the entire Spack clone should be avoided - consider this a scenario
+for creating a new deployment!</strong></p>
+<p>So let's say a user wants the latest and greatest version of a package, and the
+version you see provided by our csg-spack-packages clone is older (use <code>spack info &lt;package&gt;</code>
+to check versions). In this scenario, aim for the least invasive
+changes possible. Typically, this means checking out only the desired package
+from the main Spack upstream. The <code>deploy</code> script will configure the cloned
+Spack to have an upstream remote to the main Spack repo.</p>
+<h3 id="example-installing-the-latest-esmf">Example: Installing the latest ESMF</h3>
+<p>A user wants ESMF 8.9.1, but the deployed csg-spack-packages clone only provides
+up to 8.9.0. Here is how you would obtain a newer version:</p>
+<pre><code>cd $NCAR_SPACK_ROOT_PACKAGES/repos/spack_repo/builtin/packages/
+git fetch upstream develop
+git checkout upstream/develop -- esmf
+cd $SPACK_ENV
+</code></pre>
+<p>These commands will only check out the updated ESMF package recipe (including
+the <strong>package.py</strong> and any new/modified patches). Note that sometimes you will
+need to update dependencies too if your package has changes that are
+incompatible with the current dependency recipe. But aim for the least number of
+changes possible to get a successful build. And if the version the user wants is
+provided already (or they don't care which version), then great, skip this
+section!</p>
+<h2 id="configuring-an-optimal-package-build">Configuring an optimal package build</h2>
+<p>Before installing any package, you should always run these two commands:</p>
+<ol>
+<li><code>spack info &lt;spec&gt;</code> - tells you which versions are availabe and which
+   variants can be used to modify how the package will be built</li>
+<li><code>spack spec -I -l &lt;spec&gt;</code> - shows you exactly how the package will be built
+   as currently configured, including the dependencies Spack will use; the <code>-I</code>
+   flag will decorate the output with an indicator telling you whether the
+   package is currently installed <code>[+]</code>, an external <code>[e]</code>, or needs to be
+   installed <code>[-]</code>.</li>
+</ol>
+<p>First, think about which variants you will need to configure to meet the user's
+request. Also, consider whether the package should use the system compiler or be
+built with our <em>module-loadable</em> compilers. It typically makes sense to use the
+system compiler for lower level packages that get used as dependencies often
+like <em>python</em> and <em>qt</em>. On the other hand, if a package depends on MPI you will
+almost certainly want to built it using the module compilers.</p>
+<p>The package build can be configured either in the <em>spec</em> or specifying
+preferences and requirements in the <strong>spack.yaml</strong>. I prefer the latter, when
+possible, as these settings will often influence how the package gets used as
+dependencies, and will also help narrow the behavior if a user wants to use our
+deployment as a Spack <em>upstream</em>.</p>
+<div class="admonition danger">
+<p class="admonition-title">Danger</p>
+<p>While I prefer <code>require</code> statements in YAML, recent versions of Spack have
+made these trickier to use. For example, if you set a requirement for
+<code>+variant</code>, but then the variant is removed in a future version of the
+package, many of your Spack commands will fail. Using <code>prefer:</code> can be
+safer, but note that the concretizer can <strong>and will</strong> ignore these settings
+from time to time.</p>
+</div>
+<p>If you wish to constrain any uninstalled dependencies of your package to use the
+system compiler, add them to the <strong>constraints.cfg</strong> file in the <em>build</em>
+environment and then run <code>bin/add_constraints</code>.</p>
+<h2 id="building-the-package">Building the package</h2>
+<p>Once you are happy with the build configuration and have implemented any desired
+constraints/preferences/requirements, you can install the package into the build
+environment. You <em>could</em> do this with the following Spack command:</p>
+<pre><code>spack install --add &lt;spec&gt;
+</code></pre>
+<p>However, this method will not span multiple compilers/MPIs and also does not log
+who performed the install. Instead, a helper script is provided to make complex
+installs easier (and put logs in an easy to find location).</p>
+<p>To install the package, add the <code>&lt;spec&gt;</code> into the <strong>packages.cfg</strong> file in an
+appropriate subsection - packages can be one of the following:</p>
+<ul>
+<li><strong>singleton</strong> - only a single configuration of this package is installed</li>
+<li><strong>cdep</strong> - the package will be installed for every non-system compiler defined
+  in <strong>packages.cfg</strong></li>
+<li><strong>mdep</strong> - the package will be installed for the matrix of compilers and MPIs
+  defined in this file</li>
+</ul>
+<p>Eventual user access to the package can be configured via the <code>access</code> tag. By
+default, a new package will produce an environment module that can be loaded.
+However, you can configure the package to appear in the <em>view</em> instead using
+<code>access=view</code>. Any package in the <em>view</em> will be in the user environment by
+default when the <strong>ncarenv</strong> module is loaded, as if it were a system package
+installed using zypper/yum/apt-get.</p>
+<p>There are many additional specifications that can be set on sections and
+individual packages in the <code>packages.cfg</code> file. See existing listings for
+inspiration and a full description of available settings by running:</p>
+<pre><code class="language-bash">bin/install_packages --help config
+</code></pre>
+<div class="admonition note">
+<p class="admonition-title">Note</p>
+<p>Compilers and MPIs installed into the <strong>spack.yaml</strong> but not listed in
+<strong>packages.cfg</strong> will NOT be used for cdep and mdep sections. This is
+another useful feature of using <strong>packages.cfg</strong> - think of it a record of
+the "actively updated" compiler and MPI stacks, while <strong>spack.yaml</strong>
+contains both active and inactive/deprecated versions.*</p>
+</div>
+<p>Once you have added the package <code>&lt;spec&gt;</code> to <strong>packages.cfg</strong>, you can begin the
+source builds by running <code>bin/install_packages</code>. If all goes well, this should
+install the package(s) and any necessary dependencies into the <em>build</em>
+environment. </p>
+<h2 id="testing-the-package">Testing the package</h2>
+<p>Once you have successfully built the package, you should run the following
+additional steps to prepare the build environment for testing:</p>
+<pre><code class="language-bash">spack module lmod refresh -y
+bin/postprocess
+</code></pre>
+<p>Even if your package does not produce a new environment module, it is good to
+run these commands to get a sense of how the production environment will look to
+users. Once this is ready, you can use a helper script to switch your
+module environment from the default (production <em>public</em>) to your build stack:</p>
+<pre><code class="language-bash">bin/use_modules[.csh]
+</code></pre>
+<p>You should see your package binaries/libraries/headers either in the default
+environment (if set to exist in the <em>view</em>) or in the module listing from
+<code>module avail</code>. At this point, do whatever testing you need to do to ensure the
+package seems robust.</p>
+<div class="admonition tip">
+<p class="admonition-title">Tip</p>
+<p>You can also ask users to run <code>use_modules</code> and they can provide you
+feedback, before you ever make the package available to other users!</p>
+</div>
+              
+            </div>
+          </div><footer>
+    <div class="rst-footer-buttons" role="navigation" aria-label="Footer Navigation">
+        <a href="../deploy/" class="btn btn-neutral float-left" title="Create a New Deployment"><span class="icon icon-circle-arrow-left"></span> Previous</a>
+        <a href="../postprocess/" class="btn btn-neutral float-right" title="Postprocessing">Next <span class="icon icon-circle-arrow-right"></span></a>
+    </div>
+
+  <hr/>
+
+  <div role="contentinfo">
+    <!-- Copyright etc -->
+  </div>
+
+  Built with <a href="https://www.mkdocs.org/">MkDocs</a> using a <a href="https://github.com/readthedocs/sphinx_rtd_theme">theme</a> provided by <a href="https://readthedocs.org">Read the Docs</a>.
+</footer>
+          
+        </div>
+      </div>
+
+    </section>
+
+  </div>
+
+  <div class="rst-versions" role="note" aria-label="Versions">
+  <span class="rst-current-version" data-toggle="rst-current-version">
+    
+    
+      <span><a href="../deploy/" style="color: #fcfcfc">&laquo; Previous</a></span>
+    
+    
+      <span><a href="../postprocess/" style="color: #fcfcfc">Next &raquo;</a></span>
+    
+  </span>
+</div>
+    <script src="../../js/jquery-3.6.0.min.js"></script>
+    <script>var base_url = "../..";</script>
+    <script src="../../js/theme_extra.js"></script>
+    <script src="../../js/theme.js"></script>
+      <script src="../../search/main.js"></script>
+    <script>
+        jQuery(function () {
+            SphinxRtdTheme.Navigation.enable(true);
+        });
+    </script>
+
+</body>
+</html>

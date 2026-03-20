@@ -1,0 +1,212 @@
+<!DOCTYPE html>
+<html class="writer-html5" lang="en" >
+<head>
+    <meta charset="utf-8" />
+    <meta http-equiv="X-UA-Compatible" content="IE=edge" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+      <link rel="shortcut icon" href="../../img/favicon.ico" />
+    <title>Matlab - ncar-spack</title>
+    <link rel="stylesheet" href="../../css/theme.css" />
+    <link rel="stylesheet" href="../../css/theme_extra.css" />
+        <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.8.0/styles/github.min.css" />
+    
+      <script>
+        // Current page data
+        var mkdocs_page_name = "Matlab";
+        var mkdocs_page_input_path = "manual/matlab.md";
+        var mkdocs_page_url = null;
+      </script>
+    
+    <!--[if lt IE 9]>
+      <script src="../../js/html5shiv.min.js"></script>
+    <![endif]-->
+      <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.8.0/highlight.min.js"></script>
+      <script>hljs.highlightAll();</script> 
+</head>
+
+<body class="wy-body-for-nav" role="document">
+
+  <div class="wy-grid-for-nav">
+    <nav data-toggle="wy-nav-shift" class="wy-nav-side stickynav">
+    <div class="wy-side-scroll">
+      <div class="wy-side-nav-search">
+          <a href="../.." class="icon icon-home"> ncar-spack
+        </a><div role="search">
+  <form id ="rtd-search-form" class="wy-form" action="../../search.html" method="get">
+      <input type="text" name="q" placeholder="Search docs" aria-label="Search docs" title="Type search term here" />
+  </form>
+</div>
+      </div>
+
+      <div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="Navigation menu">
+              <ul>
+                <li class="toctree-l1"><a class="reference internal" href="../..">Home</a>
+                </li>
+              </ul>
+              <p class="caption"><span class="caption-text">Main Workflows</span></p>
+              <ul>
+                  <li class="toctree-l1"><a class="reference internal" href="../../workflows/deploy/">Create a New Deployment</a>
+                  </li>
+                  <li class="toctree-l1"><a class="reference internal" href="../../workflows/packages/">Install a Package</a>
+                  </li>
+                  <li class="toctree-l1"><a class="reference internal" href="../../workflows/postprocess/">Postprocessing</a>
+                  </li>
+                  <li class="toctree-l1"><a class="reference internal" href="../../workflows/publish/">Publish Changes</a>
+                  </li>
+                  <li class="toctree-l1"><a class="reference internal" href="../../workflows/removing/">Removing Things</a>
+                  </li>
+              </ul>
+              <p class="caption"><span class="caption-text">How To</span></p>
+              <ul>
+                  <li class="toctree-l1"><a class="reference internal" href="../../how/debug/">Debug Failures</a>
+                  </li>
+                  <li class="toctree-l1"><a class="reference internal" href="../../how/cpe/">Add New CPE</a>
+                  </li>
+                  <li class="toctree-l1"><a class="reference internal" href="../../how/tools/">Add User Tools</a>
+                  </li>
+                  <li class="toctree-l1"><a class="reference internal" href="../../how/hide/">Hide Packages and Modules</a>
+                  </li>
+                  <li class="toctree-l1"><a class="reference internal" href="../../how/update/">Update Cluster Recipes</a>
+                  </li>
+                  <li class="toctree-l1"><a class="reference internal" href="../../how/cesm/">Add CESM Dev Packages</a>
+                  </li>
+              </ul>
+              <p class="caption"><span class="caption-text">Manual Installs</span></p>
+              <ul class="current">
+                  <li class="toctree-l1"><a class="reference internal" href="../idl/">IDL</a>
+                  </li>
+                  <li class="toctree-l1 current"><a class="reference internal current" href="#">Matlab</a>
+    <ul class="current">
+    <li class="toctree-l2"><a class="reference internal" href="#adding-to-spack">Adding to Spack</a>
+    </li>
+    </ul>
+                  </li>
+                  <li class="toctree-l1"><a class="reference internal" href="../ncl/">NCL</a>
+                  </li>
+                  <li class="toctree-l1"><a class="reference internal" href="../rocm/">ROCm</a>
+                  </li>
+                  <li class="toctree-l1"><a class="reference internal" href="../vapor/">VAPOR</a>
+                  </li>
+              </ul>
+              <p class="caption"><span class="caption-text">Appendix</span></p>
+              <ul>
+                  <li class="toctree-l1"><a class="reference internal" href="../../appendix/design/">Design Choices</a>
+                  </li>
+                  <li class="toctree-l1"><a class="reference internal" href="../../appendix/traps/">Traps and Pitfalls</a>
+                  </li>
+              </ul>
+      </div>
+    </div>
+    </nav>
+
+    <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap">
+      <nav class="wy-nav-top" role="navigation" aria-label="Mobile navigation menu">
+          <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
+          <a href="../..">ncar-spack</a>
+        
+      </nav>
+      <div class="wy-nav-content">
+        <div class="rst-content"><div role="navigation" aria-label="breadcrumbs navigation">
+  <ul class="wy-breadcrumbs">
+    <li><a href="../.." class="icon icon-home" aria-label="Docs"></a></li>
+          <li class="breadcrumb-item">Manual Installs</li>
+      <li class="breadcrumb-item active">Matlab</li>
+    <li class="wy-breadcrumbs-aside">
+    </li>
+  </ul>
+  <hr/>
+</div>
+          <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
+            <div class="section" itemprop="articleBody">
+              
+                <h1 id="installing-matlab">Installing Matlab</h1>
+<p>Matlab currently needs to be installed manually, as the Spack package only
+offers very old versions. This install is also annoying because it uses a GUI
+installer. Using a virtual desktop like FastX or VNC is recommended.</p>
+<p>To install Matlab, you will need to first download the Linux installer from
+their website either in the remote desktop, or locally and then upload it. You
+need to have a Mathworks account to do this.</p>
+<ul>
+<li><a href="https://www.mathworks.com/downloads">Matlab Download Page</a></li>
+</ul>
+<p>I have typically stored these downloads in <code>/glade/work/csgteam/build/matlab</code>.
+Once downloaded, unzip into a version-specific directory and run the installer
+script <code>./install</code>.</p>
+<div class="admonition tip">
+<p class="admonition-title">Tip</p>
+<p>As you will need to run the installer as <strong>csgteam</strong>, you should ensure that
+you <code>sudo</code> to csgteam using X11 forwarding. You can do this with <code>sudox csgteam</code>.</p>
+</div>
+<p>The installer will also require you to log into a Mathworks account tied to our
+license. It will then ask you to select a license to use; probably you will want
+to select <strong>Matlab Parallel Server</strong>, as this will ensure the MPS is installed
+along with other toolboxes. At some point, it may ask if you want to provide a
+license file. You can point it to the <code>network.lic</code> file in the build directory
+mentioned above.</p>
+<p>It will then ask for a path - put it in <code>/glade/u/apps/opt/matlab/&lt;version&gt;</code>.</p>
+<p>Turn off the "Improve..." checkbox, confirm and then expect it to run for 20-60
+minutes.</p>
+<h2 id="adding-to-spack">Adding to Spack</h2>
+<p>Once Matlab is installed, it can be added to Spack as an external via the
+<code>constraints.cfg</code> file and then "installed" into the cluster. By "installing" it
+in Spack, we motivate Spack to generate a module for that Matlab version.</p>
+<p>Cluster definitions should already contain important module customizations for
+Matlab. In particular, ensure that Matlab modules contain the following
+configuration:</p>
+<pre><code class="language-yaml">matlab:
+  environment:
+    set:
+      MW_FEATURE_MathworksServiceHostIsOnByDefault: '0'
+</code></pre>
+<p>This undocumented environment variable will tell Matlab (at least 2024-2025
+versions) to not launch the <em>ServiceHost</em> background process. This process has
+no tangible benefit for our users and in fact downloads ~1 GB of data into
+their home directory.</p>
+              
+            </div>
+          </div><footer>
+    <div class="rst-footer-buttons" role="navigation" aria-label="Footer Navigation">
+        <a href="../idl/" class="btn btn-neutral float-left" title="IDL"><span class="icon icon-circle-arrow-left"></span> Previous</a>
+        <a href="../ncl/" class="btn btn-neutral float-right" title="NCL">Next <span class="icon icon-circle-arrow-right"></span></a>
+    </div>
+
+  <hr/>
+
+  <div role="contentinfo">
+    <!-- Copyright etc -->
+  </div>
+
+  Built with <a href="https://www.mkdocs.org/">MkDocs</a> using a <a href="https://github.com/readthedocs/sphinx_rtd_theme">theme</a> provided by <a href="https://readthedocs.org">Read the Docs</a>.
+</footer>
+          
+        </div>
+      </div>
+
+    </section>
+
+  </div>
+
+  <div class="rst-versions" role="note" aria-label="Versions">
+  <span class="rst-current-version" data-toggle="rst-current-version">
+    
+    
+      <span><a href="../idl/" style="color: #fcfcfc">&laquo; Previous</a></span>
+    
+    
+      <span><a href="../ncl/" style="color: #fcfcfc">Next &raquo;</a></span>
+    
+  </span>
+</div>
+    <script src="../../js/jquery-3.6.0.min.js"></script>
+    <script>var base_url = "../..";</script>
+    <script src="../../js/theme_extra.js"></script>
+    <script src="../../js/theme.js"></script>
+      <script src="../../search/main.js"></script>
+    <script>
+        jQuery(function () {
+            SphinxRtdTheme.Navigation.enable(true);
+        });
+    </script>
+
+</body>
+</html>

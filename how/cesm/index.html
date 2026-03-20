@@ -1,0 +1,223 @@
+<!DOCTYPE html>
+<html class="writer-html5" lang="en" >
+<head>
+    <meta charset="utf-8" />
+    <meta http-equiv="X-UA-Compatible" content="IE=edge" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+      <link rel="shortcut icon" href="../../img/favicon.ico" />
+    <title>Add CESM Dev Packages - ncar-spack</title>
+    <link rel="stylesheet" href="../../css/theme.css" />
+    <link rel="stylesheet" href="../../css/theme_extra.css" />
+        <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.8.0/styles/github.min.css" />
+    
+      <script>
+        // Current page data
+        var mkdocs_page_name = "Add CESM Dev Packages";
+        var mkdocs_page_input_path = "how/cesm.md";
+        var mkdocs_page_url = null;
+      </script>
+    
+    <!--[if lt IE 9]>
+      <script src="../../js/html5shiv.min.js"></script>
+    <![endif]-->
+      <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.8.0/highlight.min.js"></script>
+      <script>hljs.highlightAll();</script> 
+</head>
+
+<body class="wy-body-for-nav" role="document">
+
+  <div class="wy-grid-for-nav">
+    <nav data-toggle="wy-nav-shift" class="wy-nav-side stickynav">
+    <div class="wy-side-scroll">
+      <div class="wy-side-nav-search">
+          <a href="../.." class="icon icon-home"> ncar-spack
+        </a><div role="search">
+  <form id ="rtd-search-form" class="wy-form" action="../../search.html" method="get">
+      <input type="text" name="q" placeholder="Search docs" aria-label="Search docs" title="Type search term here" />
+  </form>
+</div>
+      </div>
+
+      <div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="Navigation menu">
+              <ul>
+                <li class="toctree-l1"><a class="reference internal" href="../..">Home</a>
+                </li>
+              </ul>
+              <p class="caption"><span class="caption-text">Main Workflows</span></p>
+              <ul>
+                  <li class="toctree-l1"><a class="reference internal" href="../../workflows/deploy/">Create a New Deployment</a>
+                  </li>
+                  <li class="toctree-l1"><a class="reference internal" href="../../workflows/packages/">Install a Package</a>
+                  </li>
+                  <li class="toctree-l1"><a class="reference internal" href="../../workflows/postprocess/">Postprocessing</a>
+                  </li>
+                  <li class="toctree-l1"><a class="reference internal" href="../../workflows/publish/">Publish Changes</a>
+                  </li>
+                  <li class="toctree-l1"><a class="reference internal" href="../../workflows/removing/">Removing Things</a>
+                  </li>
+              </ul>
+              <p class="caption"><span class="caption-text">How To</span></p>
+              <ul class="current">
+                  <li class="toctree-l1"><a class="reference internal" href="../debug/">Debug Failures</a>
+                  </li>
+                  <li class="toctree-l1"><a class="reference internal" href="../cpe/">Add New CPE</a>
+                  </li>
+                  <li class="toctree-l1"><a class="reference internal" href="../tools/">Add User Tools</a>
+                  </li>
+                  <li class="toctree-l1"><a class="reference internal" href="../hide/">Hide Packages and Modules</a>
+                  </li>
+                  <li class="toctree-l1"><a class="reference internal" href="../update/">Update Cluster Recipes</a>
+                  </li>
+                  <li class="toctree-l1 current"><a class="reference internal current" href="#">Add CESM Dev Packages</a>
+    <ul class="current">
+    <li class="toctree-l2"><a class="reference internal" href="#deploying-the-cesmdev-cluster">Deploying the cesmdev Cluster</a>
+    </li>
+    <li class="toctree-l2"><a class="reference internal" href="#making-cesmdev-available-to-users">Making cesmdev Available to Users</a>
+    </li>
+    </ul>
+                  </li>
+              </ul>
+              <p class="caption"><span class="caption-text">Manual Installs</span></p>
+              <ul>
+                  <li class="toctree-l1"><a class="reference internal" href="../../manual/idl/">IDL</a>
+                  </li>
+                  <li class="toctree-l1"><a class="reference internal" href="../../manual/matlab/">Matlab</a>
+                  </li>
+                  <li class="toctree-l1"><a class="reference internal" href="../../manual/ncl/">NCL</a>
+                  </li>
+                  <li class="toctree-l1"><a class="reference internal" href="../../manual/rocm/">ROCm</a>
+                  </li>
+                  <li class="toctree-l1"><a class="reference internal" href="../../manual/vapor/">VAPOR</a>
+                  </li>
+              </ul>
+              <p class="caption"><span class="caption-text">Appendix</span></p>
+              <ul>
+                  <li class="toctree-l1"><a class="reference internal" href="../../appendix/design/">Design Choices</a>
+                  </li>
+                  <li class="toctree-l1"><a class="reference internal" href="../../appendix/traps/">Traps and Pitfalls</a>
+                  </li>
+              </ul>
+      </div>
+    </div>
+    </nav>
+
+    <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap">
+      <nav class="wy-nav-top" role="navigation" aria-label="Mobile navigation menu">
+          <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
+          <a href="../..">ncar-spack</a>
+        
+      </nav>
+      <div class="wy-nav-content">
+        <div class="rst-content"><div role="navigation" aria-label="breadcrumbs navigation">
+  <ul class="wy-breadcrumbs">
+    <li><a href="../.." class="icon icon-home" aria-label="Docs"></a></li>
+          <li class="breadcrumb-item">How To</li>
+      <li class="breadcrumb-item active">Add CESM Dev Packages</li>
+    <li class="wy-breadcrumbs-aside">
+    </li>
+  </ul>
+  <hr/>
+</div>
+          <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
+            <div class="section" itemprop="articleBody">
+              
+                <h1 id="adding-cesmdev-packages">Adding cesmdev Packages</h1>
+<p>Since Derecho was deployed, CESM (primarily Jim Edwards) has been deploying a
+set of modules which augment our own in a deployment called <strong>cesmdev</strong>. This is
+accessible to users via a hidden module. The module is not versioned... rather,
+it will automatically load modules relevant to whichever <strong>ncarenv</strong> version the
+user has loaded. The <strong>cesmdev</strong> collection provides the following packages:</p>
+<ul>
+<li>Debug versions of <strong>mpi-serial</strong>, <strong>parallel-netcdf</strong>, <strong>parallelio</strong>, and
+  <strong>emsf</strong>.</li>
+<li>Development (beta) versions of <strong>parallelio</strong> and <strong>esmf</strong></li>
+</ul>
+<p>Since <strong>ncarenv/25.10</strong>, CSG has assumed the responsibility for maintaining
+these modules, and Chris Fischer is the primary point of contact in CGD for
+information on needs. Brian Dobbins is the point of contact moving forward for
+parallelio development.</p>
+<div class="admonition info">
+<p class="admonition-title">cesmdev SLC</p>
+<p>CSG aims to install <strong>cesmdev</strong> modules for an <strong>ncarenv</strong> version with at
+least one month of testing time before that <strong>ncarenv</strong> version is made the
+default software stack.</p>
+</div>
+<div class="admonition danger">
+<p class="admonition-title">Danger</p>
+<p>CESM developers <em>do</em> incorporate these modules into case configs, for better
+or worse. So consider these stacks to have the same level of mutability as
+the <em>ncarenv</em>.</p>
+</div>
+<h2 id="deploying-the-cesmdev-cluster">Deploying the cesmdev Cluster</h2>
+<p>Once CSG assumed responsibilities for <strong>cesmdev</strong>, it was incorporated into the
+<strong>ncar-spack</strong> framework. The same process of deploying, installing packages
+into <em>build</em>, and then publishing them into <em>public</em> is used here. There are
+some notable differences, however:</p>
+<ul>
+<li><strong>cesmdev</strong> is much simpler than an <strong>ncarenv</strong>; there is no <em>view</em>, and
+  almost no postprocessing</li>
+<li><strong>cesmdev</strong> is only deployed to support Derechol; these modules do not need to
+  serve Casper</li>
+<li>Most lower level dependencies are actually used from <strong>ncarenv</strong> by treating
+  it as an upstream installation in a chained Spack install</li>
+<li>Most YAML configuration is inherited from the upstream <strong>ncarenv</strong></li>
+</ul>
+<p>So philosophically, it makes sense to keep customizations in the <strong>cesmdev</strong>
+environment to a minimum. Take note when building packages whether dependencies
+are being used from the upstream <strong>ncarenv</strong> Spack. If they are not, this is
+worth debugging.</p>
+<p>Otherwise, follow the same workflow as for other cluster deployments.</p>
+<h2 id="making-cesmdev-available-to-users">Making cesmdev Available to Users</h2>
+<p>As mentioned before, the <strong>cesmdev</strong> environment is made accessible by a hidden
+<code>cesmdev/1.0</code> module. This module is actually generated by a postprocessing unit
+in the derecho cluster. All of the logic to inherit modules from the correct
+<strong>ncarenv</strong> is in place already via those two modules (and is actually the same
+logic used to support user Spack downstreams).</p>
+              
+            </div>
+          </div><footer>
+    <div class="rst-footer-buttons" role="navigation" aria-label="Footer Navigation">
+        <a href="../update/" class="btn btn-neutral float-left" title="Update Cluster Recipes"><span class="icon icon-circle-arrow-left"></span> Previous</a>
+        <a href="../../manual/idl/" class="btn btn-neutral float-right" title="IDL">Next <span class="icon icon-circle-arrow-right"></span></a>
+    </div>
+
+  <hr/>
+
+  <div role="contentinfo">
+    <!-- Copyright etc -->
+  </div>
+
+  Built with <a href="https://www.mkdocs.org/">MkDocs</a> using a <a href="https://github.com/readthedocs/sphinx_rtd_theme">theme</a> provided by <a href="https://readthedocs.org">Read the Docs</a>.
+</footer>
+          
+        </div>
+      </div>
+
+    </section>
+
+  </div>
+
+  <div class="rst-versions" role="note" aria-label="Versions">
+  <span class="rst-current-version" data-toggle="rst-current-version">
+    
+    
+      <span><a href="../update/" style="color: #fcfcfc">&laquo; Previous</a></span>
+    
+    
+      <span><a href="../../manual/idl/" style="color: #fcfcfc">Next &raquo;</a></span>
+    
+  </span>
+</div>
+    <script src="../../js/jquery-3.6.0.min.js"></script>
+    <script>var base_url = "../..";</script>
+    <script src="../../js/theme_extra.js"></script>
+    <script src="../../js/theme.js"></script>
+      <script src="../../search/main.js"></script>
+    <script>
+        jQuery(function () {
+            SphinxRtdTheme.Navigation.enable(true);
+        });
+    </script>
+
+</body>
+</html>

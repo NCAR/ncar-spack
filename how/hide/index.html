@@ -1,0 +1,230 @@
+<!DOCTYPE html>
+<html class="writer-html5" lang="en" >
+<head>
+    <meta charset="utf-8" />
+    <meta http-equiv="X-UA-Compatible" content="IE=edge" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+      <link rel="shortcut icon" href="../../img/favicon.ico" />
+    <title>Hide Packages and Modules - ncar-spack</title>
+    <link rel="stylesheet" href="../../css/theme.css" />
+    <link rel="stylesheet" href="../../css/theme_extra.css" />
+        <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.8.0/styles/github.min.css" />
+    
+      <script>
+        // Current page data
+        var mkdocs_page_name = "Hide Packages and Modules";
+        var mkdocs_page_input_path = "how/hide.md";
+        var mkdocs_page_url = null;
+      </script>
+    
+    <!--[if lt IE 9]>
+      <script src="../../js/html5shiv.min.js"></script>
+    <![endif]-->
+      <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.8.0/highlight.min.js"></script>
+      <script>hljs.highlightAll();</script> 
+</head>
+
+<body class="wy-body-for-nav" role="document">
+
+  <div class="wy-grid-for-nav">
+    <nav data-toggle="wy-nav-shift" class="wy-nav-side stickynav">
+    <div class="wy-side-scroll">
+      <div class="wy-side-nav-search">
+          <a href="../.." class="icon icon-home"> ncar-spack
+        </a><div role="search">
+  <form id ="rtd-search-form" class="wy-form" action="../../search.html" method="get">
+      <input type="text" name="q" placeholder="Search docs" aria-label="Search docs" title="Type search term here" />
+  </form>
+</div>
+      </div>
+
+      <div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="Navigation menu">
+              <ul>
+                <li class="toctree-l1"><a class="reference internal" href="../..">Home</a>
+                </li>
+              </ul>
+              <p class="caption"><span class="caption-text">Main Workflows</span></p>
+              <ul>
+                  <li class="toctree-l1"><a class="reference internal" href="../../workflows/deploy/">Create a New Deployment</a>
+                  </li>
+                  <li class="toctree-l1"><a class="reference internal" href="../../workflows/packages/">Install a Package</a>
+                  </li>
+                  <li class="toctree-l1"><a class="reference internal" href="../../workflows/postprocess/">Postprocessing</a>
+                  </li>
+                  <li class="toctree-l1"><a class="reference internal" href="../../workflows/publish/">Publish Changes</a>
+                  </li>
+                  <li class="toctree-l1"><a class="reference internal" href="../../workflows/removing/">Removing Things</a>
+                  </li>
+              </ul>
+              <p class="caption"><span class="caption-text">How To</span></p>
+              <ul class="current">
+                  <li class="toctree-l1"><a class="reference internal" href="../debug/">Debug Failures</a>
+                  </li>
+                  <li class="toctree-l1"><a class="reference internal" href="../cpe/">Add New CPE</a>
+                  </li>
+                  <li class="toctree-l1"><a class="reference internal" href="../tools/">Add User Tools</a>
+                  </li>
+                  <li class="toctree-l1 current"><a class="reference internal current" href="#">Hide Packages and Modules</a>
+    <ul class="current">
+    <li class="toctree-l2"><a class="reference internal" href="#hide-mechanism">Hide Mechanism</a>
+    </li>
+    <li class="toctree-l2"><a class="reference internal" href="#build-env-only-packages">Build-env Only Packages</a>
+    </li>
+    </ul>
+                  </li>
+                  <li class="toctree-l1"><a class="reference internal" href="../update/">Update Cluster Recipes</a>
+                  </li>
+                  <li class="toctree-l1"><a class="reference internal" href="../cesm/">Add CESM Dev Packages</a>
+                  </li>
+              </ul>
+              <p class="caption"><span class="caption-text">Manual Installs</span></p>
+              <ul>
+                  <li class="toctree-l1"><a class="reference internal" href="../../manual/idl/">IDL</a>
+                  </li>
+                  <li class="toctree-l1"><a class="reference internal" href="../../manual/matlab/">Matlab</a>
+                  </li>
+                  <li class="toctree-l1"><a class="reference internal" href="../../manual/ncl/">NCL</a>
+                  </li>
+                  <li class="toctree-l1"><a class="reference internal" href="../../manual/rocm/">ROCm</a>
+                  </li>
+                  <li class="toctree-l1"><a class="reference internal" href="../../manual/vapor/">VAPOR</a>
+                  </li>
+              </ul>
+              <p class="caption"><span class="caption-text">Appendix</span></p>
+              <ul>
+                  <li class="toctree-l1"><a class="reference internal" href="../../appendix/design/">Design Choices</a>
+                  </li>
+                  <li class="toctree-l1"><a class="reference internal" href="../../appendix/traps/">Traps and Pitfalls</a>
+                  </li>
+              </ul>
+      </div>
+    </div>
+    </nav>
+
+    <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap">
+      <nav class="wy-nav-top" role="navigation" aria-label="Mobile navigation menu">
+          <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
+          <a href="../..">ncar-spack</a>
+        
+      </nav>
+      <div class="wy-nav-content">
+        <div class="rst-content"><div role="navigation" aria-label="breadcrumbs navigation">
+  <ul class="wy-breadcrumbs">
+    <li><a href="../.." class="icon icon-home" aria-label="Docs"></a></li>
+          <li class="breadcrumb-item">How To</li>
+      <li class="breadcrumb-item active">Hide Packages and Modules</li>
+    <li class="wy-breadcrumbs-aside">
+    </li>
+  </ul>
+  <hr/>
+</div>
+          <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
+            <div class="section" itemprop="articleBody">
+              
+                <h1 id="hiding-packages-and-modules">Hiding Packages and Modules</h1>
+<p>Sometimes it can make sense to create a module but then hide it from the list
+shown by <code>module available</code>. For instance, perhaps a module will only exist
+temporarily, needs to be tested by a large group but may have known limitations,
+or it uses a license that is only available to a limited segment of the user
+base.</p>
+<p>The clusters have a postprocessing unit called <strong>hidelist</strong> that allows you to
+hide modules that match given search strings. There are currently two methods
+for specifying the modules to hide:</p>
+<ul>
+<li><code>hide_list</code> - list paths to modules relative to the module deployment root to
+  hide if found</li>
+<li><code>find_list</code> - uses find to search for any file in the module tree that matches
+  the given string, regardless of which directory or depth it occurs</li>
+</ul>
+<h2 id="hide-mechanism">Hide Mechanism</h2>
+<p>Lmod allows you to hide modules using a given <code>hidden-modules</code> file. The file
+uses a very simple format, with each module listed per line. For example, we
+hide the <code>crayenv</code> top-level modules using this file:</p>
+<pre><code>hide-modulefile /glade/u/apps/derecho/modules/environment/crayenv/22.12.lua
+hide-modulefile /glade/u/apps/derecho/modules/environment/crayenv/25.03.lua
+hide-modulefile /glade/u/apps/derecho/modules/environment/crayenv/23.09.lua
+hide-modulefile /glade/u/apps/derecho/modules/environment/crayenv/24.03.lua
+hide-modulefile /glade/u/apps/derecho/modules/environment/crayenv/23.12.lua
+hide-modulefile /glade/u/apps/derecho/modules/environment/crayenv/23.03.lua
+hide-modulefile /glade/u/apps/derecho/modules/environment/crayenv/23.02.lua
+</code></pre>
+<p>Unfortunately this file (as of March 2026) does not allow for operations such as
+globbing, so keeping these files up to date for older deployments can be
+challenging.</p>
+<p>The <code>hidden-modules</code> file is specified to Lmod via the following environment
+variable set in <strong>ncarenv</strong>:</p>
+<pre><code class="language-lua">pushenv(&quot;LMOD_MODULERCFILE&quot;, &quot;/glade/u/apps/derecho/25.10/envs/public/util/hidden-modules&quot;)
+</code></pre>
+<div class="admonition tip">
+<p class="admonition-title">Tip</p>
+<p>The <code>pushenv</code> method in Lmod is a way to override and environment variable
+only while the module is loaded. When the module is unloaded, any previously
+set value is restored. This can be quite handy over <code>setenv</code>, which leaves
+the variable unset when the module is unloaded, regardless of its previous
+value.</p>
+</div>
+<h2 id="build-env-only-packages">Build-env Only Packages</h2>
+<p>Occasionally, during testing, you will want to install a package into the
+<strong>build</strong> environment but for whatever reason you do not want it to end up in
+the <strong>public</strong> environment. You could hide the module, but another approach is
+to prevent it from being installed into <strong>public</strong> by the <code>publish</code> script. To
+do this, use the following configuration setting in <code>packages.cfg</code> to mark
+packages:</p>
+<pre><code># DEBUG stack
+mdep: compilers=nvhpc@25.9 mpis=cray-mpich@8.1.32 source=install publish=no
+    parallel-netcdf@1.14.1 cppflags=-g
+    netcdf+mpi+debug@4.9.3
+    parallelio+logging@2.6.8 %TC% ^parallel-netcdf cppflags=-g ^netcdf-c +logging ^netcdf-fortran cppflags=-g
+    esmf+mpi+debug@8.9.1 %TC% ^hdf5 %CMP% ^parallelio+logging ^parallel-netcdf cppflags=-g ^netcdf-c +logging ^netcdf-fortran cppflags=-g
+</code></pre>
+<p>In the example, all four debug packages are kept in the <strong>build</strong> environment
+only by specifying <code>publish=no</code>. If, later, you wanted to change this, you could
+remove <code>publish=no</code> from the section and run <code>bin/install_packages</code> again.</p>
+              
+            </div>
+          </div><footer>
+    <div class="rst-footer-buttons" role="navigation" aria-label="Footer Navigation">
+        <a href="../tools/" class="btn btn-neutral float-left" title="Add User Tools"><span class="icon icon-circle-arrow-left"></span> Previous</a>
+        <a href="../update/" class="btn btn-neutral float-right" title="Update Cluster Recipes">Next <span class="icon icon-circle-arrow-right"></span></a>
+    </div>
+
+  <hr/>
+
+  <div role="contentinfo">
+    <!-- Copyright etc -->
+  </div>
+
+  Built with <a href="https://www.mkdocs.org/">MkDocs</a> using a <a href="https://github.com/readthedocs/sphinx_rtd_theme">theme</a> provided by <a href="https://readthedocs.org">Read the Docs</a>.
+</footer>
+          
+        </div>
+      </div>
+
+    </section>
+
+  </div>
+
+  <div class="rst-versions" role="note" aria-label="Versions">
+  <span class="rst-current-version" data-toggle="rst-current-version">
+    
+    
+      <span><a href="../tools/" style="color: #fcfcfc">&laquo; Previous</a></span>
+    
+    
+      <span><a href="../update/" style="color: #fcfcfc">Next &raquo;</a></span>
+    
+  </span>
+</div>
+    <script src="../../js/jquery-3.6.0.min.js"></script>
+    <script>var base_url = "../..";</script>
+    <script src="../../js/theme_extra.js"></script>
+    <script src="../../js/theme.js"></script>
+      <script src="../../search/main.js"></script>
+    <script>
+        jQuery(function () {
+            SphinxRtdTheme.Navigation.enable(true);
+        });
+    </script>
+
+</body>
+</html>

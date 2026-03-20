@@ -1,0 +1,283 @@
+<!DOCTYPE html>
+<html class="writer-html5" lang="en" >
+<head>
+    <meta charset="utf-8" />
+    <meta http-equiv="X-UA-Compatible" content="IE=edge" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" /><meta name="description" content="None" />
+      <link rel="shortcut icon" href="img/favicon.ico" />
+    <title>ncar-spack</title>
+    <link rel="stylesheet" href="css/theme.css" />
+    <link rel="stylesheet" href="css/theme_extra.css" />
+        <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.8.0/styles/github.min.css" />
+    
+      <script>
+        // Current page data
+        var mkdocs_page_name = "Home";
+        var mkdocs_page_input_path = "index.md";
+        var mkdocs_page_url = null;
+      </script>
+    
+    <!--[if lt IE 9]>
+      <script src="js/html5shiv.min.js"></script>
+    <![endif]-->
+      <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.8.0/highlight.min.js"></script>
+      <script>hljs.highlightAll();</script> 
+</head>
+
+<body class="wy-body-for-nav" role="document">
+
+  <div class="wy-grid-for-nav">
+    <nav data-toggle="wy-nav-shift" class="wy-nav-side stickynav">
+    <div class="wy-side-scroll">
+      <div class="wy-side-nav-search">
+          <a href="." class="icon icon-home"> ncar-spack
+        </a><div role="search">
+  <form id ="rtd-search-form" class="wy-form" action="./search.html" method="get">
+      <input type="text" name="q" placeholder="Search docs" aria-label="Search docs" title="Type search term here" />
+  </form>
+</div>
+      </div>
+
+      <div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="Navigation menu">
+              <ul class="current">
+                <li class="toctree-l1 current"><a class="reference internal current" href="#">Home</a>
+    <ul class="current">
+    <li class="toctree-l2"><a class="reference internal" href="#what-is-ncar-spack">What is ncar-spack?</a>
+    </li>
+    <li class="toctree-l2"><a class="reference internal" href="#getting-started">Getting Started</a>
+        <ul>
+    <li class="toctree-l3"><a class="reference internal" href="#github-ssh-keys">GitHub SSH keys</a>
+    </li>
+    <li class="toctree-l3"><a class="reference internal" href="#vim-users-yaml-configuration">Vim users: YAML configuration</a>
+    </li>
+        </ul>
+    </li>
+    <li class="toctree-l2"><a class="reference internal" href="#setting-up-gpg-keys">Setting up GPG keys</a>
+    </li>
+    <li class="toctree-l2"><a class="reference internal" href="#setting-up-s3-credentials">Setting up S3 Credentials</a>
+    </li>
+    <li class="toctree-l2"><a class="reference internal" href="#useful-resources">Useful Resources</a>
+    </li>
+    </ul>
+                </li>
+              </ul>
+              <p class="caption"><span class="caption-text">Main Workflows</span></p>
+              <ul>
+                  <li class="toctree-l1"><a class="reference internal" href="workflows/deploy/">Create a New Deployment</a>
+                  </li>
+                  <li class="toctree-l1"><a class="reference internal" href="workflows/packages/">Install a Package</a>
+                  </li>
+                  <li class="toctree-l1"><a class="reference internal" href="workflows/postprocess/">Postprocessing</a>
+                  </li>
+                  <li class="toctree-l1"><a class="reference internal" href="workflows/publish/">Publish Changes</a>
+                  </li>
+                  <li class="toctree-l1"><a class="reference internal" href="workflows/removing/">Removing Things</a>
+                  </li>
+              </ul>
+              <p class="caption"><span class="caption-text">How To</span></p>
+              <ul>
+                  <li class="toctree-l1"><a class="reference internal" href="how/debug/">Debug Failures</a>
+                  </li>
+                  <li class="toctree-l1"><a class="reference internal" href="how/cpe/">Add New CPE</a>
+                  </li>
+                  <li class="toctree-l1"><a class="reference internal" href="how/tools/">Add User Tools</a>
+                  </li>
+                  <li class="toctree-l1"><a class="reference internal" href="how/hide/">Hide Packages and Modules</a>
+                  </li>
+                  <li class="toctree-l1"><a class="reference internal" href="how/update/">Update Cluster Recipes</a>
+                  </li>
+                  <li class="toctree-l1"><a class="reference internal" href="how/cesm/">Add CESM Dev Packages</a>
+                  </li>
+              </ul>
+              <p class="caption"><span class="caption-text">Manual Installs</span></p>
+              <ul>
+                  <li class="toctree-l1"><a class="reference internal" href="manual/idl/">IDL</a>
+                  </li>
+                  <li class="toctree-l1"><a class="reference internal" href="manual/matlab/">Matlab</a>
+                  </li>
+                  <li class="toctree-l1"><a class="reference internal" href="manual/ncl/">NCL</a>
+                  </li>
+                  <li class="toctree-l1"><a class="reference internal" href="manual/rocm/">ROCm</a>
+                  </li>
+                  <li class="toctree-l1"><a class="reference internal" href="manual/vapor/">VAPOR</a>
+                  </li>
+              </ul>
+              <p class="caption"><span class="caption-text">Appendix</span></p>
+              <ul>
+                  <li class="toctree-l1"><a class="reference internal" href="appendix/design/">Design Choices</a>
+                  </li>
+                  <li class="toctree-l1"><a class="reference internal" href="appendix/traps/">Traps and Pitfalls</a>
+                  </li>
+              </ul>
+      </div>
+    </div>
+    </nav>
+
+    <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap">
+      <nav class="wy-nav-top" role="navigation" aria-label="Mobile navigation menu">
+          <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
+          <a href=".">ncar-spack</a>
+        
+      </nav>
+      <div class="wy-nav-content">
+        <div class="rst-content"><div role="navigation" aria-label="breadcrumbs navigation">
+  <ul class="wy-breadcrumbs">
+    <li><a href="." class="icon icon-home" aria-label="Docs"></a></li>
+      <li class="breadcrumb-item active">Home</li>
+    <li class="wy-breadcrumbs-aside">
+    </li>
+  </ul>
+  <hr/>
+</div>
+          <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
+            <div class="section" itemprop="articleBody">
+              
+                <h1 id="ncar-spack">ncar-spack</h1>
+<h2 id="what-is-ncar-spack">What is ncar-spack?</h2>
+<p><code>ncar-spack</code> is a git repository containing cluster configurations for NCAR HPC
+software stacks, scripts for deploying and updating cluster configurations, and
+a collection of helper scripts designed to facilitate reproducible and
+consistent package management.</p>
+<p>It is also important to note what this repository is <strong>not</strong>. It is not a fork
+of Spack itself - though a cluster <em>should</em> use the CSG forks of
+<a href="https://github.com/NCAR/csg-spack-fork">Spack</a> as well as the <a href="https://github.com/NCAR/csg-spack-packages">builtin package
+repository</a>. It is also not for
+tracking a production cluster deployment. Rather, this repository contains the
+recipe and the tools for starting a deployment, which is then tracked in its own
+repo!</p>
+<h2 id="getting-started">Getting Started</h2>
+<p>To get started, simply clone this repository either as yourself or as <em>csgteam</em>.
+If you plan to produce a public production cluster deployment, you will need to
+run as <em>csgteam</em>.</p>
+<pre><code>git clone git@github.com:NCAR/ncar-spack.git
+</code></pre>
+<div class="admonition note">
+<p class="admonition-title">Note</p>
+<p>The above command assumes SSH-key usage, which you will probably want to
+utilize over the HTTPS method as unattended GitHub commands are integral to
+many workflows in these scripts. See below for pointers on setting this up.</p>
+</div>
+<h4 id="github-ssh-keys">GitHub SSH keys</h4>
+<p>These scripts perform many pulls, pushes, and queries to- and from- GitHub, and
+so we rely on the "ssh" form of git remotes to avoid repetitive authentications.
+As a result, you should ensure that you have your GitHub SSH key configured for
+personal use of this repo on each system of interest.</p>
+<ul>
+<li><a href="https://docs.github.com/en/authentication/connecting-to-github-with-ssh">GitHub SSH Key Instructions</a></li>
+</ul>
+<p>When you are running as <strong>csgteam</strong>, you will need to set up the SSH key sudo
+mechanism. First, this logic should already be in csgteam's <code>~/.bashrc</code> file:</p>
+<pre><code class="language-bash"># Configure Git to work as sudo-user
+if [[ -n $SUDO_USER ]]; then
+    my_name=$(getent passwd $SUDO_USER | awk -F[:,] '{print $5}')
+    export GIT_SSH=/glade/u/home/csgteam/.ssh/gitwrap.ssh
+    export {GIT_AUTHOR_NAME,GIT_COMMITTER_NAME}=$my_name
+    export {GIT_AUTHOR_EMAIL,GIT_COMMITTER_EMAIL}=${SUDO_USER}@ucar.edu
+fi
+</code></pre>
+<p>The <code>gitwrap.ssh</code> script looks like this:</p>
+<pre><code class="language-bash">#!/bin/bash
+
+/usr/bin/ssh -i ~/.ssh/id_rsa.${SUDO_USER} $*
+</code></pre>
+<p>So for this to work for you, you'll simply need to add an SSH key to csgteam's
+<code>~/.ssh</code> directory and append your username to the end of the <code>id.rsa</code> file.</p>
+<h4 id="vim-users-yaml-configuration">Vim users: YAML configuration</h4>
+<p>Since Spack will output YAML lines with two-space indentation, the following Vim settings are recommended:</p>
+<pre><code>$ cat ~/.vim/after/ftplugin/yaml.vim
+setlocal shiftwidth=2
+setlocal tabstop=2
+</code></pre>
+<h2 id="setting-up-gpg-keys">Setting up GPG keys</h2>
+<p>As these workflows rely heavily on Spack <a href="https://spack.readthedocs.io/en/latest/binary_caches.html">build
+caches</a>, you will
+need to set up GPG keys.</p>
+<p>The <code>./deploy</code> script will create a new GPG key for you if you do not already
+have one. The key is stored in <code>/glade/work/$USER/operations/spack-keys</code> by
+default.</p>
+<p>If you need to create a new GPG key, it will be pushed to the build caches
+associated with the deployment (the mirrors in <code>spack.yaml</code>) assuming you are
+the owner of those mirrors.</p>
+<h2 id="setting-up-s3-credentials">Setting up S3 Credentials</h2>
+<p>AWS S3 credentials should be configured for access to Boreas so that Spack build
+caches can be accessed. These credentials are stored in a file in your/csgteam's
+home directory - <code>~/.aws/credentials</code>. The credential will look as follows:</p>
+<pre><code>[boreas]
+service_name = s3
+aws_access_key_id = 
+aws_secret_access_key = 
+endpoint_url = https://boreas.hpc.ucar.edu:6443
+</code></pre>
+<p>If you cannot find an existing listing of the key and secret, reach out to HSG.</p>
+<h2 id="useful-resources">Useful Resources</h2>
+<p>The following resources are essential for understanding how to use Spack well:</p>
+<ol>
+<li><a href="https://spack.readthedocs.io/en/latest/">Spack Documentation</a></li>
+<li><a href="https://packages.spack.io/">Spack Package Search</a></li>
+<li><a href="https://slack.spack.io/">Spack Slack</a></li>
+</ol>
+<p>Remember that Spack is now split into two repositories:</p>
+<ol>
+<li><a href="https://github.com/spack/spack">Spack the program</a></li>
+<li><a href="https://github.com/spack/spack-packages">Spack's <em>builtin</em> package
+   repository</a></li>
+</ol>
+<p>Changes to Spack's functionlity come from the main Spack repo, whereas package
+recipe changes and additions come from the <code>builtin</code> package repo.</p>
+<p>Finally, remember that these cluster definitions contained in this repo use CSG
+forks of both Spack itself and the builtin packages repository. These can be
+found here:</p>
+<ol>
+<li><a href="https://github.com/NCAR/csg-spack-fork">CSG Spack fork</a></li>
+<li><a href="https://github.com/NCAR/csg-spack-packages">CSG Spack builtin packages fork</a></li>
+</ol>
+              
+            </div>
+          </div><footer>
+    <div class="rst-footer-buttons" role="navigation" aria-label="Footer Navigation">
+        <a href="workflows/deploy/" class="btn btn-neutral float-right" title="Create a New Deployment">Next <span class="icon icon-circle-arrow-right"></span></a>
+    </div>
+
+  <hr/>
+
+  <div role="contentinfo">
+    <!-- Copyright etc -->
+  </div>
+
+  Built with <a href="https://www.mkdocs.org/">MkDocs</a> using a <a href="https://github.com/readthedocs/sphinx_rtd_theme">theme</a> provided by <a href="https://readthedocs.org">Read the Docs</a>.
+</footer>
+          
+        </div>
+      </div>
+
+    </section>
+
+  </div>
+
+  <div class="rst-versions" role="note" aria-label="Versions">
+  <span class="rst-current-version" data-toggle="rst-current-version">
+    
+    
+    
+      <span><a href="workflows/deploy/" style="color: #fcfcfc">Next &raquo;</a></span>
+    
+  </span>
+</div>
+    <script src="js/jquery-3.6.0.min.js"></script>
+    <script>var base_url = ".";</script>
+    <script src="js/theme_extra.js"></script>
+    <script src="js/theme.js"></script>
+      <script src="search/main.js"></script>
+    <script>
+        jQuery(function () {
+            SphinxRtdTheme.Navigation.enable(true);
+        });
+    </script>
+
+</body>
+</html>
+
+<!--
+MkDocs version : 1.6.1
+Build Date UTC : 2026-03-20 16:26:03.293451+00:00
+-->

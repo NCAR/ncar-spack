@@ -1,0 +1,279 @@
+<!DOCTYPE html>
+<html class="writer-html5" lang="en" >
+<head>
+    <meta charset="utf-8" />
+    <meta http-equiv="X-UA-Compatible" content="IE=edge" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+      <link rel="shortcut icon" href="../../img/favicon.ico" />
+    <title>ROCm - ncar-spack</title>
+    <link rel="stylesheet" href="../../css/theme.css" />
+    <link rel="stylesheet" href="../../css/theme_extra.css" />
+        <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.8.0/styles/github.min.css" />
+    
+      <script>
+        // Current page data
+        var mkdocs_page_name = "ROCm";
+        var mkdocs_page_input_path = "manual/rocm.md";
+        var mkdocs_page_url = null;
+      </script>
+    
+    <!--[if lt IE 9]>
+      <script src="../../js/html5shiv.min.js"></script>
+    <![endif]-->
+      <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.8.0/highlight.min.js"></script>
+      <script>hljs.highlightAll();</script> 
+</head>
+
+<body class="wy-body-for-nav" role="document">
+
+  <div class="wy-grid-for-nav">
+    <nav data-toggle="wy-nav-shift" class="wy-nav-side stickynav">
+    <div class="wy-side-scroll">
+      <div class="wy-side-nav-search">
+          <a href="../.." class="icon icon-home"> ncar-spack
+        </a><div role="search">
+  <form id ="rtd-search-form" class="wy-form" action="../../search.html" method="get">
+      <input type="text" name="q" placeholder="Search docs" aria-label="Search docs" title="Type search term here" />
+  </form>
+</div>
+      </div>
+
+      <div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="Navigation menu">
+              <ul>
+                <li class="toctree-l1"><a class="reference internal" href="../..">Home</a>
+                </li>
+              </ul>
+              <p class="caption"><span class="caption-text">Main Workflows</span></p>
+              <ul>
+                  <li class="toctree-l1"><a class="reference internal" href="../../workflows/deploy/">Create a New Deployment</a>
+                  </li>
+                  <li class="toctree-l1"><a class="reference internal" href="../../workflows/packages/">Install a Package</a>
+                  </li>
+                  <li class="toctree-l1"><a class="reference internal" href="../../workflows/postprocess/">Postprocessing</a>
+                  </li>
+                  <li class="toctree-l1"><a class="reference internal" href="../../workflows/publish/">Publish Changes</a>
+                  </li>
+                  <li class="toctree-l1"><a class="reference internal" href="../../workflows/removing/">Removing Things</a>
+                  </li>
+              </ul>
+              <p class="caption"><span class="caption-text">How To</span></p>
+              <ul>
+                  <li class="toctree-l1"><a class="reference internal" href="../../how/debug/">Debug Failures</a>
+                  </li>
+                  <li class="toctree-l1"><a class="reference internal" href="../../how/cpe/">Add New CPE</a>
+                  </li>
+                  <li class="toctree-l1"><a class="reference internal" href="../../how/tools/">Add User Tools</a>
+                  </li>
+                  <li class="toctree-l1"><a class="reference internal" href="../../how/hide/">Hide Packages and Modules</a>
+                  </li>
+                  <li class="toctree-l1"><a class="reference internal" href="../../how/update/">Update Cluster Recipes</a>
+                  </li>
+                  <li class="toctree-l1"><a class="reference internal" href="../../how/cesm/">Add CESM Dev Packages</a>
+                  </li>
+              </ul>
+              <p class="caption"><span class="caption-text">Manual Installs</span></p>
+              <ul class="current">
+                  <li class="toctree-l1"><a class="reference internal" href="../idl/">IDL</a>
+                  </li>
+                  <li class="toctree-l1"><a class="reference internal" href="../matlab/">Matlab</a>
+                  </li>
+                  <li class="toctree-l1"><a class="reference internal" href="../ncl/">NCL</a>
+                  </li>
+                  <li class="toctree-l1 current"><a class="reference internal current" href="#">ROCm</a>
+    <ul class="current">
+    <li class="toctree-l2"><a class="reference internal" href="#adding-to-spack">Adding to Spack</a>
+    </li>
+    <li class="toctree-l2"><a class="reference internal" href="#testing-rocm">Testing ROCm</a>
+    </li>
+    <li class="toctree-l2"><a class="reference internal" href="#auto-selection-of-stacks">Auto-selection of Stacks</a>
+    </li>
+    </ul>
+                  </li>
+                  <li class="toctree-l1"><a class="reference internal" href="../vapor/">VAPOR</a>
+                  </li>
+              </ul>
+              <p class="caption"><span class="caption-text">Appendix</span></p>
+              <ul>
+                  <li class="toctree-l1"><a class="reference internal" href="../../appendix/design/">Design Choices</a>
+                  </li>
+                  <li class="toctree-l1"><a class="reference internal" href="../../appendix/traps/">Traps and Pitfalls</a>
+                  </li>
+              </ul>
+      </div>
+    </div>
+    </nav>
+
+    <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap">
+      <nav class="wy-nav-top" role="navigation" aria-label="Mobile navigation menu">
+          <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
+          <a href="../..">ncar-spack</a>
+        
+      </nav>
+      <div class="wy-nav-content">
+        <div class="rst-content"><div role="navigation" aria-label="breadcrumbs navigation">
+  <ul class="wy-breadcrumbs">
+    <li><a href="../.." class="icon icon-home" aria-label="Docs"></a></li>
+          <li class="breadcrumb-item">Manual Installs</li>
+      <li class="breadcrumb-item active">ROCm</li>
+    <li class="wy-breadcrumbs-aside">
+    </li>
+  </ul>
+  <hr/>
+</div>
+          <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
+            <div class="section" itemprop="articleBody">
+              
+                <h1 id="installing-rocm">Installing ROCm</h1>
+<p>ROCm is a pain to install correctly. In theory, all of the ROCm components are
+installable via Spack. However, this is a huge pain to manage as the components
+are very interconnected and seem to have been designed to be in a single path.
+Thus, you will need to ensure some reasonable subset of modules are available
+and concurrently loaded to get the proper behavior. If you want to see my
+attempt at it, look at <a href="https://github.com/NCAR/ncar-spack/tree/0eefd92b39bd8b587cb22b01b0bdc30f628fc9d2/clusters/casper-amd">this older ROCm cluster
+definition</a>.</p>
+<p>Fortunately, in ROCm versions &gt;= 6.4.x, AMD has provided a <em>runfile</em> installer
+that allows us to install the unified ROCm package into a custom space with user
+privileges. Before this version, the unified package can only be installed via
+RPM, and we do not want too much of this massive kit in our compute image.</p>
+<p>The unified toolkit can be installed using the script in <code>etc/installers</code>. The
+modifications you may need to make should all be in the <strong>USER CONFIG</strong> section
+of the file.</p>
+<div class="admonition warning">
+<p class="admonition-title">Warning</p>
+<p>ROCm has very specific OS compatibility that must be followed. For example,
+the <a href="https://rocm.docs.amd.com/projects/install-on-linux/en/latest/reference/system-requirements.html#supported-operating-systems">latest version</a>
+as of March 2026 only supports SUSE SP7.</p>
+</div>
+<div class="admonition warning">
+<p class="admonition-title">Warning</p>
+<p>ROCm also has strict GLIBCXX symbol requirements. For example, ROCm 6.4.3
+requires libstdc++ from GCC 14 or newer, and so we define a "compat" version
+of GCC that is installed into the deployment, which may be newer than the
+"core" version of GCC. This requirement is very different from CUDA, for
+which GCC support often lags releases and limits us to older versions
+(unless you use the <code>+allow-unsupported-compilers</code> variant to CUDA).</p>
+</div>
+<h2 id="adding-to-spack">Adding to Spack</h2>
+<p>All components relevant to Spack can then be added as externals via the
+<code>constraints.cfg</code> file. There is one section that is devoted to importing all
+externals from a specific ROCm toolkit install.</p>
+<p>Once these packages are added to your deployment as externals, you can install
+the following packages explicitly:</p>
+<ul>
+<li>rocm-core</li>
+<li>llvm-amdgpu</li>
+<li>rocm-openmp-extras</li>
+</ul>
+<p>In order to present the user with a single module for the entire toolkit, we use
+<strong>rocm-core</strong> as a proxy for this, and project its module to the name <strong>rocm</strong>:</p>
+<pre><code>modules:
+  default:
+    lmod:
+      projections:
+        rocm-core: rocm/{version}
+      rocm-core:
+        template: ncar_wrapper_hip.lua
+      ...
+</code></pre>
+<p>The module template allows us to wrap hipcc with the <strong>ncarcompilers</strong> wrapper,
+making it easier for users to link their ROCm-using programs.</p>
+<p>The <strong>llvm-amdgpu</strong> and <strong>rocm-openmp-extras</strong> packages are a real mess. The
+former provides the C and C++ compilers that build HIP code. Meanwhile, the
+rocm-openmp-extras provides OpenMP 5 support for ROCm devices, including Fortran
+support. When installed via Spack, the latter package actually modifies the
+prefix of the former package, which is problematic and makes using binary caches
+difficult. See <a href="https://github.com/spack/spack/pull/49026">here</a> for discussion.</p>
+<div class="admonition info">
+<p class="admonition-title">Info</p>
+<p>ROCm 7 includes the new flang with LLVM 20, and so the whole aforementioned
+issue may be better. See
+<a href="https://github.com/spack/spack-packages/pull/1655#issuecomment-3377938830">here</a>
+for discussion. That said, ROCm 7 is not supported on our SUSE version, so
+testing of this will need to wait until we are updated.</p>
+</div>
+<p>Unfortunately, in ROCm 6.4.3, we actually need to use these Spack builds even
+though the two packages mentioned are included in the toolkit. This is because
+Spack's compiler wrappers will not handle the Fortran components in the toolkit
+version well, and you will get errors if trying to use GCC as a "host" compiler
+while using the ROCm LLVM as a "device" compiler. This may not be the optimal
+way to support ROCm, but given that the included flang is immature, it seems
+best for now.</p>
+<p>No other components (as externals) need to be explicitly installed. We have
+provided them to Spack because many of them will serve as dependencies for other
+packages (e.g., rocblas, rocrand, comgr, etc).</p>
+<h2 id="testing-rocm">Testing ROCm</h2>
+<p>A good initial test is to load your stack and simply run <code>amd-smi</code> and ensure
+that devices are reporting properly. For MPI, <strong>osu-micro-benchmarks</strong> and then
+<strong>fasteddy</strong> are good test cases.</p>
+<h2 id="auto-selection-of-stacks">Auto-selection of Stacks</h2>
+<p>On Casper, we currently have two versions of the stack - the default which
+provides NVIDIA GPU support and then the <code>-rocm</code> versions which provide AMD GPU
+support.</p>
+<p>To make things easier for users, we have an "entry" script that selects the
+correct stack based on information in your login environment. As the CUDA stack
+(the <strong>casper</strong> cluster definition) is the default, this entry script is
+actually created by a postprocessing unit in that cluster. It relies on the
+<code>lspci</code> utility being available in the compute image.</p>
+<p>Here is the bash version for reference:</p>
+<pre><code class="language-bash">if /sbin/lspci -k |&amp; grep -q &quot;Kernel driver in use: amdgpu&quot;; then
+    export GPU_ARCH_TYPE=rocm
+    . $rocm_path/localinit.sh
+else
+    export GPU_ARCH_TYPE=cuda
+    . $util_path/localinit.sh
+fi
+</code></pre>
+<p>This script is then used as the <code>localinit.[c]sh</code> script called by HSG's
+<code>/etc/profile.d/z00_modules.[c]sh</code> scripts, and the "real" localinit scripts are
+called depending on which GPU technology is available. If the user is not on a
+node with GPUs, the default stack which includes CUDA is loaded.</p>
+<p>Of course, this simply provides the default environment. Users can switch
+bewteen the cuda and rocm stacks by switching their <strong>ncarenv</strong> module.</p>
+              
+            </div>
+          </div><footer>
+    <div class="rst-footer-buttons" role="navigation" aria-label="Footer Navigation">
+        <a href="../ncl/" class="btn btn-neutral float-left" title="NCL"><span class="icon icon-circle-arrow-left"></span> Previous</a>
+        <a href="../vapor/" class="btn btn-neutral float-right" title="VAPOR">Next <span class="icon icon-circle-arrow-right"></span></a>
+    </div>
+
+  <hr/>
+
+  <div role="contentinfo">
+    <!-- Copyright etc -->
+  </div>
+
+  Built with <a href="https://www.mkdocs.org/">MkDocs</a> using a <a href="https://github.com/readthedocs/sphinx_rtd_theme">theme</a> provided by <a href="https://readthedocs.org">Read the Docs</a>.
+</footer>
+          
+        </div>
+      </div>
+
+    </section>
+
+  </div>
+
+  <div class="rst-versions" role="note" aria-label="Versions">
+  <span class="rst-current-version" data-toggle="rst-current-version">
+    
+    
+      <span><a href="../ncl/" style="color: #fcfcfc">&laquo; Previous</a></span>
+    
+    
+      <span><a href="../vapor/" style="color: #fcfcfc">Next &raquo;</a></span>
+    
+  </span>
+</div>
+    <script src="../../js/jquery-3.6.0.min.js"></script>
+    <script>var base_url = "../..";</script>
+    <script src="../../js/theme_extra.js"></script>
+    <script src="../../js/theme.js"></script>
+      <script src="../../search/main.js"></script>
+    <script>
+        jQuery(function () {
+            SphinxRtdTheme.Navigation.enable(true);
+        });
+    </script>
+
+</body>
+</html>

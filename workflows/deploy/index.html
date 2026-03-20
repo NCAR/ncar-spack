@@ -1,0 +1,301 @@
+<!DOCTYPE html>
+<html class="writer-html5" lang="en" >
+<head>
+    <meta charset="utf-8" />
+    <meta http-equiv="X-UA-Compatible" content="IE=edge" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+      <link rel="shortcut icon" href="../../img/favicon.ico" />
+    <title>Create a New Deployment - ncar-spack</title>
+    <link rel="stylesheet" href="../../css/theme.css" />
+    <link rel="stylesheet" href="../../css/theme_extra.css" />
+        <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.8.0/styles/github.min.css" />
+    
+      <script>
+        // Current page data
+        var mkdocs_page_name = "Create a New Deployment";
+        var mkdocs_page_input_path = "workflows/deploy.md";
+        var mkdocs_page_url = null;
+      </script>
+    
+    <!--[if lt IE 9]>
+      <script src="../../js/html5shiv.min.js"></script>
+    <![endif]-->
+      <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.8.0/highlight.min.js"></script>
+      <script>hljs.highlightAll();</script> 
+</head>
+
+<body class="wy-body-for-nav" role="document">
+
+  <div class="wy-grid-for-nav">
+    <nav data-toggle="wy-nav-shift" class="wy-nav-side stickynav">
+    <div class="wy-side-scroll">
+      <div class="wy-side-nav-search">
+          <a href="../.." class="icon icon-home"> ncar-spack
+        </a><div role="search">
+  <form id ="rtd-search-form" class="wy-form" action="../../search.html" method="get">
+      <input type="text" name="q" placeholder="Search docs" aria-label="Search docs" title="Type search term here" />
+  </form>
+</div>
+      </div>
+
+      <div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="Navigation menu">
+              <ul>
+                <li class="toctree-l1"><a class="reference internal" href="../..">Home</a>
+                </li>
+              </ul>
+              <p class="caption"><span class="caption-text">Main Workflows</span></p>
+              <ul class="current">
+                  <li class="toctree-l1 current"><a class="reference internal current" href="#">Create a New Deployment</a>
+    <ul class="current">
+    <li class="toctree-l2"><a class="reference internal" href="#cluster-definitions">Cluster Definitions</a>
+    </li>
+    <li class="toctree-l2"><a class="reference internal" href="#sharing-the-packages-repo">Sharing the Packages Repo</a>
+    </li>
+    <li class="toctree-l2"><a class="reference internal" href="#creating-a-packages-branch-for-the-deployment">Creating a Packages Branch for the Deployment</a>
+    </li>
+    <li class="toctree-l2"><a class="reference internal" href="#environment-prep-clean_bash-and-spacktivate">Environment prep: clean_bash and spacktivate</a>
+    </li>
+    <li class="toctree-l2"><a class="reference internal" href="#setting-up-a-new-production-cluster">Setting Up a New Production Cluster</a>
+    </li>
+    </ul>
+                  </li>
+                  <li class="toctree-l1"><a class="reference internal" href="../packages/">Install a Package</a>
+                  </li>
+                  <li class="toctree-l1"><a class="reference internal" href="../postprocess/">Postprocessing</a>
+                  </li>
+                  <li class="toctree-l1"><a class="reference internal" href="../publish/">Publish Changes</a>
+                  </li>
+                  <li class="toctree-l1"><a class="reference internal" href="../removing/">Removing Things</a>
+                  </li>
+              </ul>
+              <p class="caption"><span class="caption-text">How To</span></p>
+              <ul>
+                  <li class="toctree-l1"><a class="reference internal" href="../../how/debug/">Debug Failures</a>
+                  </li>
+                  <li class="toctree-l1"><a class="reference internal" href="../../how/cpe/">Add New CPE</a>
+                  </li>
+                  <li class="toctree-l1"><a class="reference internal" href="../../how/tools/">Add User Tools</a>
+                  </li>
+                  <li class="toctree-l1"><a class="reference internal" href="../../how/hide/">Hide Packages and Modules</a>
+                  </li>
+                  <li class="toctree-l1"><a class="reference internal" href="../../how/update/">Update Cluster Recipes</a>
+                  </li>
+                  <li class="toctree-l1"><a class="reference internal" href="../../how/cesm/">Add CESM Dev Packages</a>
+                  </li>
+              </ul>
+              <p class="caption"><span class="caption-text">Manual Installs</span></p>
+              <ul>
+                  <li class="toctree-l1"><a class="reference internal" href="../../manual/idl/">IDL</a>
+                  </li>
+                  <li class="toctree-l1"><a class="reference internal" href="../../manual/matlab/">Matlab</a>
+                  </li>
+                  <li class="toctree-l1"><a class="reference internal" href="../../manual/ncl/">NCL</a>
+                  </li>
+                  <li class="toctree-l1"><a class="reference internal" href="../../manual/rocm/">ROCm</a>
+                  </li>
+                  <li class="toctree-l1"><a class="reference internal" href="../../manual/vapor/">VAPOR</a>
+                  </li>
+              </ul>
+              <p class="caption"><span class="caption-text">Appendix</span></p>
+              <ul>
+                  <li class="toctree-l1"><a class="reference internal" href="../../appendix/design/">Design Choices</a>
+                  </li>
+                  <li class="toctree-l1"><a class="reference internal" href="../../appendix/traps/">Traps and Pitfalls</a>
+                  </li>
+              </ul>
+      </div>
+    </div>
+    </nav>
+
+    <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap">
+      <nav class="wy-nav-top" role="navigation" aria-label="Mobile navigation menu">
+          <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
+          <a href="../..">ncar-spack</a>
+        
+      </nav>
+      <div class="wy-nav-content">
+        <div class="rst-content"><div role="navigation" aria-label="breadcrumbs navigation">
+  <ul class="wy-breadcrumbs">
+    <li><a href="../.." class="icon icon-home" aria-label="Docs"></a></li>
+          <li class="breadcrumb-item">Main Workflows</li>
+      <li class="breadcrumb-item active">Create a New Deployment</li>
+    <li class="wy-breadcrumbs-aside">
+    </li>
+  </ul>
+  <hr/>
+</div>
+          <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
+            <div class="section" itemprop="articleBody">
+              
+                <h1 id="deploying-a-cluster-from-scratch">Deploying a Cluster From Scratch</h1>
+<p>This repository contains tooling to deploy new Spack clusters from scratch,
+using predefined definitions. The contents of each cluster definition are
+described in more detail in the next section.</p>
+<div class="admonition tip">
+<p class="admonition-title">When to deploy a new <strong>ncarenv</strong></p>
+<p>In general, we try to minimize new deployments as much as possible as they
+are disruptive to users. The following conditions are typically the
+motivating factors:</p>
+<ul>
+<li>Spack has changed in a way that is no longer backward compatible with the
+  current deployment, and so new package versions cannot be pulled from the
+  upstream.</li>
+<li>Something has broken in the current deployment and it is not easily
+  recoverable.</li>
+</ul>
+</div>
+<h2 id="cluster-definitions">Cluster Definitions</h2>
+<p>Cluster definitions are contained in the <code>clusters</code> subdirectory and typically
+contain the following components:</p>
+<pre><code>clusters/
+├── casper
+│   ├── constraints.cfg - external packages, and packages required to use the system GCC
+│   ├── main.cfg        - top-level path, name, and version settings for the cluster deployment
+│   ├── packages.cfg    - an inventory of packages to be built upon deployment (and beyond)
+│   ├── postprocess     - postprocessing units (scripts) that make non-Spack additions/changes
+│   ├── includes        - additional YAML config that can be shared across multiple clusters
+│   └── spack.yaml      - the Spack environment template that will become the cluster stack
+...
+</code></pre>
+<p>Remember, these are simply templates! To generate a cluster deployment from one
+of these recipes, simply run the <code>deploy</code> script in the top-level directory. For
+example:</p>
+<pre><code>./deploy [--production] casper
+</code></pre>
+<p>This command will clone the CSG fork of Spack and check out the branch specified
+in the cluster's <strong>main.cfg</strong> (or default to ncar-mods), clone and check out the
+desired branch of the CSG fork of
+<a href="https://github.com/spack/spack-packages">spack-packages</a>, register GPG keys,
+copy cluster settings including constraints and packages to install, set up a
+mirror if the specified one does not already exist, and if desired detect
+externals, set constraints, and install packages.</p>
+<p>The <code>--production</code> flag can only be specified when running as <em>csgteam</em>. Without
+this flag, a <em>test</em> deployment will be created at the location configured in the
+cluster definition (probably your scratch directory). Doing a test deployment
+can be a good way to learn how this all works without breaking things, and is
+recommended! :thumbsup:</p>
+<div class="admonition note">
+<p class="admonition-title">Note</p>
+<p>Keep in mind that changes made after you deploy a cluster will cause
+divergence from the recipe contained in this repo. This is expected, but if
+you wish to propagate those changes to a new version of the deployment, you
+should merge them into the recipe and push the changes to ncar-spack (see
+below)!*</p>
+</div>
+<p>One thing the <code>deploy.sh</code> script will not do is publish the new deployment to
+users via a public environment. This is by design - you should inspect that
+everything ran correctly before publishing.</p>
+<div class="admonition tip">
+<p class="admonition-title">Tip</p>
+<p>If you expect you will need to modify the constraints or packages before
+installing any packages, you can tell <code>deploy.sh</code> to skip these steps with
+the <code>--skip</code> flag.</p>
+</div>
+<h2 id="sharing-the-packages-repo">Sharing the Packages Repo</h2>
+<p>Many packages are shared between the different clusters, so it can make sense to
+use the same clone of the CSG spack-packages fork for multiple clusters. For
+example, version <code>25.10</code> of <strong>derecho</strong>, <strong>casper</strong>, and <strong>common</strong> all use the
+clone of the packages repo at <code>/glade/u/apps/derecho/25.10/packages</code>.</p>
+<p>To set up such sharing, follow these steps:</p>
+<ol>
+<li>When creating the first deployment that will share a packages repo, have the
+   <code>deploy.sh</code> script clone the CSG fork of <strong>spack-packages</strong> as normal.</li>
+<li>For subsequent deployments, use the <code>--share-packages</code> argument to
+   <code>deploy.sh</code> and provide the path to the first deployment's packages repo.
+   This will create a symbolic link in this deployment to the original repo.</li>
+</ol>
+<p>Generally, this sharing of package repositories only makes sense for deployments
+created at the same or very similar times. And it is best practice to keep such
+deployments using the same or very similar Spack versions (though deployments
+cannot share Spack clones in our setup).</p>
+<h2 id="creating-a-packages-branch-for-the-deployment">Creating a Packages Branch for the Deployment</h2>
+<p>Let's say you use the default <em>ncar-mods</em> branch of <strong>csg-spack-packages</strong> for
+your builtin packages repo clone. You may want to make changes to the builtin
+that are independent of changes made to <em>ncar-mods</em> (which may need to be
+prepared with updates for future deployments).</p>
+<p>As best practice, I like to create a new branch of <strong>csg-spack-packages</strong> to
+track changes (e.g., new package pulls from upstream) for this deployment and
+any linked deployments. For example, if I deploy a new ncarenv/26.03, I would
+create a branch in the packages repo called 26.03 and push to GitHub. This is
+also helpful for keeping Derecho and Gust in sync, since they do not share a
+filesystem and cannot have linked package repo clones.</p>
+<h2 id="environment-prep-clean_bash-and-spacktivate">Environment prep: <code>clean_bash</code> and <code>spacktivate</code></h2>
+<p>Before doing anything with a cluster deployment, you should first launch a clean
+bash shell that has been scrubbed of personal settings and modules. Since this
+step is fundamental to using <em>ncar-spack</em>, a script called <code>clean_bash</code> is
+provided in the csg-spack-fork to do this for you. The script will also
+initialize Spack to run in your environment, and change your directory to the
+<em>build</em> environment.</p>
+<p>The script can be found in the <code>bin</code> directory of the clone Spack, and it is
+also typically configured to run as a shell function when you are <em>csgteam</em> (via
+<strong>.bashrc</strong> settings).</p>
+<p>Once you are in a sanitized bash shell, you can "activate" the <em>build</em>
+environment. This step is important, because otherwise Spack will make decisions
+based on the configuration in the Spack clone settings directory, rather than
+our environment settings contained in <strong>spack.yaml</strong>.</p>
+<pre><code>clean_bash
+spacktivate -p .
+</code></pre>
+<p>Since <code>clean_bash</code> places you in the <em>build</em> directory, you can use <code>.</code> to
+indicate the environment path. The <code>-p</code> option provides a nice prompt decorator
+indicating the build environment is active.</p>
+<h2 id="setting-up-a-new-production-cluster">Setting Up a New Production Cluster</h2>
+<p>All production deployments are version tracked and config files are uploaded to
+GitHub for reference and public consumption. For example:</p>
+<ul>
+<li><a href="https://github.com/NCAR/spack-derecho">spack-derecho</a></li>
+<li><a href="https://github.com/NCAR/spack-casper">spack-casper</a></li>
+<li><a href="https://github.com/NCAR/spack-gust">spack-gust</a></li>
+</ul>
+<p>If you are creating a software stack for a new cluster, you will need to create
+an empty GitHub repository for that new cluster before you can run <code>publish</code>, as
+this script will create a branch in the repo and then push to the remote you
+create and specify (in <code>main.cfg</code>).</p>
+              
+            </div>
+          </div><footer>
+    <div class="rst-footer-buttons" role="navigation" aria-label="Footer Navigation">
+        <a href="../.." class="btn btn-neutral float-left" title="Home"><span class="icon icon-circle-arrow-left"></span> Previous</a>
+        <a href="../packages/" class="btn btn-neutral float-right" title="Install a Package">Next <span class="icon icon-circle-arrow-right"></span></a>
+    </div>
+
+  <hr/>
+
+  <div role="contentinfo">
+    <!-- Copyright etc -->
+  </div>
+
+  Built with <a href="https://www.mkdocs.org/">MkDocs</a> using a <a href="https://github.com/readthedocs/sphinx_rtd_theme">theme</a> provided by <a href="https://readthedocs.org">Read the Docs</a>.
+</footer>
+          
+        </div>
+      </div>
+
+    </section>
+
+  </div>
+
+  <div class="rst-versions" role="note" aria-label="Versions">
+  <span class="rst-current-version" data-toggle="rst-current-version">
+    
+    
+      <span><a href="../.." style="color: #fcfcfc">&laquo; Previous</a></span>
+    
+    
+      <span><a href="../packages/" style="color: #fcfcfc">Next &raquo;</a></span>
+    
+  </span>
+</div>
+    <script src="../../js/jquery-3.6.0.min.js"></script>
+    <script>var base_url = "../..";</script>
+    <script src="../../js/theme_extra.js"></script>
+    <script src="../../js/theme.js"></script>
+      <script src="../../search/main.js"></script>
+    <script>
+        jQuery(function () {
+            SphinxRtdTheme.Navigation.enable(true);
+        });
+    </script>
+
+</body>
+</html>
